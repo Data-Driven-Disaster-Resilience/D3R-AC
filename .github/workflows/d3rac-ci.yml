@@ -1,16 +1,26 @@
 name: D3R·AC CI
 
 # Comprehensive CI workflow for D3R·AC.
-# Uses dorny/paths-filter to reliably detect which parts of the repo
-# changed, across the full push (not just the last commit) and correctly
-# on pull_request events too.
+#
+# Fix notes (this version):
+# 1. Every job now checks whether its target directory actually exists
+#    before doing real work, and exits cleanly (not as a failure) if not.
+#    This matters because code isn't fully pushed yet — jobs shouldn't
+#    hard-fail just because contracts/tron, frontend/, or data-pipeline/
+#    don't exist in the repo yet.
+# 2. Replaced the Gitleaks GitHub Action (which requires a paid license
+#    for private repos) with the raw Gitleaks CLI, downloaded directly —
+#    this works on public AND private repos with no license needed.
+# 3. Removed reliance on paths-filter as the sole gate — directory
+#    existence checks act as a second safety net regardless of how the
+#    diff is computed, including on a repo's very first commit.
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  workflow_dispatch: {}   # allows manual trigger from the Actions tab
+  workflow_dispatch: {}
 
 jobs:
 
@@ -32,6 +42,10 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v3
         with:
+          # On the very first commit to a repo there's no prior commit
+          # to diff against; paths-filter falls back sensibly, but we
+          # still guard every downstream job with a directory-exists
+          # check below as a second safety net.
           filters: |
             contracts:
               - 'contracts/tron/**'
@@ -52,19 +66,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check contracts directory exists
+        id: check
+        run: |
+          if [ -d "contracts/tron" ] && [ -n "$(find contracts/tron -name '*.sol' 2>/dev/null)" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::contracts/tron has no .sol files yet — skipping compile step."
+          fi
+
       - name: Set up Node.js
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install TronBox
+        if: steps.check.outputs.exists == 'true'
         run: npm install -g tronbox
 
       - name: Compile TRON contracts
+        if: steps.check.outputs.exists == 'true'
         working-directory: contracts/tron
         run: tronbox compile
 
       - name: Upload compiled artifacts
+        if: steps.check.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: tron-build-artifacts
@@ -85,20 +113,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check contracts directory exists
+        id: check
+        run: |
+          if [ -d "contracts/tron" ] && [ -n "$(find contracts/tron -name '*.sol' 2>/dev/null)" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Node.js
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install solhint
+        if: steps.check.outputs.exists == 'true'
         run: npm install -g solhint
 
       - name: Run solhint
+        if: steps.check.outputs.exists == 'true'
         working-directory: contracts/tron
         run: solhint '**/*.sol' || true
-        # `|| true` keeps this non-blocking for now (warnings only).
-        # Remove once the contract is lint-clean and you want new
-        # warnings to fail the build.
 
   # ---------------------------------------------------------------
   # 3. Frontend build & test (community access layer)
@@ -108,14 +145,22 @@ jobs:
     needs: changes
     if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check frontend directory exists
+        id: check
+        run: |
+          if [ -f "frontend/package.json" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::frontend/package.json not found yet — skipping frontend build."
+          fi
+
       - name: Set up Node.js
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -123,18 +168,27 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
+        if: steps.check.outputs.exists == 'true'
+        working-directory: frontend
         run: npm ci
 
       - name: Run lint
+        if: steps.check.outputs.exists == 'true'
+        working-directory: frontend
         run: npm run lint --if-present
 
       - name: Run tests
+        if: steps.check.outputs.exists == 'true'
+        working-directory: frontend
         run: npm test --if-present
 
       - name: Build production bundle
+        if: steps.check.outputs.exists == 'true'
+        working-directory: frontend
         run: npm run build
 
       - name: Upload build artifacts
+        if: steps.check.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
@@ -148,14 +202,22 @@ jobs:
     needs: changes
     if: needs.changes.outputs.data_pipeline == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./data-pipeline
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check data-pipeline directory exists
+        id: check
+        run: |
+          if [ -d "data-pipeline" ] && [ -n "$(find data-pipeline -name '*.py' 2>/dev/null)" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::data-pipeline has no Python files yet — skipping."
+          fi
+
       - name: Set up Python
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -163,16 +225,20 @@ jobs:
           cache-dependency-path: data-pipeline/requirements.txt
 
       - name: Install dependencies
+        if: steps.check.outputs.exists == 'true'
+        working-directory: data-pipeline
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run tests
+        if: steps.check.outputs.exists == 'true'
+        working-directory: data-pipeline
         run: |
           if [ -d tests ]; then pytest tests/; else echo "No tests directory yet — skipping."; fi
 
   # ---------------------------------------------------------------
-  # 5. Secret scanning (always runs — protects the whole repo)
+  # 5. Secret scanning — raw Gitleaks CLI (no license required)
   # ---------------------------------------------------------------
   secret-scan:
     name: Secret Scanning
@@ -183,14 +249,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Flags anything that looks like a private key, API token, or
-        # wallet secret before it can be merged. Runs on every push/PR
-        # regardless of which paths changed, since a leaked secret
-        # anywhere in the repo matters. Free for public repos.
+      - name: Download and run Gitleaks CLI
+        run: |
+          GITLEAKS_VERSION="8.18.4"
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+          ./gitleaks detect --source . --verbose --redact
+        # Runs the open-source CLI directly — free regardless of repo
+        # visibility, no GitHub Marketplace Action license needed.
 
   # ---------------------------------------------------------------
   # 6. Summary job — single required status check for branch protection
@@ -211,8 +278,6 @@ jobs:
           echo "Data pipeline:      ${{ needs.data-pipeline.result }}"
           echo "Secret scan:        ${{ needs.secret-scan.result }}"
 
-          # Fail the summary (and therefore any required check) if any
-          # job that actually ran did not succeed.
           if [[ "${{ needs.contracts-tron.result }}" == "failure" ]] || \
              [[ "${{ needs.contracts-lint.result }}" == "failure" ]] || \
              [[ "${{ needs.frontend.result }}" == "failure" ]] || \
