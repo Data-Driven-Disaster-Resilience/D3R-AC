@@ -49,7 +49,7 @@ d3rac/
 
 - **Smart contracts:** Solidity (TRON/TVM), [Casper contract language — TBD]
 - **Chains:** TRON, Casper Network
-- **Frontend:** [TBD]
+- **Frontend:** React + Vite + TypeScript
 - **Data pipeline:** [TBD]
 
 ## Getting Started
@@ -73,7 +73,7 @@ npm run dev
 
 ## Status
 
-🚧 **Active development.** Core TRON smart contract logic implemented and tested on testnet. Casper deployment, frontend, and data pipeline in progress.
+🚧 **Active development.** Core TRON smart contract logic implemented and tested on testnet. Frontend community access layer implemented (TRON live, Casper adapter in place pending Casper contract deployment). Casper contracts and data pipeline in progress.
 
 ## Contributing
 
