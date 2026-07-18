@@ -1,5 +1,26 @@
 # TRON Contracts
 
+## Layout
+
+```
+contracts/tron/
+├── contracts/            # .sol sources (TronBox's and Hardhat's shared default)
+│   ├── D3RACToken.sol
+│   ├── IdentityRegistry.sol
+│   ├── DisbursementController.sol
+│   └── MultiSigAdmin.sol
+├── test/                 # Hardhat/Mocha/Chai logic tests — see "Test suite" below
+├── tronbox-config.js      # compile-only config (no network/private-key section —
+│                           # add one before using `tronbox migrate` to deploy)
+├── hardhat.config.js
+└── package.json
+```
+
+The nested `contracts/` subfolder isn't optional — TronBox refuses to
+treat the project root itself as `contracts_directory`, and it happens
+to match Hardhat's own default sources path, so both tools find the
+same files with no extra config.
+
 ## Current status
 
 Four contracts, dependency-free (no OpenZeppelin import — see each
@@ -37,6 +58,20 @@ with the optimizer on:
 This is **not deployed or audited**. See Known limitations below and
 [`docs/deployment-guide.md`](../../docs/deployment-guide.md) before
 targeting even testnet with anything resembling real funds.
+
+## Compiling with TronBox
+
+```bash
+cd contracts/tron
+npm install -g tronbox
+tronbox compile
+```
+
+`tronbox-config.js` is compile-only right now (no `networks` entry) —
+add a network/private-key section before running `tronbox migrate` to
+actually deploy. CI runs this same command on every push/PR that
+touches `contracts/tron/**` (see `contracts-tron` job in
+`.github/workflows/d3rac-ci.yml`).
 
 ## Test suite
 

@@ -4,13 +4,14 @@ This guide covers deploying D3R·AC's two deployable pieces: TRON smart
 contracts and the frontend. **Read the [Security](#security-checklist)
 section before deploying anything with real funds.**
 
-> **Status note:** contract source now exists (see
-> [`contracts/tron/README.md`](../contracts/tron/README.md)) but has not
-> been tested or deployed to any network yet — no test suite, no testnet
-> deployment, no audit. The steps below describe the process this project
-> will use once that changes; treat this as a process reference, not
-> confirmation of a currently-deployed contract. The frontend deployment
-> section reflects what's actually built.
+> **Status note:** contract source, a passing logic test suite (50
+> tests, see [`contracts/tron/README.md`](../contracts/tron/README.md)),
+> and a working TronBox compile config all exist now — but there is
+> still no testnet deployment and no professional audit. The steps
+> below describe the process this project will use for that next step;
+> treat this as a process reference, not confirmation of a
+> currently-deployed contract. The frontend deployment section reflects
+> what's actually built.
 
 ## Smart contracts (TRON)
 
@@ -44,10 +45,14 @@ moves real disaster-relief funds, and testnet is free.
 
 ### Deploying with TronBox
 
+`contracts/tron/tronbox-config.js` already exists but is compile-only
+(no `networks` entry yet) — don't run `tronbox init` over it, just add
+a network/private-key section:
+
 ```bash
+cd contracts/tron
 npm install -g tronbox
-tronbox init
-# configure network + private key in tronbox-config.js (see Security below)
+# add a `networks.shasta` entry with your key to tronbox-config.js (see Security below)
 tronbox compile
 tronbox migrate --network shasta
 ```
@@ -105,6 +110,9 @@ Before deploying anything beyond testnet:
 - [ ] **Consider a multisig** for any contract-owner or admin role that
       can move funds or change disbursement conditions — a single key
       compromise shouldn't be able to redirect relief funds.
+      `contracts/tron/contracts/MultiSigAdmin.sol` is available for
+      this; deploy it and point `D3RACToken`/`IdentityRegistry`/
+      `DisbursementController`'s admin/owner role at it before mainnet.
 - [ ] **Rate-limit and monitor** contract calls in production — sudden
       spikes in disbursement calls are worth alerting on, not just
       logging.
