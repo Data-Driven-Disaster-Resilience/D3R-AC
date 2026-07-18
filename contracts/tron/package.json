@@ -1,0 +1,17 @@
+{
+  "name": "d3rac-tron-contracts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Test suite for D3R-AC's TRON contracts (D3RACToken, IdentityRegistry, DisbursementController, MultiSigAdmin). Logic tests only -- see hardhat.config.js for why Hardhat is used here instead of TronBox, and docs/deployment-guide.md for actual TRON deployment.",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "chai": "^4.2.0",
+    "ethers": "^6.4.0",
+    "hardhat": "^2.22.0"
+  }
+}

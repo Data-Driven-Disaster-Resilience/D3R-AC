@@ -2,9 +2,9 @@
 
 ## Current status
 
-Contract source is now committed. Three contracts, dependency-free
-(no OpenZeppelin import — see each file's header comment for why),
-compiled clean against solc 0.8.20 with the optimizer on:
+Four contracts, dependency-free (no OpenZeppelin import — see each
+file's header comment for why), compiled clean against solc 0.8.20
+with the optimizer on:
 
 - **`D3RACToken.sol`** — the TRC-20 relief-fund token. Implements the
   full standard surface, including the minimal slice the frontend
@@ -26,10 +26,46 @@ compiled clean against solc 0.8.20 with the optimizer on:
   attestation is the real gate, not who submits the transaction). Every
   state change — commitment created, milestone attested, milestone
   released, commitment cancelled — is an event.
+- **`MultiSigAdmin.sol`** — an N-of-M multisig meant to *hold* the
+  `admin`/`owner` role on the three contracts above instead of a single
+  EOA (the "consider a multisig for any contract-owner or admin role"
+  item from `docs/deployment-guide.md`'s security checklist). Deploy it
+  first and pass its address as the constructor's admin/owner argument
+  on the others. Generic (submits arbitrary `to`/`value`/`data`), so
+  it isn't coupled to the other contracts' ABIs.
 
 This is **not deployed or audited**. See Known limitations below and
 [`docs/deployment-guide.md`](../../docs/deployment-guide.md) before
 targeting even testnet with anything resembling real funds.
+
+## Test suite
+
+`test/` has a logic-level Hardhat/Mocha/Chai test suite (50 tests)
+covering all four contracts, including the failure paths
+`docs/deployment-guide.md`'s checklist calls out by name — zero-amount
+milestones, unauthorized callers, double-attestation, double-release,
+insufficient contract balance, and unverified recipients — plus a
+`MultiSigAdmin` integration test proving it can genuinely hold
+`IdentityRegistry`'s admin role and that a call routed through it
+reverts (and stays re-executable) if the underlying call reverts.
+
+Run it with:
+
+```bash
+cd contracts/tron
+npm install
+npx hardhat test
+```
+
+**Why Hardhat and not TronBox here:** these contracts use no
+TRON-specific precompiles or opcodes, so they're exactly as testable
+against a standard EVM as against the TVM — Hardhat's in-process network
+is faster to iterate against for logic tests. All 50 tests were run and
+passed against solc 0.8.20 during development. This validates contract
+*logic*; it does not replace an actual TronBox/TronIDE deployment and
+exercise on Shasta or Nile, which is still required before mainnet (see
+`docs/deployment-guide.md`) to catch anything TVM-specific and to
+produce a real deployed address to test against.
 
 ## How the interface maps to what the frontend expects
 
@@ -66,6 +102,14 @@ field at wherever it gets deployed.
   releases but leaves already-deposited, unreleased tokens in the
   contract rather than silently redirecting them — that's left as a
   separate, auditable admin action.
+- **Multisig is opt-in, wired via role transfer, not baked in**: none of
+  `D3RACToken`, `IdentityRegistry`, or `DisbursementController` know
+  `MultiSigAdmin` exists. Deploy `MultiSigAdmin` first, then pass its
+  address as the constructor's `admin_`/`owner_` argument on the others
+  (or call `transferOwnership`/`transferAdmin` after the fact). From
+  then on, every admin action needs `threshold` confirmations submitted
+  through `MultiSigAdmin.submitTransaction`/`confirmTransaction`/
+  `executeTransaction`, not a single signature.
 
 ## Known limitations
 
@@ -75,14 +119,19 @@ field at wherever it gets deployed.
   [`docs/deployment-guide.md`](../../docs/deployment-guide.md).
 - **Not yet deployed to any network** (Shasta, Nile, or mainnet). No
   deployed address exists to point the frontend at yet.
-- **No test suite yet** — TronBox tests covering the milestone lifecycle
-  (including failure paths: zero-amount, unauthorized caller, insufficient
-  balance, double-release, double-attestation) still need to be written
-  before testnet deployment, per the checklist in
-  [`docs/deployment-guide.md`](../../docs/deployment-guide.md).
-- `admin` / `owner` / `verifiers` / `attesters` are single-key roles as
-  written. Multisig-ify before mainnet, per the deployment guide's
-  security checklist.
+- **Logic tests pass; TVM-specific verification hasn't happened yet** —
+  the 50-test Hardhat suite validates behavior against a standard EVM
+  (see "Test suite" above), not the actual TVM. Run a TronBox pass
+  against TronBox Quickstart (or Shasta/Nile directly) before treating
+  this as a TVM-specific gate.
+- `admin` / `owner` / `verifiers` / `attesters` default to a single
+  deployer key unless you explicitly deploy `MultiSigAdmin` and point
+  the other contracts' admin/owner role at it — see "Design decisions"
+  above. Don't skip this before mainnet, per the deployment guide's
+  security checklist. `MultiSigAdmin.sol` itself is intentionally
+  minimal (no owner-replacement-by-vote, no transaction expiry) —
+  consider a maintained implementation (e.g. Gnosis Safe) for anything
+  beyond early testnet use.
 
 ## Testnets
 

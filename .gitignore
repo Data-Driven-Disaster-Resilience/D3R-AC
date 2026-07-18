@@ -1,0 +1,21 @@
+# Environment / secrets — never commit real values (see CONTRIBUTING.md
+# and docs/deployment-guide.md's Security checklist).
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# TronBox build output (compiled artifacts, ABIs) — regenerate with
+# `tronbox compile`, don't commit.
+build/
+
+# Hardhat test harness for contracts/tron (see contracts/tron/hardhat.config.js)
+# — regenerate with `npx hardhat compile`, don't commit.
+contracts/tron/artifacts/
+contracts/tron/cache/
+
+# OS / editor cruft
+.DS_Store
+*.log
