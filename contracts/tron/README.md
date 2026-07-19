@@ -9,7 +9,9 @@ contracts/tron/
 │   ├── IdentityRegistry.sol
 │   ├── DisbursementController.sol
 │   ├── MultiSigAdmin.sol
-│   └── D3RACHub.sol
+│   ├── D3RACHub.sol
+│   ├── RiskRegistry.sol
+│   └── FundingRequestRegistry.sol
 ├── test/                 # Hardhat/Mocha/Chai logic tests — see "Test suite" below
 ├── tronbox-config.js      # compile-only config (no network/private-key section —
 │                           # add one before using `tronbox migrate` to deploy)
@@ -24,7 +26,7 @@ same files with no extra config.
 
 ## Current status
 
-Five contracts, dependency-free (no OpenZeppelin import — see each
+Seven contracts, dependency-free (no OpenZeppelin import — see each
 file's header comment for why), compiled clean against solc 0.8.20
 with the optimizer on:
 
@@ -59,10 +61,67 @@ with the optimizer on:
   surface, one emergency pause, one aggregate status call, sitting in
   front of the three contracts above. See "The Hub" below for how it's
   wired in and what it does and doesn't protect against.
+- **`RiskRegistry.sol`** — puts the exact risk model from
+  [`docs/risk-model.md`](../../docs/risk-model.md) /
+  `frontend/src/lib/riskModel.ts`, R(c,t) = H(t)·E(c)·V(c), on-chain per
+  community. A restricted `dataFeeders` role pushes fresh
+  hazard/exposure/vulnerability values (fixed-point, 1e18 scale); the
+  contract recomputes R deterministically and emits `ThresholdCrossed`
+  the moment a community's score meets or exceeds θ. It cannot sense
+  hazard data itself — a smart contract has no way to observe the real
+  world — so someone (an oracle, a designated NGO reporter, an off-chain
+  job reading public disaster datasets) has to call `updateRisk`. What
+  it guarantees is that once that data lands on-chain, the scoring and
+  threshold logic is deterministic, public, and impossible to fudge
+  after the fact. Fully standalone — no dependency on any other
+  contract in this directory.
+- **`FundingRequestRegistry.sol`** — a contract cannot browse the web,
+  call a donor's API, or "request assistance" on its own initiative.
+  What it can do is provide a single, public, permissionless-to-read
+  coordination point: an authorized `proposers` address opens a funding
+  request for a community (linked to a `RiskRegistry` community ID and
+  a `dataSourceURI` pointing at the open dataset justifying the ask),
+  and anyone — a donor platform, an NGO dashboard, an indexer bot, a
+  grant-matching service — can watch `RequestOpened` events and act on
+  them off-chain. Pledges and links to actual `DisbursementController`
+  commitments (by ID) are recorded here too, so the whole funding
+  lifecycle (ask → pledge → escrow → release) is traceable from one
+  place without trusting anyone's private summary of it. Also fully
+  standalone — references `DisbursementController` commitment IDs and
+  `RiskRegistry` community IDs only as plain values, no contract
+  dependency.
 
 This is **not deployed or audited**. See Known limitations below and
 [`docs/deployment-guide.md`](../../docs/deployment-guide.md) before
 targeting even testnet with anything resembling real funds.
+
+### How RiskRegistry and FundingRequestRegistry connect to the rest
+
+```
+RiskRegistry.updateRisk()  →  R(c,t) crosses θ  →  ThresholdCrossed event
+                                                          │
+                                                          ▼
+FundingRequestRegistry.openRequest()  (references communityId, cites data)
+                                                          │
+                                          (off-chain: donor sees it, pledges)
+                                                          │
+                                                          ▼
+FundingRequestRegistry.recordPledge() / linkToCommitment()
+                                                          │
+                                                          ▼
+D3RACToken.mint()  →  DisbursementController.createCommitment() (or via the Hub)
+                                                          │
+                                                          ▼
+                    MultiSigAdmin / attester  →  attestMilestone()
+                                                          │
+                                                          ▼
+                          DisbursementController.releaseMilestone()
+```
+
+Neither new contract imports or calls into the others — they're linked
+only by convention (matching community IDs, commitment IDs passed as
+plain `uint256`/`bytes32` values), so they can be deployed, upgraded, or
+replaced independently.
 
 ## The Hub
 
@@ -143,20 +202,23 @@ touches `contracts/tron/**` (see `contracts-tron` job in
 
 ## Test suite
 
-`test/` has a logic-level Hardhat/Mocha/Chai test suite (66 tests)
-covering all five contracts, including the failure paths
-`docs/deployment-guide.md`'s checklist calls out by name — zero-amount
-milestones, unauthorized callers, double-attestation, double-release,
-insufficient contract balance, and unverified recipients — plus a
+`test/` has a logic-level Hardhat/Mocha/Chai test suite (**83 tests**:
+the existing 66 covering `D3RACToken`, `IdentityRegistry`,
+`DisbursementController`, `MultiSigAdmin`, and `D3RACHub`, plus 17 new
+for `RiskRegistry` and `FundingRequestRegistry`) covering the failure
+paths `docs/deployment-guide.md`'s checklist calls out by name —
+zero-amount milestones/requests, unauthorized callers, double-attestation,
+double-release, insufficient contract balance, unverified recipients,
+out-of-range risk inputs, and unauthorized pledge recording — plus a
 `MultiSigAdmin` integration test proving it can genuinely hold
 `IdentityRegistry`'s admin role and that a call routed through it
-reverts (and stays re-executable) if the underlying call reverts, and a
+reverts (and stays re-executable) if the underlying call reverts, a
 `D3RACHub` suite proving the Hub's pause actually blocks writes (and
-deliberately doesn't block `cancelCommitment` or admin actions), and
-that its orchestration calls genuinely fail without the exact wiring
-described above — including the additive-vs-exclusive distinction,
-caught by an earlier version of this suite that assumed `transferAdmin`
-was additive and had to be fixed.
+deliberately doesn't block `cancelCommitment` or admin actions), and a
+`RiskRegistry` test that reproduces `docs/risk-model.md`'s own example
+figures (H=0.81, E=0.66, V=0.74 → R≈0.3956) using the contract's exact
+fixed-point arithmetic rather than a rounded re-derivation, to catch any
+precision mismatch a looser tolerance would hide.
 
 Run it with:
 
@@ -169,8 +231,11 @@ npx hardhat test
 **Why Hardhat and not TronBox here:** these contracts use no
 TRON-specific precompiles or opcodes, so they're exactly as testable
 against a standard EVM as against the TVM — Hardhat's in-process network
-is faster to iterate against for logic tests. All 66 tests were run and
-passed against solc 0.8.20 during development. This validates contract
+is faster to iterate against for logic tests. The original 66 tests were
+run and passed against solc 0.8.20 during that earlier development pass;
+the 17 `RiskRegistry`/`FundingRequestRegistry` tests added in this update
+were independently compiled and run the same way before being committed.
+This validates contract
 *logic*; it does not replace an actual TronBox/TronIDE deployment and
 exercise on Shasta or Nile, which is still required before mainnet (see
 `docs/deployment-guide.md`) to catch anything TVM-specific and to
@@ -246,6 +311,16 @@ field at wherever it gets deployed.
   it; a role held directly on `IdentityRegistry` or
   `DisbursementController` still works regardless of the Hub's paused
   state.
+- **`RiskRegistry` has no data pipeline behind it** — an actual
+  oracle/relayer job to call `updateRisk` from real hazard data doesn't
+  exist yet, and `data-pipeline/` still doesn't exist in this repo (see
+  the main README's structure diagram). The contract is ready for that
+  input; nothing produces it yet.
+- **A decision on who the real data feeders / proposers are** —
+  `RiskRegistry` and `FundingRequestRegistry` build the roles and access
+  control; they don't decide who holds those keys in production. That's
+  a real organizational decision (TAAD ops, a partner NGO, a dedicated
+  oracle service) that shouldn't be an afterthought before testnet use.
 
 ## Testnets
 
