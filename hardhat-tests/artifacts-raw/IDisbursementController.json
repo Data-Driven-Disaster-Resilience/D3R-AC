@@ -1,0 +1,23 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "commitmentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "milestoneIndex",
+          "type": "uint256"
+        }
+      ],
+      "name": "attestMilestone",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x"
+}

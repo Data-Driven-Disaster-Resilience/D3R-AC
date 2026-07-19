@@ -1,0 +1,513 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "initialThreshold",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "initialDataFeeder",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "communityId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "region",
+          "type": "string"
+        }
+      ],
+      "name": "CommunityRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "feeder",
+          "type": "address"
+        }
+      ],
+      "name": "DataFeederAdded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "feeder",
+          "type": "address"
+        }
+      ],
+      "name": "DataFeederRemoved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "communityId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "hazard",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "exposure",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "vulnerability",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "riskScore",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "feeder",
+          "type": "address"
+        }
+      ],
+      "name": "RiskUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "communityId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "riskScore",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "threshold",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "ThresholdCrossed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "previousThreshold",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newThreshold",
+          "type": "uint256"
+        }
+      ],
+      "name": "ThresholdUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "SCALE",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "feeder",
+          "type": "address"
+        }
+      ],
+      "name": "addDataFeeder",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "communities",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "region",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "hazard",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "exposure",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "vulnerability",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lastUpdated",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "registered",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "communityCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "communityIds",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "dataFeeders",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "communityId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getCommunity",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "name_",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "region",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "hazard",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "exposure",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "vulnerability",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lastUpdated",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "score",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "communityId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "isAboveThreshold",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "communityId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "name_",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "region",
+          "type": "string"
+        }
+      ],
+      "name": "registerCommunity",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "feeder",
+          "type": "address"
+        }
+      ],
+      "name": "removeDataFeeder",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "communityId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "riskScore",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "riskThreshold",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "newThreshold",
+          "type": "uint256"
+        }
+      ],
+      "name": "setRiskThreshold",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "communityId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "hazard",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "exposure",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "vulnerability",
+          "type": "uint256"
+        }
+      ],
+      "name": "updateRisk",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f5ffd5b50604051611188380380611188833981016040819052602b91609e565b600180546001600160a01b031916331790555f8290556001600160a01b038116156098576001600160a01b0381165f81815260026020526040808220805460ff19166001179055517f16b70a6d2f3739401c7577d8af4a8faea47d7c816943222968007edee51014459190a25b505060d6565b5f5f6040838503121560ae575f5ffd5b825160208401519092506001600160a01b038116811460cb575f5ffd5b809150509250929050565b6110a5806100e35f395ff3fe608060405234801561000f575f5ffd5b50600436106100fb575f3560e01c80638da5cb5b11610093578063bd6a7a8211610063578063bd6a7a821461022c578063cd7988ba14610252578063eced552614610265578063f2fde38b14610274575f5ffd5b80638da5cb5b146101cf578063a4284ef4146101fa578063aee846131461021c578063b43e6cb414610224575f5ffd5b80636d72675d116100ce5780636d72675d146101755780637083d1c2146101965780638287e866146101a95780638c2bf5c5146101bc575f5ffd5b806323d353c3146100ff57806338082a2c146101275780634a9598731461013c5780635cee23db1461014f575b5f5ffd5b61011261010d366004610bf5565b610287565b60405190151581526020015b60405180910390f35b61013a610135366004610c51565b61029b565b005b61013a61014a366004610cca565b61040e565b61016261015d366004610bf5565b610615565b60405161011e9796959493929190610d27565b610188610183366004610bf5565b6107a7565b60405190815260200161011e565b61013a6101a4366004610bf5565b61080c565b61013a6101b7366004610d76565b610875565b6101886101ca366004610bf5565b6108e7565b6001546101e2906001600160a01b031681565b6040516001600160a01b03909116815260200161011e565b610112610208366004610d76565b60026020525f908152604090205460ff1681565b600454610188565b6101885f5481565b61023f61023a366004610bf5565b610906565b60405161011e9796959493929190610d9c565b61013a610260366004610d76565b610a4f565b610188670de0b6b3a764000081565b61013a610282366004610d76565b610b1a565b5f5f54610293836107a7565b101592915050565b6001546001600160a01b031633146102ce5760405162461bcd60e51b81526004016102c590610ded565b60405180910390fd5b5f8581526003602052604090206006015460ff16156103425760405162461bcd60e51b815260206004820152602a60248201527f5269736b52656769737472793a20636f6d6d756e69747920616c7265616479206044820152691c9959da5cdd195c995960b21b60648201526084016102c5565b5f85815260036020526040902061035a848683610ecd565b505f858152600360205260409020600101610376828483610ecd565b505f85815260036020526040808220600601805460ff191660019081179091556004805491820181559092527f8a35acfbc15ff81a39ae7d344fd709f28e8600b4aa8c65c6b64bfe7fe36bd19b9091018690555185907f9fd69eb8b7a5ab30788bcf227e9c1d7d2b81c2b8806f3e41ab0613b7dd6516d2906103ff908790879087908790610fb0565b60405180910390a25050505050565b335f9081526002602052604090205460ff1661047e5760405162461bcd60e51b815260206004820152602960248201527f5269736b52656769737472793a2063616c6c6572206973206e6f7420612064616044820152683a30903332b2b232b960b91b60648201526084016102c5565b5f8481526003602052604090206006015460ff166104ae5760405162461bcd60e51b81526004016102c590610fe1565b670de0b6b3a764000083111580156104ce5750670de0b6b3a76400008211155b80156104e25750670de0b6b3a76400008111155b61053d5760405162461bcd60e51b815260206004820152602660248201527f5269736b52656769737472793a2076616c7565206f7574206f66205b302c315d6044820152652072616e676560d01b60648201526084016102c5565b5f8481526003602081905260408220600281018690559081018490556004810183905542600582015590610570866107a7565b604080518781526020810187905290810185905260608101829052909150339087907f19c8c1809a60fad47494bd48d25d24f51a5a32c9b1a6d6c512ba6e3172f81ab89060800160405180910390a35f54811061060d575f54604080518381526020810192909252429082015286907fb767ea52e498a4aaf13e4af6c81abd54d6a833ab61815f6e21bad13bede48d349060600160405180910390a25b505050505050565b5f818152600360205260408120600681015460609283929091829182918291829160ff166106555760405162461bcd60e51b81526004016102c590610fe1565b805f018160010182600201548360030154846004015485600501546106798f6107a7565b86805461068590610e42565b80601f01602080910402602001604051908101604052809291908181526020018280546106b190610e42565b80156106fc5780601f106106d3576101008083540402835291602001916106fc565b820191905f5260205f20905b8154815290600101906020018083116106df57829003601f168201915b5050505050965085805461070f90610e42565b80601f016020809104026020016040519081016040528092919081815260200182805461073b90610e42565b80156107865780601f1061075d57610100808354040283529160200191610786565b820191905f5260205f20905b81548152906001019060200180831161076957829003601f168201915b50505050509550975097509750975097509750975050919395979092949650565b5f5f60035f8481526020019081526020015f209050670de0b6b3a76400008160040154670de0b6b3a7640000836003015484600201546107e79190611027565b6107f19190611050565b6107fb9190611027565b6108059190611050565b9392505050565b6001546001600160a01b031633146108365760405162461bcd60e51b81526004016102c590610ded565b5f5460408051918252602082018390527fb06a54caabe58475c86c2bf9df3f2f06dd1213e9e10659c293117fe4893b274b910160405180910390a15f55565b6001546001600160a01b0316331461089f5760405162461bcd60e51b81526004016102c590610ded565b6001600160a01b0381165f81815260026020526040808220805460ff19169055517f125ee08244470c4b051ac0e550c5127fcd37aca810c4c608a9ac770b02e152159190a250565b600481815481106108f6575f80fd5b5f91825260209091200154905081565b60036020525f908152604090208054819061092090610e42565b80601f016020809104026020016040519081016040528092919081815260200182805461094c90610e42565b80156109975780601f1061096e57610100808354040283529160200191610997565b820191905f5260205f20905b81548152906001019060200180831161097a57829003601f168201915b5050505050908060010180546109ac90610e42565b80601f01602080910402602001604051908101604052809291908181526020018280546109d890610e42565b8015610a235780601f106109fa57610100808354040283529160200191610a23565b820191905f5260205f20905b815481529060010190602001808311610a0657829003601f168201915b505050600284015460038501546004860154600587015460069097015495969295919450925060ff1687565b6001546001600160a01b03163314610a795760405162461bcd60e51b81526004016102c590610ded565b6001600160a01b038116610acf5760405162461bcd60e51b815260206004820152601a60248201527f5269736b52656769737472793a207a65726f206164647265737300000000000060448201526064016102c5565b6001600160a01b0381165f81815260026020526040808220805460ff19166001179055517f16b70a6d2f3739401c7577d8af4a8faea47d7c816943222968007edee51014459190a250565b6001546001600160a01b03163314610b445760405162461bcd60e51b81526004016102c590610ded565b6001600160a01b038116610b9a5760405162461bcd60e51b815260206004820152601a60248201527f5269736b52656769737472793a207a65726f206164647265737300000000000060448201526064016102c5565b6001546040516001600160a01b038084169216907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a3600180546001600160a01b0319166001600160a01b0392909216919091179055565b5f60208284031215610c05575f5ffd5b5035919050565b5f5f83601f840112610c1c575f5ffd5b50813567ffffffffffffffff811115610c33575f5ffd5b602083019150836020828501011115610c4a575f5ffd5b9250929050565b5f5f5f5f5f60608688031215610c65575f5ffd5b85359450602086013567ffffffffffffffff811115610c82575f5ffd5b610c8e88828901610c0c565b909550935050604086013567ffffffffffffffff811115610cad575f5ffd5b610cb988828901610c0c565b969995985093965092949392505050565b5f5f5f5f60808587031215610cdd575f5ffd5b5050823594602084013594506040840135936060013592509050565b5f81518084528060208401602086015e5f602082860101526020601f19601f83011685010191505092915050565b60e081525f610d3960e083018a610cf9565b8281036020840152610d4b818a610cf9565b604084019890985250506060810194909452608084019290925260a083015260c09091015292915050565b5f60208284031215610d86575f5ffd5b81356001600160a01b0381168114610805575f5ffd5b60e081525f610dae60e083018a610cf9565b8281036020840152610dc0818a610cf9565b604084019890985250506060810194909452608084019290925260a0830152151560c09091015292915050565b60208082526021908201527f5269736b52656769737472793a2063616c6c6572206973206e6f74206f776e656040820152603960f91b606082015260800190565b634e487b7160e01b5f52604160045260245ffd5b600181811c90821680610e5657607f821691505b602082108103610e7457634e487b7160e01b5f52602260045260245ffd5b50919050565b601f821115610ec85782821115610ec857805f5260205f20601f840160051c6020851015610ea557505f5b90810190601f840160051c035f5b8181101561060d575f83820155600101610eb3565b505050565b67ffffffffffffffff831115610ee557610ee5610e2e565b610ef983610ef38354610e42565b83610e7a565b5f601f841160018114610f2a575f8515610f135750838201355b5f19600387901b1c1916600186901b178355610f81565b5f83815260208120601f198716915b82811015610f595786850135825560209485019460019092019101610f39565b5086821015610f75575f1960f88860031b161c19848701351681555b505060018560011b0183555b5050505050565b81835281816020850137505f828201602090810191909152601f909101601f19169091010190565b604081525f610fc3604083018688610f88565b8281036020840152610fd6818587610f88565b979650505050505050565b60208082526026908201527f5269736b52656769737472793a20636f6d6d756e697479206e6f7420726567696040820152651cdd195c995960d21b606082015260800190565b808202811582820484141761104a57634e487b7160e01b5f52601160045260245ffd5b92915050565b5f8261106a57634e487b7160e01b5f52601260045260245ffd5b50049056fea2646970667358221220b9b032060092d1d10b3d1624db06ecf3e7887b60482281cb2f64f6acf2307a2c64736f6c63430008240033"
+}
