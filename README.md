@@ -55,8 +55,8 @@ d3rac/
 ## Getting Started
 
 ```bash
-git clone https://github.com/[your-username]/d3rac.git
-cd d3rac
+git clone https://github.com/Data-Driven-Disaster-Resilience/D3R-AC.git
+cd D3R-AC
 ```
 
 ### Smart contracts (TRON)
@@ -73,7 +73,16 @@ npm run dev
 
 ## Status
 
-🚧 **Active development.** TRON smart contract source implemented (token, identity registry, milestone-based disbursement controller — see [`contracts/tron/README.md`](contracts/tron/README.md)) but **not yet tested or deployed to any network**. Frontend community access layer implemented (TRON live, Casper adapter in place pending Casper contract deployment). Casper contracts and data pipeline in progress.
+🚧 **Active development.** TRON smart contract suite implemented — token,
+identity registry, milestone-based disbursement controller, a multisig
+admin role, a central coordinator ("Hub"), an on-chain risk registry, and
+a funding-request board (seven contracts total; see
+[`contracts/tron/README.md`](contracts/tron/README.md)) — with a
+**logic-tested suite (83 passing tests)**, but **not yet deployed to any
+network and not yet professionally audited.** Frontend community access
+layer implemented (TRON live, Casper adapter in place pending Casper
+contract deployment). Casper contracts and the data pipeline are still
+not started.
 
 ## Contributing
 
