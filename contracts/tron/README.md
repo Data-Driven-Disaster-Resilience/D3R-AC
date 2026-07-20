@@ -137,91 +137,135 @@ below.
 `D3RACHub.sol` is D3R·AC's control panel — it exists so an operator
 doesn't have to separately manage admin keys on five contracts, and so
 the frontend has one place to read overall system state instead of
-five.
+five. As of this update, it covers **both** the day-to-day operational
+writes on all five contracts **and** their role/ownership management —
+once fully wired (see "Wiring the Hub" below), every write path on
+every one of the five underlying contracts is reachable through the
+Hub, with one deliberate exception noted below.
 
 **What it gives you:**
-- **One admin surface** — `verifyRecipient`, `createCommitment`,
-  `attestMilestone`, `cancelCommitment`, `mintTokens`,
-  `registerCommunity`, `updateRisk`, `openFundingRequest`, and
-  `closeFundingRequest` all route through the Hub instead of calling
-  each contract directly.
-- **One emergency stop** — `pause()` blocks `verifyRecipient`,
-  `createCommitment`, `attestMilestone`, `mintTokens`,
-  `registerCommunity`, `updateRisk`, and `openFundingRequest` in a
-  single call. `cancelCommitment`, `closeFundingRequest`, and all
-  admin/module-management functions (`setToken`,
-  `setIdentityRegistry`, `setDisbursementController`,
-  `setRiskRegistry`, `setFundingRequestRegistry`, `transferAdmin`) stay
-  callable while paused deliberately — those are the defensive moves
-  you need *during* an incident, not things a pause meant to contain
-  the incident should itself block.
+- **One admin surface, covering everything.** Operational writes —
+  `verifyRecipient`, `createCommitment`, `attestMilestone`,
+  `cancelCommitment`, `mintTokens`, `registerCommunity`, `updateRisk`,
+  `openFundingRequest`, `closeFundingRequest` — and role/ownership
+  management — `setIdentityVerifier`, `revokeRecipient`,
+  `transferIdentityRegistryAdmin`, `setDisbursementAttester`,
+  `transferDisbursementControllerAdmin`, `setTokenMinter`,
+  `transferTokenOwnership`, `setRiskDataFeeder`, `setRiskThreshold`,
+  `transferRiskRegistryOwnership`, `setFundingProposer`,
+  `recordFundingPledge`, `linkFundingRequestToCommitment`,
+  `transferFundingRequestRegistryOwnership` — all route through the Hub
+  instead of calling each contract directly.
+- **One emergency stop** — `pause()` blocks the *operational* writes
+  (`verifyRecipient`, `createCommitment`, `attestMilestone`,
+  `mintTokens`, `registerCommunity`, `updateRisk`, `openFundingRequest`)
+  in a single call. `cancelCommitment`, `closeFundingRequest`, every
+  role/ownership-management function above, and all
+  admin/module-management functions (`setToken`, `setIdentityRegistry`,
+  `setDisbursementController`, `setRiskRegistry`,
+  `setFundingRequestRegistry`, `transferAdmin`) stay callable while
+  paused deliberately — these are config/defensive actions, not the
+  fund/data-moving operations a pause exists to halt, and you need them
+  available *during* an incident (e.g. revoking a compromised
+  attester's status without having to unpause first).
 - **One status call** — `systemStatus()` returns all five module
   addresses, the paused flag, token total supply, total commitment
   count, total registered-community count, and total funding-request
   count in a single call instead of five separate contract reads.
 
-**What it does NOT give you:** the Hub is an additional caller, not a
-sealed choke point. Anyone who already holds a role directly on any of
-the five underlying contracts can still call them directly, bypassing
-the Hub and its pause entirely. Treat the Hub as operational tooling —
-a convenience and a pause point — not a security boundary that replaces
-the underlying contracts' own access control.
+**The one deliberate exception:** `DisbursementController.releaseMilestone`
+is permissionless by that contract's own design — callable by anyone
+once a milestone is attested, specifically so payout doesn't bottleneck
+on a single admin key (see `DisbursementController.sol`'s own docs).
+The Hub doesn't proxy it, on purpose; there's no role to hold for a
+function nobody needs permission to call.
+
+**What "full control" does and doesn't mean:** once every underlying
+contract's admin/owner role has been transferred to the Hub (see
+"Wiring the Hub"), the Hub is *capable* of every write on every
+contract. It does not *revoke* access from anyone who already holds a
+role directly — a verifier added before the Hub existed, or a
+data-feeder some other address was granted later, can still call the
+underlying contract directly, bypassing the Hub and its pause entirely.
+"Full control" means the Hub is the intended single operational
+surface once wired, not that direct access to the underlying contracts
+becomes impossible. Treat it as the project's front door, not a lock on
+every other door.
 
 `RiskRegistry` and `FundingRequestRegistry` are **optional** at the
 Hub's construction — pass `address(0)` for either (or both) to deploy
 the Hub before those two exist yet, and wire them in later with
-`setRiskRegistry`/`setFundingRequestRegistry`. `systemStatus()` and the
-two contracts' orchestration functions handle an unset module
-gracefully (zero counts / a clear revert), rather than assuming it's
-always present.
+`setRiskRegistry`/`setFundingRequestRegistry`. Every function that
+touches one of these two reverts with a clear "not set" message until
+its address is configured, rather than assuming it's always present.
 
 ### Wiring the Hub
 
 Deploying `D3RACHub` does **not** automatically give it any authority —
 it's just another address until you explicitly grant it access on each
 underlying contract, and the *way* you grant it differs by function, in
-a way that matters:
+a way that matters. For full coverage, **every** underlying contract's
+admin/owner role needs to end up on the Hub, not just the subset the
+original (pre-full-control) wiring required:
 
-- `IdentityRegistry.verifyRecipient`, `DisbursementController.attestMilestone`,
-  `RiskRegistry.updateRisk`, and `FundingRequestRegistry.openRequest` are
-  gated by **role mappings** (`verifiers`, `attesters`, `dataFeeders`,
-  `proposers`). Granting the Hub one of these roles is **additive** —
-  the original admin/owner keeps working too:
+- **Role mappings** (`verifiers`, `attesters`, `dataFeeders`,
+  `proposers`, `minters`) gate the *operational* writes
+  (`verifyRecipient`, `attestMilestone`, `updateRisk`, `openRequest`,
+  `mint`). Granting the Hub one of these is **additive** — the original
+  admin/owner keeps working too:
   ```solidity
   identityRegistry.setVerifier(hubAddress, true);
   disbursementController.setAttester(hubAddress, true);
   riskRegistry.addDataFeeder(hubAddress);
   fundingRequestRegistry.addProposer(hubAddress);
-  ```
-- `DisbursementController.createCommitment`/`cancelCommitment` and
-  `RiskRegistry.registerCommunity` are gated by a **single `admin`/`owner`
-  address**, not a role mapping. For these to work through the Hub, the
-  Hub must actually *become* that admin/owner — which is **exclusive**,
-  not additive. The previous holder loses direct access the moment this
-  runs:
-  ```solidity
-  disbursementController.transferAdmin(hubAddress);
-  riskRegistry.transferOwnership(hubAddress);
-  ```
-- `D3RACToken.mint` is gated by the `minters` mapping — additive, same
-  pattern as verifier/attester/dataFeeder/proposer:
-  ```solidity
   token.setMinter(hubAddress, true);
   ```
-- `FundingRequestRegistry.closeRequest` (and `recordPledge`/
-  `linkToCommitment`, which the Hub doesn't currently proxy) check
-  `msg.sender == request.requester || msg.sender == owner`. Because
-  `openRequest` records the *caller* as `requester`, a request opened
-  **through the Hub** is automatically closeable through the Hub too —
-  no extra wiring needed for those specific requests. A request opened
-  directly (bypassing the Hub) can only be closed through the Hub if the
-  Hub has *also* been made the registry's owner via `transferOwnership`.
+- **Single `admin`/`owner` addresses** gate both a subset of the
+  operational writes (`createCommitment`/`cancelCommitment`,
+  `registerCommunity`) *and* every role-management proxy
+  (`setIdentityVerifier`, `setDisbursementAttester`, `setTokenMinter`,
+  `setRiskDataFeeder`, `setRiskThreshold`, `setFundingProposer`, every
+  `transfer*` function). For any of these to work through the Hub, the
+  Hub must actually *become* that admin/owner — which is **exclusive**,
+  not additive. The previous holder loses direct access to
+  admin-gated functions the moment this runs:
+  ```solidity
+  identityRegistry.transferAdmin(hubAddress);
+  disbursementController.transferAdmin(hubAddress);
+  token.transferOwnership(hubAddress);
+  riskRegistry.transferOwnership(hubAddress);
+  fundingRequestRegistry.transferOwnership(hubAddress);
+  ```
+  Note `D3RACToken.transferOwnership` and
+  `FundingRequestRegistry.transferOwnership` are *new* requirements for
+  full coverage — the original Hub wiring only needed `minters`/
+  `proposers` (additive) for `mintTokens`/`openFundingRequest` to work;
+  `setTokenMinter` and `setFundingProposer` need the exclusive owner
+  role on top of that.
+- `FundingRequestRegistry.recordPledge`/`linkToCommitment`/
+  `closeRequest` check `msg.sender == request.requester || msg.sender
+  == owner`. Because `openRequest` records the *caller* as `requester`,
+  a request opened **through the Hub** is automatically manageable
+  through the Hub for all three — no extra wiring needed for those
+  specific requests. A request opened directly (bypassing the Hub) can
+  only be managed through the Hub if the Hub has *also* been made the
+  registry's owner via `transferOwnership` (which full-control wiring
+  already requires, so this resolves itself once you've done the step
+  above).
 
-Mixing these up — assuming `transferAdmin`/`transferOwnership` is
-additive, or that granting a role covers `createCommitment`/
-`registerCommunity` — is exactly the kind of mistake
+Once every admin/owner role above has been transferred once, the Hub
+can bootstrap its own remaining role grants through its own proxies —
+e.g. `hub.setRiskDataFeeder(hubAddress, true)` to grant the Hub itself
+data-feeder status, callable by the Hub's own admin, no separate direct
+call to `RiskRegistry` needed.
+
+Mixing these up — assuming a `transferAdmin`/`transferOwnership` is
+additive, or that granting a role covers a function that actually needs
+exclusive ownership — is exactly the kind of mistake
 `test/D3RACHub.test.js` was written to catch; see its `beforeEach` for
-the full wiring sequence exercised in the test suite.
+the full wiring sequence exercised in the test suite, and its "full
+control end-to-end" test for a single sequence exercising every write
+on every contract through the Hub alone.
 
 ## Compiling with TronBox
 
@@ -239,7 +283,7 @@ touches `contracts/tron/**` (see `contracts-tron` job in
 
 ## Test suite
 
-`test/` has a logic-level Hardhat/Mocha/Chai test suite (**94 tests**
+`test/` has a logic-level Hardhat/Mocha/Chai test suite (**115 tests**
 across `D3RACToken`, `IdentityRegistry`, `DisbursementController`,
 `MultiSigAdmin`, `RiskRegistry`, `FundingRequestRegistry`, and
 `D3RACHub`) covering the failure paths `docs/deployment-guide.md`'s
@@ -252,17 +296,20 @@ call routed through it reverts (and stays re-executable) if the
 underlying call reverts, a `RiskRegistry` test that reproduces
 `docs/risk-model.md`'s own example figures (H=0.81, E=0.66, V=0.74 →
 R≈0.3956) using the contract's exact fixed-point arithmetic rather than
-a rounded re-derivation, and a `D3RACHub` suite proving: the pause
-actually blocks writes across all five modules (and deliberately
-doesn't block `cancelCommitment`/`closeFundingRequest`/admin actions);
-every orchestration function genuinely fails without the exact wiring
-described above, module by module; and the additive-vs-exclusive
-distinction extends correctly to `RiskRegistry.registerCommunity`
-(exclusive, ownership-gated) versus `RiskRegistry.updateRisk` (additive,
-role-gated) — the same distinction that an earlier version of this
-suite got wrong for `DisbursementController` and had to be fixed for,
-now checked explicitly for the new modules too instead of re-discovering
-it the hard way a second time.
+a rounded re-derivation, and a `D3RACHub` suite (now 40 tests on its
+own) proving: the pause actually blocks the seven operational writes
+and doesn't block role-management or admin actions; every operational
+AND role-management function genuinely fails without its exact
+required wiring, individually, module by module; the
+additive-vs-exclusive distinction holds across every function that
+needs it (an earlier version of this suite got it wrong once for
+`DisbursementController.createCommitment` and had to be fixed — every
+subsequent addition, including this full-control pass, checks both
+paths explicitly rather than repeating that mistake); and a dedicated
+end-to-end test that performs every single write on all five
+underlying contracts using nothing but `hub.*` calls in one continuous
+sequence, confirming full coverage holds together as a whole and not
+just function-by-function in isolation.
 
 Run it with:
 
@@ -275,9 +322,9 @@ npx hardhat test
 **Why Hardhat and not TronBox here:** these contracts use no
 TRON-specific precompiles or opcodes, so they're exactly as testable
 against a standard EVM as against the TVM — Hardhat's in-process network
-is faster to iterate against for logic tests. All 94 tests were run and
+is faster to iterate against for logic tests. All 115 tests were run and
 passed against solc 0.8.20 during development, including the Hub's
-extended wiring tests. This validates contract
+full-control wiring tests. This validates contract
 *logic*; it does not replace an actual TronBox/TronIDE deployment and
 exercise on Shasta or Nile, which is still required before mainnet (see
 `docs/deployment-guide.md`) to catch anything TVM-specific and to
@@ -336,7 +383,7 @@ field at wherever it gets deployed.
 - **Not yet deployed to any network** (Shasta, Nile, or mainnet). No
   deployed address exists to point the frontend at yet.
 - **Logic tests pass; TVM-specific verification hasn't happened yet** —
-  the 94-test Hardhat suite validates behavior against a standard EVM
+  the 115-test Hardhat suite validates behavior against a standard EVM
   (see "Test suite" above), not the actual TVM. Run a TronBox pass
   against TronBox Quickstart (or Shasta/Nile directly) before treating
   this as a TVM-specific gate.

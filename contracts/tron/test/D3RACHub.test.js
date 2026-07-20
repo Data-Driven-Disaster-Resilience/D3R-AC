@@ -3,20 +3,25 @@ const { ethers } = require("hardhat");
 const { deploy } = require("./helpers");
 
 describe("D3RACHub", function () {
-  let admin, stranger, recipient, minted;
+  let admin, stranger, recipient, minted, someone;
   let token, registry, controller, riskRegistry, fundingRegistry, hub;
 
   const COMMUNITY_ID = ethers.encodeBytes32String("ohafia");
   const SCALE = 10n ** 18n;
 
-  beforeEach(async function () {
-    [admin, stranger, recipient, minted] = await ethers.getSigners();
+  async function deployFullStack() {
+    const t = await deploy("D3RACToken", admin, 1_000_000, admin.address);
+    const r = await deploy("IdentityRegistry", admin, admin.address);
+    const c = await deploy("DisbursementController", admin, await r.getAddress(), admin.address);
+    const rr = await deploy("RiskRegistry", admin, (SCALE * 35n) / 100n, admin.address);
+    const fr = await deploy("FundingRequestRegistry", admin, admin.address);
+    return { t, r, c, rr, fr };
+  }
 
-    token = await deploy("D3RACToken", admin, 1_000_000, admin.address);
-    registry = await deploy("IdentityRegistry", admin, admin.address);
-    controller = await deploy("DisbursementController", admin, await registry.getAddress(), admin.address);
-    riskRegistry = await deploy("RiskRegistry", admin, (SCALE * 35n) / 100n, admin.address); // theta = 0.35
-    fundingRegistry = await deploy("FundingRequestRegistry", admin, admin.address);
+  beforeEach(async function () {
+    [admin, stranger, recipient, minted, someone] = await ethers.getSigners();
+
+    ({ t: token, r: registry, c: controller, rr: riskRegistry, fr: fundingRegistry } = await deployFullStack());
 
     hub = await deploy(
       "D3RACHub",
@@ -29,26 +34,30 @@ describe("D3RACHub", function () {
       await fundingRegistry.getAddress()
     );
 
-    // Wire the Hub in. Different grant mechanisms are needed for
-    // different functions, and mixing them up is exactly the kind of
-    // mistake this test file exists to catch:
-    //   - IdentityRegistry.verifyRecipient, DisbursementController.
-    //     attestMilestone, RiskRegistry.updateRisk, and
-    //     FundingRequestRegistry.openRequest are role-gated (verifier /
-    //     attester / dataFeeder / proposer mappings), so the Hub can be
-    //     ADDED alongside the existing admin/owner.
-    //   - DisbursementController.createCommitment/cancelCommitment and
-    //     RiskRegistry.registerCommunity are gated by a single admin/
-    //     owner address, not a role mapping — so the Hub must actually
-    //     BECOME that admin/owner via transferAdmin/transferOwnership,
-    //     which REPLACES (not adds to) the previous holder's access.
+    // Full wiring for complete Hub control. Two different grant
+    // mechanisms, and mixing them up is exactly the kind of mistake this
+    // test file exists to catch:
+    //   - Role mappings (verifier / attester / dataFeeder / proposer /
+    //     minter) are ADDITIVE — granting the Hub one doesn't remove the
+    //     original admin/owner's own access.
+    //   - Single admin/owner addresses (IdentityRegistry.admin,
+    //     DisbursementController.admin, D3RACToken.owner,
+    //     RiskRegistry.owner, FundingRequestRegistry.owner) are
+    //     EXCLUSIVE — transferring one to the Hub REPLACES the previous
+    //     holder; they lose direct access the moment it runs.
+    // Full coverage requires BOTH per contract: the role grant for the
+    // Hub's routine operational calls, and the ownership/admin transfer
+    // for the Hub's role-management proxies to work at all.
     await registry.setVerifier(await hub.getAddress(), true);
+    await registry.transferAdmin(await hub.getAddress());
     await controller.setAttester(await hub.getAddress(), true);
     await controller.transferAdmin(await hub.getAddress());
     await token.setMinter(await hub.getAddress(), true);
+    await token.transferOwnership(await hub.getAddress());
     await riskRegistry.addDataFeeder(await hub.getAddress());
     await riskRegistry.transferOwnership(await hub.getAddress());
     await fundingRegistry.addProposer(await hub.getAddress());
+    await fundingRegistry.transferOwnership(await hub.getAddress());
   });
 
   describe("deployment", function () {
@@ -130,8 +139,7 @@ describe("D3RACHub", function () {
       await expect(hub.unpause()).to.be.revertedWith("D3RACHub: not paused");
     });
 
-    it("blocks verifyRecipient, createCommitment, attestMilestone, mintTokens, registerCommunity, updateRisk, and openFundingRequest while paused", async function () {
-      await riskRegistry.connect(admin); // no-op, keep admin context explicit
+    it("blocks all seven operational writes while paused", async function () {
       await hub.pause();
       await expect(hub.verifyRecipient(recipient.address, "Test Coalition")).to.be.revertedWith("D3RACHub: paused");
       await expect(
@@ -146,7 +154,7 @@ describe("D3RACHub", function () {
       ).to.be.revertedWith("D3RACHub: paused");
     });
 
-    it("does NOT block cancelCommitment, closeFundingRequest, or admin/module management while paused", async function () {
+    it("does NOT block cancelCommitment, closeFundingRequest, admin/module management, or any role-management proxy while paused", async function () {
       await hub.verifyRecipient(recipient.address, "Test Coalition");
       await hub.createCommitment(recipient.address, await token.getAddress(), "Test Coalition", ["M"], [1000]);
       await hub.openFundingRequest(COMMUNITY_ID, 1000, "desc", "ipfs://x");
@@ -156,6 +164,12 @@ describe("D3RACHub", function () {
       await expect(hub.closeFundingRequest(0)).to.not.be.reverted;
       await expect(hub.setToken(await token.getAddress())).to.not.be.reverted;
       await expect(hub.transferAdmin(admin.address)).to.not.be.reverted; // no-op transfer, still allowed
+      await expect(hub.setIdentityVerifier(someone.address, true)).to.not.be.reverted;
+      await expect(hub.setDisbursementAttester(someone.address, true)).to.not.be.reverted;
+      await expect(hub.setTokenMinter(someone.address, true)).to.not.be.reverted;
+      await expect(hub.setRiskDataFeeder(someone.address, true)).to.not.be.reverted;
+      await expect(hub.setRiskThreshold(SCALE / 2n)).to.not.be.reverted;
+      await expect(hub.setFundingProposer(someone.address, true)).to.not.be.reverted;
     });
   });
 
@@ -312,6 +326,172 @@ describe("D3RACHub", function () {
     });
   });
 
+  describe("role & ownership management: IdentityRegistry", function () {
+    it("setIdentityVerifier forwards to IdentityRegistry (requires the Hub to be its admin)", async function () {
+      await hub.setIdentityVerifier(someone.address, true);
+      expect(await registry.verifiers(someone.address)).to.equal(true);
+    });
+
+    it("revokeRecipient forwards to IdentityRegistry (needs only the additive verifier status already required for verifyRecipient)", async function () {
+      await hub.verifyRecipient(recipient.address, "Ohafia Relief Coalition");
+      await hub.revokeRecipient(recipient.address);
+      expect(await registry.isVerified(recipient.address)).to.equal(false);
+    });
+
+    it("transferIdentityRegistryAdmin forwards and genuinely moves IdentityRegistry's admin off the Hub", async function () {
+      await hub.transferIdentityRegistryAdmin(someone.address);
+      expect(await registry.admin()).to.equal(someone.address);
+      await expect(hub.setIdentityVerifier(stranger.address, true)).to.be.revertedWith(
+        "IdentityRegistry: caller is not admin"
+      );
+    });
+
+    it("reverts setIdentityVerifier if the Hub is NOT IdentityRegistry's admin (verifier status alone isn't enough)", async function () {
+      const bareRegistry = await deploy("IdentityRegistry", admin, admin.address);
+      const bareHub = await deploy(
+        "D3RACHub", admin, admin.address, await token.getAddress(),
+        await bareRegistry.getAddress(), await controller.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress
+      );
+      await bareRegistry.setVerifier(await bareHub.getAddress(), true); // verifier granted, admin NOT transferred
+      await expect(bareHub.setIdentityVerifier(someone.address, true)).to.be.revertedWith(
+        "IdentityRegistry: caller is not admin"
+      );
+    });
+
+    it("only Hub admin can call these", async function () {
+      await expect(hub.connect(stranger).setIdentityVerifier(someone.address, true)).to.be.revertedWith(
+        "D3RACHub: caller is not admin"
+      );
+      await expect(hub.connect(stranger).revokeRecipient(recipient.address)).to.be.revertedWith(
+        "D3RACHub: caller is not admin"
+      );
+    });
+  });
+
+  describe("role & ownership management: DisbursementController", function () {
+    it("setDisbursementAttester forwards (already covered by the admin transfer createCommitment needs)", async function () {
+      await hub.setDisbursementAttester(someone.address, true);
+      expect(await controller.attesters(someone.address)).to.equal(true);
+    });
+
+    it("transferDisbursementControllerAdmin forwards and genuinely moves its admin off the Hub", async function () {
+      await hub.transferDisbursementControllerAdmin(someone.address);
+      expect(await controller.admin()).to.equal(someone.address);
+      await expect(hub.setDisbursementAttester(stranger.address, true)).to.be.revertedWith(
+        "DisbursementController: caller is not admin"
+      );
+    });
+  });
+
+  describe("role & ownership management: D3RACToken", function () {
+    it("setTokenMinter forwards to D3RACToken (requires the Hub to be its owner -- minter status alone is not enough)", async function () {
+      await hub.setTokenMinter(someone.address, true);
+      expect(await token.minters(someone.address)).to.equal(true);
+    });
+
+    it("reverts setTokenMinter if the Hub only holds minter status, not owner", async function () {
+      const bareToken = await deploy("D3RACToken", admin, 0, admin.address);
+      const bareHub = await deploy(
+        "D3RACHub", admin, admin.address, await bareToken.getAddress(),
+        await registry.getAddress(), await controller.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress
+      );
+      await bareToken.setMinter(await bareHub.getAddress(), true); // minter granted, owner NOT transferred
+      await expect(bareHub.setTokenMinter(someone.address, true)).to.be.revertedWith(
+        "D3RACToken: caller is not the owner"
+      );
+      // but mintTokens (only needs minter) still works
+      await expect(bareHub.mintTokens(someone.address, 100)).to.not.be.reverted;
+    });
+
+    it("transferTokenOwnership forwards and genuinely moves D3RACToken's owner off the Hub", async function () {
+      await hub.transferTokenOwnership(someone.address);
+      expect(await token.owner()).to.equal(someone.address);
+      await expect(hub.setTokenMinter(stranger.address, true)).to.be.revertedWith(
+        "D3RACToken: caller is not the owner"
+      );
+    });
+  });
+
+  describe("role & ownership management: RiskRegistry", function () {
+    it("setRiskDataFeeder(true) adds and (false) removes a data feeder", async function () {
+      await hub.setRiskDataFeeder(someone.address, true);
+      expect(await riskRegistry.dataFeeders(someone.address)).to.equal(true);
+      await hub.setRiskDataFeeder(someone.address, false);
+      expect(await riskRegistry.dataFeeders(someone.address)).to.equal(false);
+    });
+
+    it("setRiskThreshold forwards and updates theta", async function () {
+      await hub.setRiskThreshold(SCALE / 4n);
+      expect(await riskRegistry.riskThreshold()).to.equal(SCALE / 4n);
+    });
+
+    it("transferRiskRegistryOwnership forwards and genuinely moves ownership off the Hub", async function () {
+      await hub.transferRiskRegistryOwnership(someone.address);
+      expect(await riskRegistry.owner()).to.equal(someone.address);
+      await expect(hub.setRiskThreshold(1)).to.be.revertedWith("RiskRegistry: caller is not owner");
+    });
+
+    it("reverts setRiskDataFeeder/setRiskThreshold/transferRiskRegistryOwnership when riskRegistry is not set", async function () {
+      const bareHub = await deploy(
+        "D3RACHub", admin, admin.address, await token.getAddress(),
+        await registry.getAddress(), await controller.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress
+      );
+      await expect(bareHub.setRiskDataFeeder(someone.address, true)).to.be.revertedWith("D3RACHub: riskRegistry not set");
+      await expect(bareHub.setRiskThreshold(1)).to.be.revertedWith("D3RACHub: riskRegistry not set");
+      await expect(bareHub.transferRiskRegistryOwnership(someone.address)).to.be.revertedWith("D3RACHub: riskRegistry not set");
+    });
+  });
+
+  describe("role & ownership management: FundingRequestRegistry", function () {
+    it("setFundingProposer(true) adds and (false) removes a proposer", async function () {
+      await hub.setFundingProposer(someone.address, true);
+      expect(await fundingRegistry.proposers(someone.address)).to.equal(true);
+      await hub.setFundingProposer(someone.address, false);
+      expect(await fundingRegistry.proposers(someone.address)).to.equal(false);
+    });
+
+    it("recordFundingPledge forwards for a request the Hub itself opened", async function () {
+      await hub.openFundingRequest(COMMUNITY_ID, 1000, "desc", "ipfs://x");
+      await hub.recordFundingPledge(0, 400, "ipfs://pledge");
+      const r = await fundingRegistry.getRequest(0);
+      expect(r.amountPledged).to.equal(400);
+    });
+
+    it("linkFundingRequestToCommitment forwards for a request the Hub itself opened", async function () {
+      await hub.openFundingRequest(COMMUNITY_ID, 1000, "desc", "ipfs://x");
+      await hub.linkFundingRequestToCommitment(0, 7);
+      const r = await fundingRegistry.getRequest(0);
+      expect(r.linkedCommitmentId).to.equal(7);
+    });
+
+    it("recordFundingPledge/linkFundingRequestToCommitment/closeFundingRequest also work on a request NOT opened via the Hub, because the Hub holds ownership", async function () {
+      await hub.setFundingProposer(stranger.address, true); // ownership already transferred to the Hub in beforeEach
+      await fundingRegistry.connect(stranger).openRequest(COMMUNITY_ID, 1000, "desc", "ipfs://x"); // requester = stranger, not Hub
+      await expect(hub.recordFundingPledge(0, 100, "ipfs://p")).to.not.be.reverted;
+      await expect(hub.linkFundingRequestToCommitment(0, 3)).to.not.be.reverted;
+      await expect(hub.closeFundingRequest(0)).to.not.be.reverted;
+    });
+
+    it("transferFundingRequestRegistryOwnership forwards and genuinely moves ownership off the Hub", async function () {
+      await hub.transferFundingRequestRegistryOwnership(someone.address);
+      expect(await fundingRegistry.owner()).to.equal(someone.address);
+      await expect(hub.setFundingProposer(stranger.address, true)).to.be.revertedWith(
+        "FundingRequestRegistry: caller is not owner"
+      );
+    });
+
+    it("reverts the FundingRequestRegistry role-management proxies when the module is not set", async function () {
+      const bareHub = await deploy(
+        "D3RACHub", admin, admin.address, await token.getAddress(),
+        await registry.getAddress(), await controller.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress
+      );
+      await expect(bareHub.setFundingProposer(someone.address, true)).to.be.revertedWith("D3RACHub: fundingRequestRegistry not set");
+      await expect(bareHub.recordFundingPledge(0, 1, "x")).to.be.revertedWith("D3RACHub: fundingRequestRegistry not set");
+      await expect(bareHub.linkFundingRequestToCommitment(0, 1)).to.be.revertedWith("D3RACHub: fundingRequestRegistry not set");
+      await expect(bareHub.transferFundingRequestRegistryOwnership(someone.address)).to.be.revertedWith("D3RACHub: fundingRequestRegistry not set");
+    });
+  });
+
   describe("systemStatus", function () {
     it("aggregates all five module addresses, paused state, supply, commitment count, community count, and request count in one call", async function () {
       await hub.verifyRecipient(recipient.address, "Ohafia Relief Coalition");
@@ -348,6 +528,51 @@ describe("D3RACHub", function () {
       expect(status.fundingRequestRegistryAddress).to.equal(ethers.ZeroAddress);
       expect(status.totalCommunities).to.equal(0);
       expect(status.totalFundingRequests).to.equal(0);
+    });
+  });
+
+  describe("full-control end-to-end: everything reachable through the Hub, nothing left direct-only (except the deliberately permissionless releaseMilestone)", function () {
+    it("every write on every one of the five underlying contracts can be performed through the Hub alone, using only hub.* calls", async function () {
+      // Identity
+      await hub.setIdentityVerifier(someone.address, true);
+      await hub.verifyRecipient(recipient.address, "Ohafia Relief Coalition");
+      await hub.revokeRecipient(recipient.address);
+      await hub.verifyRecipient(recipient.address, "Ohafia Relief Coalition"); // re-verify for the commitment below
+
+      // Disbursement
+      await hub.setDisbursementAttester(someone.address, true);
+      await token.transfer(await controller.getAddress(), 1000); // fund the controller so release can pay out
+      await hub.createCommitment(recipient.address, await token.getAddress(), "Ohafia Relief Coalition", ["Water restored"], [1000]);
+      await hub.attestMilestone(0, 0);
+      // releaseMilestone is deliberately permissionless on DisbursementController itself (see its own docs) --
+      // the Hub doesn't need to proxy it for the system to work, but it's still reachable, just not via the Hub.
+      await controller.releaseMilestone(0, 0);
+      expect(await token.balanceOf(recipient.address)).to.equal(1000);
+
+      // Token
+      await hub.setTokenMinter(someone.address, true);
+      await hub.mintTokens(minted.address, 500);
+
+      // Risk
+      await hub.setRiskDataFeeder(someone.address, true);
+      await hub.setRiskThreshold(SCALE / 5n);
+      await hub.registerCommunity(COMMUNITY_ID, "Ohafia", "Abia State");
+      await hub.updateRisk(COMMUNITY_ID, SCALE, SCALE, SCALE);
+
+      // Funding
+      await hub.setFundingProposer(someone.address, true);
+      await hub.openFundingRequest(COMMUNITY_ID, 2000, "Shelter rebuild", "ipfs://report");
+      await hub.recordFundingPledge(0, 2000, "ipfs://pledge");
+      await hub.linkFundingRequestToCommitment(0, 0);
+      await hub.closeFundingRequest(0);
+
+      // Everything above ran through hub.* only (plus the one deliberate
+      // exception, releaseMilestone) and none of it reverted -- full
+      // control confirmed end to end, not just per-function in isolation.
+      const status = await hub.systemStatus();
+      expect(status.totalCommitments).to.equal(1);
+      expect(status.totalCommunities).to.equal(1);
+      expect(status.totalFundingRequests).to.equal(1);
     });
   });
 });
