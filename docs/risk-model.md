@@ -63,14 +63,28 @@ Crossing `θ` doesn't release funds by itself. The intended flow is:
 
 ## Current implementation status
 
-As of this writing, `R(c, t)` is implemented and used in the frontend
-dashboard (`frontend/src/lib/riskModel.ts`) against **illustrative mock
-data** — six example communities with hand-set `H`, `E`, `V` values, not
-live hazard feeds. There is no data-pipeline implementation in this
-repository yet (see the top-level README's Status section). Anyone
-building the real data layer should treat the mock dataset's shape (one
-`H`/`E`/`V` triple per community, refreshed per `t`) as the contract the
-frontend already expects, and wire real sources in behind it.
+As of this writing, `R(c, t)` is implemented in two places:
+
+1. **The frontend dashboard** (`frontend/src/lib/riskModel.ts`), against
+   **illustrative mock data** — six example communities with hand-set
+   `H`, `E`, `V` values, not live hazard feeds.
+2. **On-chain**, in
+   [`contracts/tron/contracts/RiskRegistry.sol`](../contracts/tron/contracts/RiskRegistry.sol) —
+   the same formula, computed with 1e18 fixed-point arithmetic, per
+   community, with a restricted `dataFeeders` role that pushes fresh
+   `H`/`E`/`V` values and a `ThresholdCrossed` event once `θ` is met or
+   exceeded. Like the frontend version, this has no data source of its
+   own — it's the deterministic scoring/threshold layer, waiting on real
+   input.
+
+There is no data-pipeline implementation in this repository yet (see the
+top-level README's Status section), and nothing currently calls
+`RiskRegistry.updateRisk` with real data — both implementations above are
+ready to receive real hazard/exposure/vulnerability input, not connected
+to it yet. Anyone building the real data layer should treat the mock
+dataset's shape (one `H`/`E`/`V` triple per community, refreshed per `t`)
+as the contract both the frontend and `RiskRegistry.sol` already expect,
+and wire real sources in behind it.
 
 ## Open questions for a production deployment
 
