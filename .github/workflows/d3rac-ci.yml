@@ -86,6 +86,11 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         run: npm install -g tronbox
 
+      - name: Install local dependencies
+        if: steps.check.outputs.exists == 'true'
+        working-directory: contracts/tron
+        run: npm install
+
       - name: Compile TRON contracts
         if: steps.check.outputs.exists == 'true'
         working-directory: contracts/tron

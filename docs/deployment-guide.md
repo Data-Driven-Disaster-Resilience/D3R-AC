@@ -45,17 +45,30 @@ moves real disaster-relief funds, and testnet is free.
 
 ### Deploying with TronBox
 
-`contracts/tron/tronbox-config.js` already exists but is compile-only
-(no `networks` entry yet) — don't run `tronbox init` over it, just add
-a network/private-key section:
+`contracts/tron/tronbox-config.js` has `shasta`/`nile` network entries
+already, and `contracts/tron/migrations/2_deploy_d3rac.js` deploys the
+full contract suite and performs the complete Hub-wiring sequence (see
+`contracts/tron/README.md`'s "Wiring the Hub" section) in one run,
+ending with `D3RACHub`'s admin handed to a freshly-deployed
+`MultiSigAdmin`. Don't run `tronbox init` over any of this — it already
+exists.
 
 ```bash
 cd contracts/tron
 npm install -g tronbox
-# add a `networks.shasta` entry with your key to tronbox-config.js (see Security below)
+npm install                      # installs dotenv, used by tronbox-config.js
+cp .env.example .env             # fill in your deploy key + multisig config
 tronbox compile
 tronbox migrate --network shasta
 ```
+
+`.env` needs, at minimum, `TRON_PRIVATE_KEY_SHASTA` (or `_NILE`) and
+`MULTISIG_OWNERS`/`MULTISIG_THRESHOLD` — the migration deliberately
+refuses to run without a real multisig configured, since testing the
+exact production admin topology on testnet first is the point of doing
+this here rather than improvising it before mainnet. See
+`contracts/tron/.env.example` for the full list and
+`migrations/2_deploy_d3rac.js`'s header comment for what each step does.
 
 TronBox is preferable once there's more than one contract or you need
 repeatable deployments (CI, multiple environments) — it scripts what
