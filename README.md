@@ -96,6 +96,13 @@ governs this entire repository.
 
 D3R·AC is proprietary software owned by TAAD (The Abuja Algorithmic Defenders). Contributions from developers, humanitarian-tech practitioners, and NGO partners are welcome **by prior arrangement with TAAD** — see [`CONTRIBUTING.md`](CONTRIBUTING.md) for the process, and [`LICENSE`](LICENSE) for the terms any contribution is made under.
 
+## Donate
+
+D3R·AC accepts direct crypto donations to help fund disaster relief for
+communities on the platform. See [`docs/donations.md`](docs/donations.md)
+for addresses (USDT-TRC20, TRX, BTC, USDT-ERC20). Always double-check the
+network matches the asset before sending.
+
 ## Security
 
 This contract has **not** been professionally audited. Do not deploy to mainnet with real funds without a proper security review. See [`contracts/tron/README.md`](contracts/tron/README.md) for known limitations.
