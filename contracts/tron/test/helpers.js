@@ -1,13 +1,20 @@
-const { ethers } = require("hardhat");
+import { network } from "hardhat";
+
+/// Hardhat 3 removed the global `ethers` object that Hardhat 2's
+/// hardhat-ethers plugin injected into the HRE; connections are now
+/// explicit. A single shared connection is opened here (top-level await,
+/// ESM-only) and re-exported so every test file gets the same `ethers`
+/// instance it used to get via `require("hardhat")`.
+const { ethers } = await network.connect();
 
 /// Deploy a contract by name (must have been compiled via `npx hardhat
-/// compile`, which `npx hardhat test` runs automatically) from the given
+/// build`, which `npx hardhat test` runs automatically) from the given
 /// signer, with constructor args passed through.
-async function deploy(name, signer, ...args) {
+export async function deploy(name, signer, ...args) {
   const factory = await ethers.getContractFactory(name, signer);
   const contract = await factory.deploy(...args);
   await contract.waitForDeployment();
   return contract;
 }
 
-module.exports = { deploy };
+export { ethers };

@@ -1,6 +1,5 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { deploy } = require("./helpers");
+import { expect } from "chai";
+import { ethers, deploy } from "./helpers.js";
 
 describe("D3RACHub", function () {
   let admin, stranger, recipient, minted, someone;
@@ -62,12 +61,11 @@ describe("D3RACHub", function () {
 
   describe("deployment", function () {
     it("rejects a zero address for admin or any of the three core modules", async function () {
-      const { deploy: d } = require("./helpers");
       await expect(
-        d("D3RACHub", admin, ethers.ZeroAddress, await token.getAddress(), await registry.getAddress(), await controller.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress)
+        deploy("D3RACHub", admin, ethers.ZeroAddress, await token.getAddress(), await registry.getAddress(), await controller.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress)
       ).to.be.revertedWith("D3RACHub: admin is zero address");
       await expect(
-        d("D3RACHub", admin, admin.address, ethers.ZeroAddress, await registry.getAddress(), await controller.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress)
+        deploy("D3RACHub", admin, admin.address, ethers.ZeroAddress, await registry.getAddress(), await controller.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress)
       ).to.be.revertedWith("D3RACHub: token is zero address");
     });
 

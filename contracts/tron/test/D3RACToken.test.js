@@ -1,6 +1,5 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { deploy } = require("./helpers");
+import { expect } from "chai";
+import { ethers, deploy } from "./helpers.js";
 
 describe("D3RACToken", function () {
   let owner, minter, alice, bob, stranger;

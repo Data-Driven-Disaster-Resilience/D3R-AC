@@ -1,6 +1,5 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { deploy } = require("./helpers");
+import { expect } from "chai";
+import { ethers, deploy } from "./helpers.js";
 
 describe("MultiSigAdmin", function () {
   let ownerA, ownerB, ownerC, stranger, target;
@@ -12,22 +11,20 @@ describe("MultiSigAdmin", function () {
   });
 
   it("rejects deployment with an invalid threshold", async function () {
-    const { deploy: d } = require("./helpers");
     await expect(
-      d("MultiSigAdmin", ownerA, [ownerA.address, ownerB.address], 0)
+      deploy("MultiSigAdmin", ownerA, [ownerA.address, ownerB.address], 0)
     ).to.be.reverted;
     await expect(
-      d("MultiSigAdmin", ownerA, [ownerA.address, ownerB.address], 3)
+      deploy("MultiSigAdmin", ownerA, [ownerA.address, ownerB.address], 3)
     ).to.be.reverted;
   });
 
   it("rejects a duplicate or zero-address owner at deployment", async function () {
-    const { deploy: d } = require("./helpers");
     await expect(
-      d("MultiSigAdmin", ownerA, [ownerA.address, ownerA.address], 1)
+      deploy("MultiSigAdmin", ownerA, [ownerA.address, ownerA.address], 1)
     ).to.be.revertedWith("MultiSigAdmin: duplicate owner");
     await expect(
-      d("MultiSigAdmin", ownerA, [ownerA.address, ethers.ZeroAddress], 1)
+      deploy("MultiSigAdmin", ownerA, [ownerA.address, ethers.ZeroAddress], 1)
     ).to.be.revertedWith("MultiSigAdmin: zero address owner");
   });
 

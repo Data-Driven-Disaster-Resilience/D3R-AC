@@ -1,6 +1,5 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { deploy } = require("./helpers");
+import { expect } from "chai";
+import { ethers, deploy } from "./helpers.js";
 
 const SCALE = 10n ** 18n;
 const bps = (n) => (BigInt(Math.round(n * 1000)) * SCALE) / 1000n; // e.g. bps(0.72) -> 0.72 * 1e18
