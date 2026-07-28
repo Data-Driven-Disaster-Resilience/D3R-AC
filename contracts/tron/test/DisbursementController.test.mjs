@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers, deploy } from "./helpers.js";
+import { ethers, deploy } from "./helpers.mjs";
 
 describe("DisbursementController", function () {
   let admin, attester, recipient, unverifiedRecipient, stranger;

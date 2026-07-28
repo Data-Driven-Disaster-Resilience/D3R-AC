@@ -1,7 +1,6 @@
 {
   "name": "d3rac-tron-contracts",
   "private": true,
-  "type": "module",
   "version": "0.2.0",
   "description": "Test suite for D3R-AC's TRON contracts (D3RACToken, IdentityRegistry, DisbursementController, MultiSigAdmin, D3RACHub, RiskRegistry, FundingRequestRegistry). Logic tests only -- see hardhat.config.mjs for why Hardhat is used here instead of TronBox, and docs/deployment-guide.md for actual TRON deployment.",
   "scripts": {

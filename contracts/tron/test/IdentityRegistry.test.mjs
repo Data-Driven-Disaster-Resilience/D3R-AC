@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers, deploy } from "./helpers.js";
+import { ethers, deploy } from "./helpers.mjs";
 
 describe("IdentityRegistry", function () {
   let admin, verifier, recipient, stranger;
