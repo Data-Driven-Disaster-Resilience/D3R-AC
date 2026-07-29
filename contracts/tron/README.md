@@ -4,41 +4,56 @@
 
 ```
 contracts/tron/
-├── contracts/            # .sol sources (TronBox's and Hardhat's shared default)
-│   ├── D3RACToken.sol
-│   ├── IdentityRegistry.sol
-│   ├── DisbursementController.sol
-│   ├── MultiSigAdmin.sol
-│   ├── D3RACHub.sol
-│   ├── RiskRegistry.sol
-│   └── FundingRequestRegistry.sol
-├── hardhat/              # Hardhat 3 logic-test harness — own nested
-│   │                       package.json ("type": "module", required
-│   │                       unconditionally by Hardhat 3) so it never
-│   │                       collides with tronbox-config.js (CommonJS).
-│   │                       See "Test suite" below.
-│   ├── hardhat.config.js  # paths.sources: "../contracts"
-│   ├── package.json
-│   └── test/
-├── tronbox-config.js      # compile-only config (no network/private-key section —
-│                           # add one before using `tronbox migrate` to deploy)
-└── package.json           # TronBox-only; deliberately plain CommonJS
+├── contracts -> tronbox/contracts   # symlink; see note below
+├── hardhat.config.js      # Hardhat 3 (ESM) — logic-test harness only
+├── package.json           # "type": "module", required unconditionally
+│                           # by Hardhat 3
+├── test/                  # Hardhat/Mocha/Chai logic tests — see
+│                           # "Test suite" below
+└── tronbox/               # TronBox project — nested, own package.json
+    ├── contracts/          # .sol sources — the real, physical directory
+    │   ├── D3RACToken.sol
+    │   ├── IdentityRegistry.sol
+    │   ├── DisbursementController.sol
+    │   ├── MultiSigAdmin.sol
+    │   ├── D3RACHub.sol
+    │   ├── RiskRegistry.sol
+    │   └── FundingRequestRegistry.sol
+    ├── tronbox-config.js   # compile-only right now (no network/
+    │                        # private-key section — add one before
+    │                        # using `tronbox migrate` to deploy)
+    ├── .env.example
+    ├── package.json        # plain CommonJS, deliberately
+    └── build/              # tronbox compile output (gitignored)
 ```
 
-The nested `contracts/` subfolder isn't optional — TronBox refuses to
-treat the project root itself as `contracts_directory`, and Hardhat's
-`paths.sources` is pointed at the same folder (`../contracts` from
-`hardhat/hardhat.config.js`), so both tools compile/test the exact same
-source files with no drift between them.
+Two things here that aren't arbitrary:
 
-`hardhat/` is a separate npm package from `contracts/tron/` itself, on
-purpose: Hardhat 3 requires `"type": "module"` in its `package.json`,
-full stop, regardless of config file syntax — and that requirement is
-incompatible with `tronbox-config.js`, which must stay CommonJS for
-TronBox's own `require()`-based config loader. Nesting Hardhat one
-level down gives it its own module-resolution scope (Node looks at the
-*nearest* `package.json`), so neither tool's requirement leaks into the
-other's.
+**Why `contracts/` is nested inside `tronbox/`, with a symlink pointing
+down to it from the top level.** Both Hardhat 3 and TronBox refuse to
+treat a source directory as valid if it resolves outside their own
+project root (Hardhat: `HHE900`; TronBox:
+`config.contracts_directory is outside the project directory` — and
+both check the *resolved* real path, so a symlink pointing "up and out"
+doesn't fool either one). The only arrangement where both checks pass
+without duplicating the `.sol` files is nesting the real directory
+inside whichever tool sits deeper (`tronbox/contracts/`, a genuine
+descendant of TronBox's project root) and pointing a symlink down to it
+from the shallower tool's root (`contracts/tron/contracts` →
+`tronbox/contracts`) — the resolved path is still a true descendant of
+`contracts/tron/`, so Hardhat's boundary check passes too. One set of
+`.sol` files, no drift between what each tool compiles.
+
+**Why TronBox is nested in its own package, not Hardhat.** Hardhat 3
+requires `"type": "module"` in its `package.json` unconditionally
+(regardless of config file syntax), which is incompatible with
+`tronbox-config.js`'s CommonJS `require()`/`module.exports`. Nesting
+TronBox one level down gives it its own module-resolution scope (Node
+resolves module type from the *nearest* `package.json`), isolating the
+two tools' conflicting requirements. It has to be TronBox that nests,
+not Hardhat, specifically because of the boundary-check point above —
+Hardhat's project root has to be the shallower one for the symlink
+trick to work in that direction.
 
 ## Current status
 
@@ -278,7 +293,7 @@ call to `RiskRegistry` needed.
 Mixing these up — assuming a `transferAdmin`/`transferOwnership` is
 additive, or that granting a role covers a function that actually needs
 exclusive ownership — is exactly the kind of mistake
-`hardhat/test/D3RACHub.test.mjs` was written to catch; see its `beforeEach` for
+`test/D3RACHub.test.mjs` was written to catch; see its `beforeEach` for
 the full wiring sequence exercised in the test suite, and its "full
 control end-to-end" test for a single sequence exercising every write
 on every contract through the Hub alone.
@@ -286,12 +301,13 @@ on every contract through the Hub alone.
 ## Compiling with TronBox
 
 ```bash
-cd contracts/tron
+cd contracts/tron/tronbox
 npm install -g tronbox
+npm install
 tronbox compile
 ```
 
-`tronbox-config.js` is compile-only right now (no `networks` entry) —
+`tronbox/tronbox-config.js` is compile-only right now (no `networks` entry) —
 add a network/private-key section before running `tronbox migrate` to
 actually deploy. CI runs this same command on every push/PR that
 touches `contracts/tron/**` (see `contracts-tron` job in
@@ -299,7 +315,7 @@ touches `contracts/tron/**` (see `contracts-tron` job in
 
 ## Test suite
 
-`hardhat/test/` has a logic-level Hardhat/Mocha/Chai test suite (**115 tests**
+`test/` has a logic-level Hardhat/Mocha/Chai test suite (**115 tests**
 across `D3RACToken`, `IdentityRegistry`, `DisbursementController`,
 `MultiSigAdmin`, `RiskRegistry`, `FundingRequestRegistry`, and
 `D3RACHub`) covering the failure paths `docs/deployment-guide.md`'s
@@ -330,7 +346,7 @@ just function-by-function in isolation.
 Run it with:
 
 ```bash
-cd contracts/tron/hardhat
+cd contracts/tron
 npm install
 npx hardhat test
 ```

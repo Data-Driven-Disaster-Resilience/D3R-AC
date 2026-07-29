@@ -88,12 +88,12 @@ jobs:
 
       - name: Install local dependencies
         if: steps.check.outputs.exists == 'true'
-        working-directory: contracts/tron
+        working-directory: contracts/tron/tronbox
         run: npm install
 
       - name: Compile TRON contracts
         if: steps.check.outputs.exists == 'true'
-        working-directory: contracts/tron
+        working-directory: contracts/tron/tronbox
         run: tronbox compile
 
       - name: Upload compiled artifacts
@@ -101,20 +101,25 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tron-build-artifacts
-          path: contracts/tron/build/
+          path: contracts/tron/tronbox/build/
 
   # ---------------------------------------------------------------
   # 1b. Contract logic tests (Hardhat) — see
-  #     contracts/tron/hardhat/hardhat.config.js for why Hardhat is used
+  #     contracts/tron/hardhat.config.js for why Hardhat is used
   #     here instead of TronBox: these contracts use no TRON-specific
   #     precompiles/opcodes, so they're exactly as testable against a
   #     standard EVM. This does NOT replace a manual TronBox/testnet
   #     pass before mainnet (see docs/deployment-guide.md).
   #
-  #     Hardhat lives in its own nested package (contracts/tron/hardhat/)
-  #     with its own package.json ("type": "module", required
-  #     unconditionally by Hardhat 3) so it never collides with
-  #     contracts/tron/tronbox-config.js, which must stay CommonJS.
+  #     Hardhat 3 requires "type": "module" AND requires its sources to
+  #     live inside its own project directory -- so Hardhat stays flat
+  #     at contracts/tron/, and TronBox (which needs a CommonJS config)
+  #     is nested instead, in contracts/tron/tronbox/, as its own
+  #     isolated package. contracts/tron/contracts is a symlink to
+  #     contracts/tron/tronbox/contracts (the real, physical directory)
+  #     -- one source of truth, referenced two ways, so each tool's
+  #     "sources must be inside my project root" check independently
+  #     passes.
   # ---------------------------------------------------------------
   contracts-test:
     name: Contract Logic Tests (Hardhat)
@@ -128,11 +133,11 @@ jobs:
       - name: Check test suite exists
         id: check
         run: |
-          if [ -f "contracts/tron/hardhat/package.json" ] && [ -d "contracts/tron/hardhat/test" ]; then
+          if [ -f "contracts/tron/package.json" ] && [ -d "contracts/tron/test" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::contracts/tron/hardhat has no test suite yet — skipping."
+            echo "::notice::contracts/tron has no test suite yet — skipping."
           fi
 
       - name: Set up Node.js
@@ -143,12 +148,12 @@ jobs:
 
       - name: Install dependencies
         if: steps.check.outputs.exists == 'true'
-        working-directory: contracts/tron/hardhat
+        working-directory: contracts/tron
         run: npm install
 
       - name: Run Hardhat test suite
         if: steps.check.outputs.exists == 'true'
-        working-directory: contracts/tron/hardhat
+        working-directory: contracts/tron
         shell: bash
         run: |
           set -o pipefail
