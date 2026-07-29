@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "version": "0.2.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "description": "Hardhat 3 logic-test harness for D3R-AC's TRON contracts. Nested as its own package (separate package.json, 'type': module) deliberately: Hardhat 3 requires an ESM-scoped package, while TronBox's config (../tronbox-config.js) requires CommonJS -- keeping them in separate package.json scopes avoids the collision entirely. Hardhat is NOT how you deploy to TRON; see ../tronbox-config.js and docs/deployment-guide.md for that. Contract sources are read from ../contracts (see hardhat.config.js paths.sources) -- these tests validate logic against a standard EVM only, since the contracts use no TRON-specific precompiles/opcodes.",
   "scripts": {
     "compile": "hardhat build",
