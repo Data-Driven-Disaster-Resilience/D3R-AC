@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["risk-registry"]
+
+[workspace.package]
+edition = "2021"
+license-file = "../../LICENSE"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"       # Wasm binary size is a direct cost (storage rent /
+                        # deploy payment) on Casper, unlike TRON/EVM gas,
+                        # which prices execution but not code size the
+                        # same way -- optimize for size, not speed.

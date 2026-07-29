@@ -47,7 +47,7 @@ d3rac/
 
 ## Tech Stack
 
-- **Smart contracts:** Solidity (TRON/TVM), [Casper contract language — TBD]
+- **Smart contracts:** Solidity (TRON/TVM), Rust/WASM (Casper — `casper-contract`, `casper-types`, `casper-event-standard`; see [`contracts/casper/README.md`](contracts/casper/README.md))
 - **Chains:** TRON, Casper Network
 - **Frontend:** React + Vite + TypeScript
 - **Data pipeline:** Python, satellite/sensor ingestion (NASA FIRMS, USGS, NASA EONET, GDACS), Africa-prioritized — see [`data-pipeline/README.md`](data-pipeline/README.md)
@@ -62,6 +62,10 @@ cd D3R-AC
 ### Smart contracts (TRON)
 
 See [`docs/deployment-guide.md`](docs/deployment-guide.md) for full deployment steps using TronIDE or TronBox. **Always deploy to testnet (Shasta/Nile) first.**
+
+### Smart contracts (Casper)
+
+See [`contracts/casper/README.md`](contracts/casper/README.md) for current status — one contract (`risk-registry`) written, not yet confirmed compiling; the other six are not started. Requires a `wasm32-unknown-unknown`-capable Rust toolchain to build.
 
 ### Frontend
 
@@ -80,14 +84,26 @@ control over the other five contracts, an on-chain risk registry, and
 a funding-request board (seven contracts total; see
 [`contracts/tron/README.md`](contracts/tron/README.md)) — with a
 **logic-tested suite (115 passing tests)**, but **not yet deployed to any
-network and not yet professionally audited.** Frontend community access
-layer implemented (TRON live, Casper adapter in place pending Casper
-contract deployment). Data pipeline implemented per
+network and not yet professionally audited** (see
+[`docs/audit-pass-2026-07-25.md`](docs/audit-pass-2026-07-25.md) for an
+internal self-review pass — explicitly not a substitute for one).
+Frontend community access layer implemented (TRON live, Casper adapter
+in place pending Casper contract deployment), with offline/
+low-connectivity resilience (service-worker caching of the app shell and
+last-known live data, timeout+retry on the live feed) so the app stays
+usable on a slow or intermittent connection — satellite (e.g. Starlink)
+or terrestrial. Data pipeline implemented per
 [`docs/data-pipeline-srs.md`](docs/data-pipeline-srs.md) — satellite/sensor
 hazard ingestion (NASA FIRMS, USGS, NASA EONET, GDACS), Africa-prioritized,
-with a 24-test suite (see [`data-pipeline/README.md`](data-pipeline/README.md))
+with a 32-test suite (see [`data-pipeline/README.md`](data-pipeline/README.md))
 — but **not yet run against a deployed Hub/RiskRegistry**, since neither
-is deployed to any network yet. Casper contracts are still not started.
+is deployed to any network yet. Casper contracts: scaffold started, one
+of seven contracts (`risk-registry`, chosen as the SRS's own
+standalone/no-dependency starting point) fully written but **not yet
+confirmed compiling** — see [`contracts/casper/README.md`](contracts/casper/README.md)
+for the honest, itemized status; the other six contracts, Hub wiring,
+frontend adapter completion, and any testnet deployment are all still
+pending.
 The data pipeline SRS carries its own additional, even more restrictive
 notice on top of the proprietary [`LICENSE`](LICENSE) that already
 governs this entire repository.

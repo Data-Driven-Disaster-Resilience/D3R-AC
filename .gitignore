@@ -16,6 +16,12 @@ build/
 contracts/tron/artifacts/
 contracts/tron/cache/
 
+# Cargo build output for contracts/casper (see contracts/casper/README.md)
+# — regenerate with `cargo build --release --target wasm32-unknown-unknown`.
+contracts/casper/target/
+contracts/casper/**/target/
+Cargo.lock.bak
+
 # OS / editor cruft
 .DS_Store
 *.log
