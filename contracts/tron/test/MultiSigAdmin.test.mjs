@@ -13,10 +13,10 @@ describe("MultiSigAdmin", function () {
   it("rejects deployment with an invalid threshold", async function () {
     await expect(
       deploy("MultiSigAdmin", ownerA, [ownerA.address, ownerB.address], 0)
-    ).to.be.reverted;
+    ).to.revert(ethers);
     await expect(
       deploy("MultiSigAdmin", ownerA, [ownerA.address, ownerB.address], 3)
-    ).to.be.reverted;
+    ).to.revert(ethers);
   });
 
   it("rejects a duplicate or zero-address owner at deployment", async function () {

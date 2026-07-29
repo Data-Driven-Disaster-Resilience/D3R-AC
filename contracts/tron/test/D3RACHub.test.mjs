@@ -158,16 +158,16 @@ describe("D3RACHub", function () {
       await hub.openFundingRequest(COMMUNITY_ID, 1000, "desc", "ipfs://x");
 
       await hub.pause();
-      await expect(hub.cancelCommitment(0)).to.not.be.reverted;
-      await expect(hub.closeFundingRequest(0)).to.not.be.reverted;
-      await expect(hub.setToken(await token.getAddress())).to.not.be.reverted;
-      await expect(hub.transferAdmin(admin.address)).to.not.be.reverted; // no-op transfer, still allowed
-      await expect(hub.setIdentityVerifier(someone.address, true)).to.not.be.reverted;
-      await expect(hub.setDisbursementAttester(someone.address, true)).to.not.be.reverted;
-      await expect(hub.setTokenMinter(someone.address, true)).to.not.be.reverted;
-      await expect(hub.setRiskDataFeeder(someone.address, true)).to.not.be.reverted;
-      await expect(hub.setRiskThreshold(SCALE / 2n)).to.not.be.reverted;
-      await expect(hub.setFundingProposer(someone.address, true)).to.not.be.reverted;
+      await expect(hub.cancelCommitment(0)).to.not.revert(ethers);
+      await expect(hub.closeFundingRequest(0)).to.not.revert(ethers);
+      await expect(hub.setToken(await token.getAddress())).to.not.revert(ethers);
+      await expect(hub.transferAdmin(admin.address)).to.not.revert(ethers); // no-op transfer, still allowed
+      await expect(hub.setIdentityVerifier(someone.address, true)).to.not.revert(ethers);
+      await expect(hub.setDisbursementAttester(someone.address, true)).to.not.revert(ethers);
+      await expect(hub.setTokenMinter(someone.address, true)).to.not.revert(ethers);
+      await expect(hub.setRiskDataFeeder(someone.address, true)).to.not.revert(ethers);
+      await expect(hub.setRiskThreshold(SCALE / 2n)).to.not.revert(ethers);
+      await expect(hub.setFundingProposer(someone.address, true)).to.not.revert(ethers);
     });
   });
 
@@ -301,7 +301,7 @@ describe("D3RACHub", function () {
 
     it("closeFundingRequest succeeds for a request the Hub itself opened", async function () {
       await hub.openFundingRequest(COMMUNITY_ID, 1000, "desc", "ipfs://x");
-      await expect(hub.closeFundingRequest(0)).to.not.be.reverted;
+      await expect(hub.closeFundingRequest(0)).to.not.revert(ethers);
       const r = await fundingRegistry.getRequest(0);
       expect(r.status).to.equal(3n); // Status.Closed
     });
@@ -398,7 +398,7 @@ describe("D3RACHub", function () {
         "D3RACToken: caller is not the owner"
       );
       // but mintTokens (only needs minter) still works
-      await expect(bareHub.mintTokens(someone.address, 100)).to.not.be.reverted;
+      await expect(bareHub.mintTokens(someone.address, 100)).to.not.revert(ethers);
     });
 
     it("transferTokenOwnership forwards and genuinely moves D3RACToken's owner off the Hub", async function () {
@@ -465,9 +465,9 @@ describe("D3RACHub", function () {
     it("recordFundingPledge/linkFundingRequestToCommitment/closeFundingRequest also work on a request NOT opened via the Hub, because the Hub holds ownership", async function () {
       await hub.setFundingProposer(stranger.address, true); // ownership already transferred to the Hub in beforeEach
       await fundingRegistry.connect(stranger).openRequest(COMMUNITY_ID, 1000, "desc", "ipfs://x"); // requester = stranger, not Hub
-      await expect(hub.recordFundingPledge(0, 100, "ipfs://p")).to.not.be.reverted;
-      await expect(hub.linkFundingRequestToCommitment(0, 3)).to.not.be.reverted;
-      await expect(hub.closeFundingRequest(0)).to.not.be.reverted;
+      await expect(hub.recordFundingPledge(0, 100, "ipfs://p")).to.not.revert(ethers);
+      await expect(hub.linkFundingRequestToCommitment(0, 3)).to.not.revert(ethers);
+      await expect(hub.closeFundingRequest(0)).to.not.revert(ethers);
     });
 
     it("transferFundingRequestRegistryOwnership forwards and genuinely moves ownership off the Hub", async function () {

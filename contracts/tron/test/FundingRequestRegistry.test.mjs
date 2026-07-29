@@ -74,7 +74,7 @@ describe("FundingRequestRegistry", function () {
     });
 
     it("allows the registry owner (not just the requester) to manage a request", async function () {
-      await expect(registry.recordPledge(0, ethers.parseUnits("50", 6), "owner-recorded")).to.not.be.reverted;
+      await expect(registry.recordPledge(0, ethers.parseUnits("50", 6), "owner-recorded")).to.not.revert(ethers);
     });
   });
 

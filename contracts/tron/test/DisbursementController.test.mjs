@@ -45,7 +45,7 @@ describe("DisbursementController", function () {
 
   describe("createCommitment", function () {
     it("creates a commitment against a verified recipient and emits CommitmentCreated", async function () {
-      await expect(createCommitment()).to.not.be.reverted;
+      await expect(createCommitment()).to.not.revert(ethers);
       const c = await controller.getCommitment(0);
       expect(c.recipient).to.equal(recipient.address);
       expect(c.totalAmount).to.equal(3000);
