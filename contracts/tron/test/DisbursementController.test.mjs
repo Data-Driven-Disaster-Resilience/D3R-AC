@@ -1,6 +1,5 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { deploy } = require("./helpers");
+import { expect } from "chai";
+import { ethers, deploy } from "./helpers.mjs";
 
 describe("DisbursementController", function () {
   let admin, attester, recipient, unverifiedRecipient, stranger;
@@ -46,7 +45,7 @@ describe("DisbursementController", function () {
 
   describe("createCommitment", function () {
     it("creates a commitment against a verified recipient and emits CommitmentCreated", async function () {
-      await expect(createCommitment()).to.not.be.reverted;
+      await expect(createCommitment()).to.not.revert(ethers);
       const c = await controller.getCommitment(0);
       expect(c.recipient).to.equal(recipient.address);
       expect(c.totalAmount).to.equal(3000);

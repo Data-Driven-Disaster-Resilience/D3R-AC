@@ -1,7 +1,7 @@
 // Loads TRON_PRIVATE_KEY_* and other deploy-time config from a local
-// .env file (see .env.example). That file is gitignored -- never commit
-// a real private key or seed phrase, per docs/deployment-guide.md's
-// security checklist.
+// .env file (see .env.example, in this same directory). That file is
+// gitignored -- never commit a real private key or seed phrase, per
+// docs/deployment-guide.md's security checklist.
 //
 // Wrapped in try/catch deliberately: `tronbox compile` needs none of
 // this (no network/key required to just compile), so it shouldn't fail
@@ -9,8 +9,12 @@
 // contracts-tron job, which only installs the tronbox CLI globally.
 // `tronbox migrate` does need real env vars, and `npm install` (see
 // docs/deployment-guide.md) gets you dotenv for that.
+//
+// Path is resolved from this file's own location (not process.cwd())
+// so `tronbox` commands work the same regardless of which directory
+// they're invoked from.
 try {
-  require('dotenv').config();
+  require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 } catch (_) {
   // No local node_modules/dotenv -- fine for compile-only use, since
   // process.env.TRON_PRIVATE_KEY_* etc. simply stay undefined below.

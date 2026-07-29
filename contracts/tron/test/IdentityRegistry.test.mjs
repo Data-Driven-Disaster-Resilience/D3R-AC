@@ -1,6 +1,5 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { deploy } = require("./helpers");
+import { expect } from "chai";
+import { ethers, deploy } from "./helpers.mjs";
 
 describe("IdentityRegistry", function () {
   let admin, verifier, recipient, stranger;
