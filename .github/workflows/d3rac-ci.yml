@@ -152,15 +152,15 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx hardhat test 2>&1 | tee hardhat-test-output.log
-
-      - name: Upload Hardhat test log (diagnostic)
-        if: steps.check.outputs.exists == 'true' && always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: hardhat-test-output
-          path: contracts/tron/hardhat/hardhat-test-output.log
-          retention-days: 3
+          if ! npx hardhat test 2>&1 | tee hardhat-test-output.log; then
+            # Emit as a workflow annotation (visible via the check-runs
+            # API) since raw job logs and artifact downloads both
+            # redirect through an Azure Blob host that isn't reachable
+            # from the sandbox this was diagnosed from.
+            ENCODED=$(tail -c 3000 hardhat-test-output.log | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 6000)
+            echo "::error::HARDHAT_TEST_FAILURE_TAIL: ${ENCODED}"
+            exit 1
+          fi
 
   # ---------------------------------------------------------------
   # 2. Solidity static analysis / linting (security hygiene)
