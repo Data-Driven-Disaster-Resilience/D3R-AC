@@ -83,11 +83,23 @@ class GdacsAlertsAdapter(HazardAdapter):
 def _parse_gdacs_date(value):
     if not value:
         return None
-    from datetime import datetime
+    from datetime import datetime, timezone
 
+    # GDACS timestamps are UTC but arrive without a timezone suffix.
+    # Every other adapter (satellite_fire, eonet_events) returns
+    # timezone-*aware* UTC datetimes; pipeline.py's _is_stale() does
+    # `datetime.now(timezone.utc) - observed_at`, which raises
+    # `TypeError: can't subtract offset-naive and offset-aware
+    # datetimes` the moment a naive datetime reaches it. Since
+    # hazard_aggregator.combine() always propagates the *driving*
+    # reading's observed_at untouched (see combine(), both "max" and
+    # "weighted_mean" strategies), this crashed real community
+    # processing specifically whenever GDACS was the most severe/
+    # driving source for that cycle -- i.e. exactly the "live disaster
+    # in progress" case this pipeline exists to handle correctly.
     for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
         try:
-            return datetime.strptime(value[:19], fmt)
+            return datetime.strptime(value[:19], fmt).replace(tzinfo=timezone.utc)
         except ValueError:
             continue
     return None
