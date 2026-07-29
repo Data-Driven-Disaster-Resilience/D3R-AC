@@ -149,7 +149,18 @@ jobs:
       - name: Run Hardhat test suite
         if: steps.check.outputs.exists == 'true'
         working-directory: contracts/tron/hardhat
-        run: npx hardhat test
+        shell: bash
+        run: |
+          set -o pipefail
+          npx hardhat test 2>&1 | tee hardhat-test-output.log
+
+      - name: Upload Hardhat test log (diagnostic)
+        if: steps.check.outputs.exists == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardhat-test-output
+          path: contracts/tron/hardhat/hardhat-test-output.log
+          retention-days: 3
 
   # ---------------------------------------------------------------
   # 2. Solidity static analysis / linting (security hygiene)
