@@ -12,9 +12,9 @@
     "test": "hardhat test"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.0",
     "@nomicfoundation/hardhat-ethers": "^4.0.0",
     "@nomicfoundation/hardhat-ethers-chai-matchers": "^3.0.0",
+    "@nomicfoundation/hardhat-mocha": "^3.0.0",
     "@nomicfoundation/hardhat-network-helpers": "^3.0.0",
     "chai": "^5.1.2",
     "ethers": "^6.4.0",
@@ -27,7 +27,6 @@
     "serialize-javascript": "^7.0.5",
     "uuid": "^12.0.1",
     "cookie": "^0.7.0",
-    "diff": "^8.0.3",
-    "lodash-es": "^4.18.0"
+    "diff": "^8.0.3"
   }
 }
