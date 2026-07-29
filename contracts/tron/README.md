@@ -12,17 +12,33 @@ contracts/tron/
 │   ├── D3RACHub.sol
 │   ├── RiskRegistry.sol
 │   └── FundingRequestRegistry.sol
-├── test/                 # Hardhat/Mocha/Chai logic tests — see "Test suite" below
+├── hardhat/              # Hardhat 3 logic-test harness — own nested
+│   │                       package.json ("type": "module", required
+│   │                       unconditionally by Hardhat 3) so it never
+│   │                       collides with tronbox-config.js (CommonJS).
+│   │                       See "Test suite" below.
+│   ├── hardhat.config.js  # paths.sources: "../contracts"
+│   ├── package.json
+│   └── test/
 ├── tronbox-config.js      # compile-only config (no network/private-key section —
 │                           # add one before using `tronbox migrate` to deploy)
-├── hardhat.config.js
-└── package.json
+└── package.json           # TronBox-only; deliberately plain CommonJS
 ```
 
 The nested `contracts/` subfolder isn't optional — TronBox refuses to
-treat the project root itself as `contracts_directory`, and it happens
-to match Hardhat's own default sources path, so both tools find the
-same files with no extra config.
+treat the project root itself as `contracts_directory`, and Hardhat's
+`paths.sources` is pointed at the same folder (`../contracts` from
+`hardhat/hardhat.config.js`), so both tools compile/test the exact same
+source files with no drift between them.
+
+`hardhat/` is a separate npm package from `contracts/tron/` itself, on
+purpose: Hardhat 3 requires `"type": "module"` in its `package.json`,
+full stop, regardless of config file syntax — and that requirement is
+incompatible with `tronbox-config.js`, which must stay CommonJS for
+TronBox's own `require()`-based config loader. Nesting Hardhat one
+level down gives it its own module-resolution scope (Node looks at the
+*nearest* `package.json`), so neither tool's requirement leaks into the
+other's.
 
 ## Current status
 
@@ -262,7 +278,7 @@ call to `RiskRegistry` needed.
 Mixing these up — assuming a `transferAdmin`/`transferOwnership` is
 additive, or that granting a role covers a function that actually needs
 exclusive ownership — is exactly the kind of mistake
-`test/D3RACHub.test.js` was written to catch; see its `beforeEach` for
+`hardhat/test/D3RACHub.test.mjs` was written to catch; see its `beforeEach` for
 the full wiring sequence exercised in the test suite, and its "full
 control end-to-end" test for a single sequence exercising every write
 on every contract through the Hub alone.
@@ -283,7 +299,7 @@ touches `contracts/tron/**` (see `contracts-tron` job in
 
 ## Test suite
 
-`test/` has a logic-level Hardhat/Mocha/Chai test suite (**115 tests**
+`hardhat/test/` has a logic-level Hardhat/Mocha/Chai test suite (**115 tests**
 across `D3RACToken`, `IdentityRegistry`, `DisbursementController`,
 `MultiSigAdmin`, `RiskRegistry`, `FundingRequestRegistry`, and
 `D3RACHub`) covering the failure paths `docs/deployment-guide.md`'s
@@ -314,7 +330,7 @@ just function-by-function in isolation.
 Run it with:
 
 ```bash
-cd contracts/tron
+cd contracts/tron/hardhat
 npm install
 npx hardhat test
 ```
