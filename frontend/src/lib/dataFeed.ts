@@ -82,26 +82,69 @@ function mergeMilestones(row: PipelineCommunityRow): Community {
   };
 }
 
+// Timeout and retry tuning below is deliberately generous relative to
+// typical broadband: satellite links (Starlink and other constellations
+// alike) commonly add 20-60ms of latency for LEO service, but degrade
+// much further on a marginal link (weather fade, obstruction, or a
+// distant/overloaded ground station) -- and mobile/rural terrestrial
+// connections in the same low-connectivity areas this feed matters most
+// for have similar failure modes. Without an explicit timeout, `fetch`
+// relies on the browser/OS's own default (often 2+ minutes), which would
+// leave the UI showing a loading state far longer than useful, instead
+// of falling back to demo data quickly and retrying in the background.
+const FETCH_TIMEOUT_MS = 8_000;
+const RETRY_DELAYS_MS = [1_000, 3_000]; // one retry, then a second, before giving up for this call
+
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { cache: "no-store", signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Fetches the pipeline's live feed. Never throws — any network error,
- * missing file (404, common if the pipeline hasn't run yet in this
- * environment), or malformed payload resolves to `null` instead, so
+ * timeout, missing file (404, common if the pipeline hasn't run yet in
+ * this environment), or malformed payload resolves to `null` instead, so
  * callers can fall back to demo data without a try/catch of their own.
+ *
+ * Retries a couple of times with backoff before giving up, since a
+ * single dropped packet or momentary satellite-link fade shouldn't be
+ * indistinguishable from "no feed exists" -- but each attempt is still
+ * bounded by FETCH_TIMEOUT_MS, so a fully dead link still resolves
+ * (to the demo-data fallback) in well under the time a hung default
+ * fetch would take.
  */
 async function fetchLiveCommunities(): Promise<PipelineFeed | null> {
-  try {
-    const response = await fetch(FEED_URL, { cache: "no-store" });
-    if (!response.ok) return null;
+  const attempts = RETRY_DELAYS_MS.length + 1;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const response = await fetchWithTimeout(FEED_URL, FETCH_TIMEOUT_MS);
+      if (!response.ok) return null; // a real 404/5xx isn't worth retrying
 
-    const data: unknown = await response.json();
-    if (!isValidFeed(data) || data.communities.length === 0) return null;
+      const data: unknown = await response.json();
+      if (!isValidFeed(data) || data.communities.length === 0) return null;
 
-    return data;
-  } catch {
-    // Network error, JSON parse error, or anything else — treat exactly
-    // like "no feed available" rather than surfacing to the user.
-    return null;
+      return data;
+    } catch {
+      // Timeout (AbortError), network error, or JSON parse error. If
+      // there's a retry left, back off and try again -- otherwise fall
+      // through to the demo-data fallback exactly as before.
+      if (attempt < attempts - 1) {
+        await delay(RETRY_DELAYS_MS[attempt] ?? 3_000);
+        continue;
+      }
+      return null;
+    }
   }
+  return null; // unreachable, but keeps the return type honest
 }
 
 /**
