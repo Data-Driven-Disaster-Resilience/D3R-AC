@@ -1,0 +1,48 @@
+name: agents-ci
+
+on:
+  push:
+    paths:
+      - "agents/**"
+  pull_request:
+    paths:
+      - "agents/**"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agents
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate + generate manifest
+        run: |
+          pip install pyyaml jsonschema
+          python3 scripts/build_manifest.py
+
+      - name: Install + build python package
+        run: pip install -e ./python[dev]
+
+      - name: Install + build node workspace
+        run: cd node && npm install && npm run build
+
+      - name: Test python agents
+        run: cd python && pytest -q
+
+      - name: Test node agents
+        run: cd node && npm test
+
+      - name: Smoke test full pipeline (file bus)
+        run: |
+          python3 -m d3rac_agents.cli run-all
+          cd node && npm run start -- run-all

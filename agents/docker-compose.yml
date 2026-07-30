@@ -1,0 +1,29 @@
+version: "3.9"
+
+# Optional production-style setup. For local dev, `make dev` (file bus, no Docker) is
+# simpler. Switch agents.config.yaml -> bus.transport to "redis" before using this.
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  python-agents:
+    build:
+      context: .
+      dockerfile: docker/python.Dockerfile
+    depends_on:
+      - redis
+    environment:
+      - D3RAC_BUS_REDIS_URL=redis://redis:6379
+    command: ["python3", "-m", "d3rac_agents.cli", "run-all"]
+
+  node-agents:
+    build:
+      context: .
+      dockerfile: docker/node.Dockerfile
+    depends_on:
+      - redis
+    environment:
+      - D3RAC_BUS_REDIS_URL=redis://redis:6379
+    command: ["npm", "run", "start", "--", "run-all"]
