@@ -42,7 +42,6 @@
 
 extern crate alloc;
 
-use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
@@ -51,8 +50,8 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::{Event, Schemas};
 use casper_types::{
-    contracts::NamedKeys, runtime_args, CLType, CLTyped, CLValue, EntryPoint, EntryPointAccess,
-    EntryPointType, EntryPoints, Key, Parameter, RuntimeArgs, URef,
+    contracts::NamedKeys, CLType, CLTyped, CLValue, EntryPoint, EntryPointAccess, EntryPointType,
+    EntryPoints, Key, Parameter, URef,
 };
 
 mod constants;
@@ -66,7 +65,7 @@ use events::{
     CommunityRegistered, DataFeederAdded, DataFeederRemoved, RiskUpdated, ThresholdCrossed,
     ThresholdUpdated,
 };
-use model::CommunityRisk;
+use model::{CommunityRisk, CommunityView};
 
 // ---------------------------------------------------------------
 // Entry points
@@ -201,18 +200,16 @@ pub extern "C" fn get_community() {
         .unwrap_or_revert_with(RiskRegistryError::CommunityNotRegistered);
 
     let score = compute_risk_score(&record);
-    runtime::ret(
-        CLValue::from_t((
-            record.name,
-            record.region,
-            record.hazard,
-            record.exposure,
-            record.vulnerability,
-            record.last_updated,
-            score,
-        ))
-        .unwrap_or_revert(),
-    );
+    let view = CommunityView {
+        name: record.name,
+        region: record.region,
+        hazard: record.hazard,
+        exposure: record.exposure,
+        vulnerability: record.vulnerability,
+        last_updated: record.last_updated,
+        risk_score: score,
+    };
+    runtime::ret(CLValue::from_t(view).unwrap_or_revert());
 }
 
 #[no_mangle]
@@ -453,7 +450,7 @@ fn build_entry_points() -> EntryPoints {
         ],
         CLType::Unit,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -466,7 +463,7 @@ fn build_entry_points() -> EntryPoints {
         ],
         CLType::Unit,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -474,7 +471,7 @@ fn build_entry_points() -> EntryPoints {
         vec![Parameter::new(ARG_COMMUNITY_ID, CLType::String)],
         CLType::U64,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -482,23 +479,15 @@ fn build_entry_points() -> EntryPoints {
         vec![Parameter::new(ARG_COMMUNITY_ID, CLType::String)],
         CLType::Bool,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_GET_COMMUNITY,
         vec![Parameter::new(ARG_COMMUNITY_ID, CLType::String)],
-        CLType::Tuple7(vec![
-            Box::new(CLType::String),
-            Box::new(CLType::String),
-            Box::new(CLType::U64),
-            Box::new(CLType::U64),
-            Box::new(CLType::U64),
-            Box::new(CLType::U64),
-            Box::new(CLType::U64),
-        ]),
+        CLType::Any, // CommunityView -- CLType has no Tuple7 variant (only up to Tuple3)
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -506,7 +495,7 @@ fn build_entry_points() -> EntryPoints {
         Vec::new(),
         CLType::U64,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -514,7 +503,7 @@ fn build_entry_points() -> EntryPoints {
         vec![Parameter::new(ARG_NEW_OWNER, CLType::Key)],
         CLType::Unit,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -522,7 +511,7 @@ fn build_entry_points() -> EntryPoints {
         vec![Parameter::new(ARG_FEEDER, CLType::Key)],
         CLType::Unit,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -530,7 +519,7 @@ fn build_entry_points() -> EntryPoints {
         vec![Parameter::new(ARG_FEEDER, CLType::Key)],
         CLType::Unit,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -538,7 +527,7 @@ fn build_entry_points() -> EntryPoints {
         vec![Parameter::new(ARG_NEW_THRESHOLD, CLType::U64)],
         CLType::Unit,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
     ));
 
     entry_points

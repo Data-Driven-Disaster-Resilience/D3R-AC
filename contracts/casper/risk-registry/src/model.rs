@@ -81,3 +81,72 @@ impl FromBytes for CommunityRisk {
         ))
     }
 }
+
+/// Return-value type for `get_community` -- CLType only defines tuple
+/// variants up to `Tuple3` (no `Tuple7`), so a 7-field view needs a
+/// real struct with its own CLTyped/ToBytes/FromBytes impls, the same
+/// pattern as `CommunityRisk` itself.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommunityView {
+    pub name: String,
+    pub region: String,
+    pub hazard: u64,
+    pub exposure: u64,
+    pub vulnerability: u64,
+    pub last_updated: u64,
+    pub risk_score: u64,
+}
+
+impl CLTyped for CommunityView {
+    fn cl_type() -> CLType {
+        CLType::Any
+    }
+}
+
+impl ToBytes for CommunityView {
+    fn to_bytes(&self) -> Result<alloc::vec::Vec<u8>, BytesReprError> {
+        let mut result = alloc::vec::Vec::with_capacity(self.serialized_length());
+        result.extend(self.name.to_bytes()?);
+        result.extend(self.region.to_bytes()?);
+        result.extend(self.hazard.to_bytes()?);
+        result.extend(self.exposure.to_bytes()?);
+        result.extend(self.vulnerability.to_bytes()?);
+        result.extend(self.last_updated.to_bytes()?);
+        result.extend(self.risk_score.to_bytes()?);
+        Ok(result)
+    }
+
+    fn serialized_length(&self) -> usize {
+        self.name.serialized_length()
+            + self.region.serialized_length()
+            + self.hazard.serialized_length()
+            + self.exposure.serialized_length()
+            + self.vulnerability.serialized_length()
+            + self.last_updated.serialized_length()
+            + self.risk_score.serialized_length()
+    }
+}
+
+impl FromBytes for CommunityView {
+    fn from_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), BytesReprError> {
+        let (name, rem) = String::from_bytes(bytes)?;
+        let (region, rem) = String::from_bytes(rem)?;
+        let (hazard, rem) = u64::from_bytes(rem)?;
+        let (exposure, rem) = u64::from_bytes(rem)?;
+        let (vulnerability, rem) = u64::from_bytes(rem)?;
+        let (last_updated, rem) = u64::from_bytes(rem)?;
+        let (risk_score, rem) = u64::from_bytes(rem)?;
+        Ok((
+            CommunityView {
+                name,
+                region,
+                hazard,
+                exposure,
+                vulnerability,
+                last_updated,
+                risk_score,
+            },
+            rem,
+        ))
+    }
+}
