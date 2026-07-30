@@ -48,10 +48,10 @@ use alloc::vec::Vec;
 
 use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
-use casper_event_standard::{Event, Schemas};
+use casper_event_standard::Schemas;
 use casper_types::{
-    contracts::NamedKeys, CLType, CLTyped, CLValue, EntryPoint, EntryPointAccess, EntryPointType,
-    EntryPoints, Key, Parameter, URef,
+    contracts::{EntryPoint, NamedKeys},
+    CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter, URef,
 };
 
 mod constants;
@@ -140,7 +140,7 @@ pub extern "C" fn update_risk() {
     let score = compute_risk_score(&record);
     storage::dictionary_put(dict_uref, &community_id, record);
 
-    let feeder = runtime::get_caller();
+    let feeder = Key::from(runtime::get_caller());
 
     casper_event_standard::emit(RiskUpdated {
         community_id: community_id.clone(),
@@ -416,7 +416,17 @@ pub extern "C" fn call() {
     // older casper-contract versions with a 4-arg signature predating
     // this parameter). None here: this contract doesn't use on-chain
     // messages, only casper-event-standard events.
-    let (contract_hash, contract_package_hash) = storage::new_locked_contract(
+    // Confirmed via official Casper docs (writing-onchain-code/simple-contract,
+    // resources/tutorials/beginner/upgrade-contract): new_contract /
+    // new_locked_contract return (ContractHash, ContractVersion) -- a
+    // version *number*, not a separate ContractPackageHash. The package
+    // hash is already auto-stored under the installing account's own
+    // named keys via the hash_name parameter (PACKAGE_HASH_KEY_NAME,
+    // passed below) -- no separate manual put_key for it is needed or
+    // correct; a prior version of this code incorrectly treated the
+    // second tuple element as a package hash and tried to `.into()` a
+    // u32 into a Key, which doesn't type-check (confirmed by CI).
+    let (contract_hash, _contract_version) = storage::new_locked_contract(
         entry_points,
         Some(named_keys),
         Some(PACKAGE_HASH_KEY_NAME.to_string()),
@@ -437,10 +447,6 @@ pub extern "C" fn call() {
     casper_event_standard::init(schemas);
 
     runtime::put_key(CONTRACT_HASH_KEY_NAME, contract_hash.into());
-    runtime::put_key(
-        CONTRACT_PACKAGE_HASH_KEY_NAME,
-        contract_package_hash.into(),
-    );
 
     if let Some(feeder) = initial_data_feeder {
         casper_event_standard::emit(DataFeederAdded { feeder });

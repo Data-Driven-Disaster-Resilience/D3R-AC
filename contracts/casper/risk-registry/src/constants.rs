@@ -21,7 +21,6 @@ pub const KEY_COMMUNITY_IDS: &str = "community_ids";
 /// what it just deployed, same idea as a deploy script logging the
 /// resulting address on TRON.
 pub const CONTRACT_HASH_KEY_NAME: &str = "risk_registry_contract_hash";
-pub const CONTRACT_PACKAGE_HASH_KEY_NAME: &str = "risk_registry_contract_package_hash";
 
 /// Named keys *within* the contract's own package, referenced by
 /// `storage::new_locked_contract`'s optional name arguments.
