@@ -408,11 +408,20 @@ pub extern "C" fn call() {
 
     let entry_points = build_entry_points();
 
+    // casper-contract 5.1.1's new_locked_contract takes 5 args, the
+    // 5th being message topics (Option<BTreeMap<String,
+    // MessageTopicOperation>>) for Casper's on-chain messaging system --
+    // confirmed against the actual installed crate source via CI's
+    // compiler output (not just docs/examples, some of which target
+    // older casper-contract versions with a 4-arg signature predating
+    // this parameter). None here: this contract doesn't use on-chain
+    // messages, only casper-event-standard events.
     let (contract_hash, contract_package_hash) = storage::new_locked_contract(
         entry_points,
         Some(named_keys),
         Some(PACKAGE_HASH_KEY_NAME.to_string()),
         Some(ACCESS_UREF_KEY_NAME.to_string()),
+        None,
     );
 
     // Schemas registration for casper-event-standard -- must happen

@@ -36,15 +36,22 @@ feedback to iterate on, the same way the Hardhat 3 migration was.
 
 ## Pinned crate versions
 
-Confirmed current on crates.io as of this writing:
+**Correction from this project's earlier notes**: `casper-contract`
+5.1.1 requires `casper-types ^6.0.1` (confirmed via crates.io's own
+dependency listing) — **not** 7.0.0, which is what prior notes said
+was pinned alongside it. Using 7.0.0 directly caused two incompatible
+`casper-types` versions in the same dependency graph (a real CI build
+failure — "expected `EntryPoints`, found `casper_types::EntryPoints`",
+two structurally-identical but distinct types from different crate
+versions). Fixed; verified via `cargo generate-lockfile` that exactly
+one `casper-types` version now resolves across the whole graph.
 
 | Crate | Version |
 |---|---|
 | `casper-contract` | 5.1.1 |
-| `casper-types` | 7.0.0 |
+| `casper-types` | 6.1.0 |
 | `casper-event-standard` | 0.7.0 |
 | `casper-engine-test-support` (dev/test only) | 8.1.1 |
-| `casper-execution-engine` (dev/test only) | 9.0.0 |
 
 ## What's actually done
 
