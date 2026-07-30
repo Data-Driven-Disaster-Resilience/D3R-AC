@@ -6,7 +6,11 @@
  * contracts/ folder deploys.
  *
  * TODO once contracts are deployed:
- *   1. npm install tronweb (TRON) and casper-js-sdk (Casper) in node/package.json
+ *   1. npm install tronweb (TRON) and casper-js-sdk (Casper) in node/package.json,
+ *      picking whatever their current patched versions are at that time. They are
+ *      deliberately NOT pre-installed here: this file doesn't call either SDK yet
+ *      (see requestTronRelease/requestCasperRelease below), so shipping them today
+ *      would just carry a large, unused, unvetted dependency surface.
  *   2. Load the deployed contract address + ABI from contracts/tron and contracts/casper
  *   3. Replace `requestTronRelease` / `requestCasperRelease` bodies with real calls
  *   4. Store returned tx hashes on the fund.release.requested event for auditability

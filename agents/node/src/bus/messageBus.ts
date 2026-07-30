@@ -62,7 +62,7 @@ export class RedisBus implements Bus {
 
   constructor(url?: string) {
     // Lazy require so FileBus users aren't forced to install `redis`.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createClient } = require('redis');
     this.client = createClient({ url: url ?? BUS_REDIS_URL });
   }
