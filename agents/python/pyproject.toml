@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "d3rac-agents"
+version = "0.1.0"
+description = "Data + risk-model AI agents for D3R.AC (Data-Driven Disaster Resilience for All Communities)"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "jsonschema>=4.20",
+]
+
+[project.optional-dependencies]
+redis = ["redis>=5.0"]
+brainbox = ["anthropic>=0.40.0"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+d3rac-agents = "d3rac_agents.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

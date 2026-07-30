@@ -41,6 +41,8 @@ d3rac/
 │   └── casper/          # Casper smart contracts
 ├── frontend/             # Community access layer (web interface)
 ├── data-pipeline/         # Risk-scoring pipeline (R(c,t) implementation)
+├── agents/               # Manifest-driven AI agent fleet (data, risk-model, brainbox,
+│                          # coordination, contract-trigger) — see agents/README.md
 ├── docs/                 # Architecture, risk model, deployment guides
 └── scripts/deploy/        # Deployment scripts
 ```
@@ -51,6 +53,7 @@ d3rac/
 - **Chains:** TRON, Casper Network
 - **Frontend:** React + Vite + TypeScript
 - **Data pipeline:** Python, satellite/sensor ingestion (NASA FIRMS, USGS, NASA EONET, GDACS), Africa-prioritized — see [`data-pipeline/README.md`](data-pipeline/README.md)
+- **AI agent fleet:** Python (data + risk-model agents, Claude-backed `brainbox` directive controller) and Node/TypeScript (coordination + contract-trigger agents), sharing one manifest and message bus — see [`agents/README.md`](agents/README.md)
 
 ## Getting Started
 
@@ -74,6 +77,16 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### AI agent fleet
+
+```bash
+cd agents
+make build   # validate agents.config.yaml, codegen typed bindings, install + build both stacks
+make dev     # runs the full fleet once against the local file-based bus
+```
+
+See [`agents/README.md`](agents/README.md) for the full agent list, the manifest-driven build system, and how `brainbox` (the Claude-backed directive controller) degrades gracefully without `ANTHROPIC_API_KEY`.
 
 ## Status
 
