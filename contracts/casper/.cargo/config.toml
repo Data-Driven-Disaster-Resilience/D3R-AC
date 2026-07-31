@@ -8,4 +8,15 @@
 # unresolved symbol as a hard link error unless told otherwise;
 # --allow-undefined is what tells it these particular ones are
 # legitimate WASM imports, not missing code.
-rustflags = ["-C", "link-args=--allow-undefined"]
+#
+# target-feature=-bulk-memory: Casper's execution engine validates
+# deployed Wasm against a restricted feature set for determinism/
+# security reasons, and rejects "bulk memory operations" (the
+# memory.copy/memory.fill instructions) -- confirmed via a real
+# local-network test failure:
+#   WasmPreprocessing(Deserialize("Bulk memory operations are not
+#   supported"))
+# Rust's default codegen for wasm32-unknown-unknown can emit these for
+# larger memory copies (e.g. via the allocator, or LLVM's own optimizer,
+# especially under LTO) unless explicitly disabled.
+rustflags = ["-C", "link-args=--allow-undefined", "-C", "target-feature=-bulk-memory"]
