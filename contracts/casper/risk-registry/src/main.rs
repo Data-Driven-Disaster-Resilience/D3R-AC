@@ -495,7 +495,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_UPDATE_RISK,
@@ -508,7 +508,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_RISK_SCORE,
@@ -516,7 +516,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::U64,
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_IS_ABOVE_THRESHOLD,
@@ -524,7 +524,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::Bool,
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_GET_COMMUNITY,
@@ -532,7 +532,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::Any, // CommunityView -- CLType has no Tuple7 variant (only up to Tuple3)
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_COMMUNITY_COUNT,
@@ -540,7 +540,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::U64,
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_TRANSFER_OWNERSHIP,
@@ -548,7 +548,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_ADD_DATA_FEEDER,
@@ -556,7 +556,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_REMOVE_DATA_FEEDER,
@@ -564,7 +564,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_SET_RISK_THRESHOLD,
@@ -572,7 +572,7 @@ fn build_entry_points() -> EntryPoints {
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Called,
-    ));
+    ).into());
 
     entry_points
 }
