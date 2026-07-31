@@ -28,23 +28,28 @@
 //!   account hash internally, the same way Casper's own system
 //!   contracts do.
 //!
-//! NOT YET COMPILED/VERIFIED against the Casper Virtual Machine (no
-//! `wasm32-unknown-unknown` Rust target is available in the sandbox
-//! this was written in -- see `contracts/casper/README.md`). Written
-//! carefully against documented casper-contract 5.1.1 / casper-types
-//! 7.0.0 patterns, but treat as unverified until CI's build job (which
-//! *can* install the wasm32 target) confirms it, the same iterate-on-
+//! Compiles and links cleanly against the Casper Virtual Machine target
+//! (wasm32-unknown-unknown) -- confirmed via a green CI run (commit
+//! f4d1c2c, `contracts-casper` job). This was originally written and
+//! iterated on in a sandbox that couldn't compile Rust to wasm32 at all
+//! (see `contracts/casper/README.md`'s "Sandbox limitations" section
+//! for that history) -- getting to green took the same iterate-on-
 //! real-compiler-feedback approach that got contracts/tron's Hardhat 3
-//! migration green.
+//! migration there: casper-types 6.1.0's EntryPoints::add_entry_point()
+//! needing EntityEntryPoint rather than EntryPoint, and a missing
+//! `--allow-undefined` linker flag for the casper_* host-import
+//! functions, were both real, CI-caught issues, now fixed.
+//!
+//! Local-network integration test status (a separate concern from
+//! compiling) is tracked in contracts/casper/README.md, not here --
+//! don't infer it from this comment.
 //!
 //! The global allocator (dlmalloc) and panic handler just below replace
 //! casper-contract's default "no-std-helpers" feature (see the
-//! casper-contract dependency comment in Cargo.toml) -- this specific
-//! substitution couldn't be compile-checked here either, for the same
-//! wasm32-target reason above, though `#[global_allocator]` and
-//! `#[panic_handler]` are both ordinary stable-Rust attributes (unlike
-//! what they replace), so the risk profile is lower than the rest of
-//! this file's general unverified status.
+//! casper-contract dependency comment in Cargo.toml), dropping the
+//! unmaintained wee_alloc crate that feature pulled in (Dependabot
+//! flagged it critical -- GHSA-rc23-xxgq-x27g). Also confirmed working
+//! by the same green build.
 
 #![no_std]
 #![no_main]
