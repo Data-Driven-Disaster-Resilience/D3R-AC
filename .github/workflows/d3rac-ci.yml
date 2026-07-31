@@ -388,7 +388,7 @@ jobs:
             # environment's network allowlist, so surface the real
             # compiler output via a workflow annotation instead, which
             # is reachable through the check-runs API.
-            ENCODED=$(grep -B2 -A25 -E '^error' cargo-build-output.log | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 9000)
+            ENCODED=$(sed 's/\x1b\[[0-9;]*m//g' cargo-build-output.log | grep -B2 -A25 -E '^error' | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 9000)
             echo "::error::CASPER_BUILD_FAILURE_TAIL: ${ENCODED}"
             exit 1
           fi
@@ -423,7 +423,7 @@ jobs:
           # risk-registry's own source -- it only loads the already-
           # compiled .wasm staged above.
           if ! cargo test --release -p risk-registry-tests 2>&1 | tee cargo-test-output.log; then
-            ENCODED=$(grep -B2 -A25 -E '^error' cargo-test-output.log | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 9000)
+            ENCODED=$(sed 's/\x1b\[[0-9;]*m//g' cargo-test-output.log | grep -B2 -A25 -E '^error' | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 9000)
             echo "::error::CASPER_TEST_FAILURE_TAIL: ${ENCODED}"
             exit 1
           fi
