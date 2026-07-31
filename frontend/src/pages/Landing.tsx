@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import RiskPulseGrid from "../components/RiskPulseGrid";
 
 const LAYERS = [
