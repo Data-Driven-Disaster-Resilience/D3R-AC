@@ -1,11 +1,11 @@
 # D3R·AC — Casper Contract Suite
 
-**Status: early, unverified, in progress.** This is not a parallel,
-complete implementation of the TRON suite yet — it's the first
-contract of seven, written carefully against documented patterns but
-**not yet confirmed to compile**, let alone tested against a local
-Casper network or deployed to testnet. See "What's actually done"
-below for the honest breakdown, and
+**Status: early, in progress — but the first contract now compiles.**
+This is not a parallel, complete implementation of the TRON suite yet
+— it's one contract of seven (`risk-registry`), now confirmed to build
+against `wasm32-unknown-unknown` in real CI, but not yet tested against
+a local Casper network, not deployed to testnet, and not audited. See
+"What's actually done" below for the honest, itemized breakdown, and
 [`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md)
 for the full requirements this suite is being built against.
 
@@ -63,7 +63,18 @@ one `casper-types` version now resolves across the whole graph.
       is the SRS's own pick for "start here" — standalone, no
       dependency on any other contract in the suite.
 - [x] CI job to actually attempt a `wasm32-unknown-unknown` build
-- [ ] **Confirmed compiling** — pending first real CI run
+- [x] **Confirmed compiling** — `risk-registry.wasm` builds successfully
+      against `wasm32-unknown-unknown` in CI (`contracts-casper` job,
+      commit `f4d1c2c`). Reached through several real, CI-verified
+      iteration rounds (casper-types version conflicts, `EntryPoint`
+      import paths, the addressable-entity `EntryPointType`/
+      `EntityEntryPoint` naming, an unmaintained `wee_alloc` dependency
+      swapped for `dlmalloc`, `wasm-ld` undefined-symbol errors) — the
+      same iterate-on-real-compiler-feedback approach that got
+      `contracts/tron`'s Hardhat 3 migration green, and worth noting:
+      this file ended up being worked on by two parallel Claude
+      sessions (this one, and a separate Claude Code session) across
+      that iteration, which is *why* it converged as fast as it did.
 - [ ] Unit/integration tests against a local Casper network
       (`casper-engine-test-support`)
 - [ ] The other six contracts (`D3RACToken`/CEP-18, `IdentityRegistry`,
