@@ -75,7 +75,14 @@ one `casper-types` version now resolves across the whole graph.
       this file ended up being worked on by two parallel Claude
       sessions (this one, and a separate Claude Code session) across
       that iteration, which is *why* it converged as fast as it did.
-- [ ] Unit/integration tests against a local Casper network
+- [ ] Unit/integration tests against a local Casper network — written
+      (`risk-registry/tests/integration_tests.rs`: install, community
+      registration + duplicate-rejection, risk-score computation,
+      non-feeder rejection) and wired into CI, but **not yet confirmed
+      passing** — same disclosed uncertainty as every round of
+      `src/main.rs` fixes so far: the exact
+      `casper-engine-test-support` 8.1.1 API under the addressable-
+      entity model couldn't be locally verified, pending a real CI run
       (`casper-engine-test-support`)
 - [ ] The other six contracts (`D3RACToken`/CEP-18, `IdentityRegistry`,
       `DisbursementController`, `MultiSigAdmin`, `D3RACHub`,

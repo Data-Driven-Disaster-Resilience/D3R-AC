@@ -388,10 +388,30 @@ jobs:
             exit 1
           fi
 
+      - name: Stage compiled Wasm for integration tests
+        if: steps.check.outputs.exists == 'true'
+        working-directory: contracts/casper
+        run: |
+          # casper-engine-test-support's ExecuteRequestBuilder looks for
+          # compiled .wasm files in a conventional wasm/ dir relative to
+          # the test binary's own package directory (the same convention
+          # Casper's own tutorial Makefiles use) -- not the
+          # target/wasm32-unknown-unknown/release/ build output path
+          # directly.
+          mkdir -p risk-registry/wasm
+          cp target/wasm32-unknown-unknown/release/risk-registry.wasm risk-registry/wasm/
+
       - name: Run native-target unit/integration tests
         if: steps.check.outputs.exists == 'true'
         working-directory: contracts/casper
-        run: cargo test --release
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! cargo test --release 2>&1 | tee cargo-test-output.log; then
+            ENCODED=$(tail -c 5000 cargo-test-output.log | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 10000)
+            echo "::error::CASPER_TEST_FAILURE_TAIL: ${ENCODED}"
+            exit 1
+          fi
 
       - name: Upload compiled Wasm artifacts
         if: steps.check.outputs.exists == 'true'
