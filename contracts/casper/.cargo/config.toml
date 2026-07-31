@@ -1,0 +1,11 @@
+[target.wasm32-unknown-unknown]
+# casper-contract's ext_ffi.rs declares the Casper host functions
+# (casper_read_value, casper_write, casper_dictionary_put, etc.) as plain
+# `extern "C"` blocks -- by design, these stay unresolved at build time
+# and get satisfied by the Casper runtime's host import object at deploy/
+# execution, the same pattern used across WASM smart-contract ecosystems
+# generally (not casper-specific). wasm-ld's default treats any
+# unresolved symbol as a hard link error unless told otherwise;
+# --allow-undefined is what tells it these particular ones are
+# legitimate WASM imports, not missing code.
+rustflags = ["-C", "link-args=--allow-undefined"]
