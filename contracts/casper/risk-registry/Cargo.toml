@@ -12,7 +12,16 @@ doctest = false
 test = false
 
 [dependencies]
-casper-contract = "5.1.1"
+# default-features = false: casper-contract's default feature set includes
+# "no-std-helpers", which pulls in wee_alloc as the global allocator.
+# wee_alloc is unmaintained (GHSA-rc23-xxgq-x27g, flagged critical by
+# Dependabot) and its own handler module additionally requires nightly
+# Rust (`#![feature(alloc_error_handler, core_intrinsics, lang_items)]`,
+# gated behind that same feature) -- incompatible with this project's CI,
+# which installs the *stable* toolchain (dtolnay/rust-toolchain@stable).
+# main.rs supplies its own global allocator (dlmalloc) and panic handler
+# instead, both stable-Rust-compatible.
+casper-contract = { version = "5.1.1", default-features = false }
 # casper-contract 5.1.1 requires casper-types ^6.0.1 (confirmed via
 # crates.io's own dependency listing) -- NOT 7.0.0, despite that being
 # the version this project's own prior notes said was pinned. Using
@@ -24,6 +33,13 @@ casper-contract = "5.1.1"
 # compatible with casper-contract 5.1.1.
 casper-types = "6.1.0"
 casper-event-standard = "0.7.0"
+# Global allocator for the no_std/wasm32 build (see casper-contract note
+# above). Maintained under the rust-lang org -- it's the same allocator
+# rustc's own std uses internally for the wasm32-unknown-unknown target
+# -- and stable-Rust compatible (implements the stable GlobalAlloc trait,
+# no unstable attributes required), unlike casper-contract's own
+# no-std-helpers handlers.
+dlmalloc = { version = "0.2.14", features = ["global"] }
 
 [dev-dependencies]
 # casper-execution-engine deliberately not listed here yet: no test

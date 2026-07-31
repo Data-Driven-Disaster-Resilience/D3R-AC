@@ -36,11 +36,40 @@
 //! *can* install the wasm32 target) confirms it, the same iterate-on-
 //! real-compiler-feedback approach that got contracts/tron's Hardhat 3
 //! migration green.
+//!
+//! The global allocator (dlmalloc) and panic handler just below replace
+//! casper-contract's default "no-std-helpers" feature (see the
+//! casper-contract dependency comment in Cargo.toml) -- this specific
+//! substitution couldn't be compile-checked here either, for the same
+//! wasm32-target reason above, though `#[global_allocator]` and
+//! `#[panic_handler]` are both ordinary stable-Rust attributes (unlike
+//! what they replace), so the risk profile is lower than the rest of
+//! this file's general unverified status.
 
 #![no_std]
 #![no_main]
 
 extern crate alloc;
+
+// Global allocator + panic handler, both stable-Rust compatible (see the
+// casper-contract dependency comment in Cargo.toml for why these are
+// defined here instead of relying on casper-contract's "no-std-helpers"
+// default feature, which pulled in the unmaintained wee_alloc crate and
+// required nightly Rust).
+#[global_allocator]
+static ALLOC: dlmalloc::GlobalDlmalloc = dlmalloc::GlobalDlmalloc;
+
+// #[panic_handler] itself is stable (unlike #[alloc_error_handler]/
+// lang_items, which casper-contract's own handler needed). No OOM handler
+// is defined here: `alloc`'s own built-in default abort-on-OOM handler
+// (stable since Rust 1.68) covers that without the unstable attribute.
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    #[cfg(target_arch = "wasm32")]
+    core::arch::wasm32::unreachable();
+    #[cfg(not(target_arch = "wasm32"))]
+    loop {}
+}
 
 use alloc::string::{String, ToString};
 use alloc::vec;
