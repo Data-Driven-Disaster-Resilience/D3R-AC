@@ -14,9 +14,10 @@ export default function NavBar() {
   className="container nav-row"
   style={{
     rowGap: 12,
+    flexWrap: "wrap",
   }}
 >
-        <NavLink to="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+         <NavLink to="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(18px, 4vw, 22px)", letterSpacing: "-0.01em" }}>
             D3R<span style={{ color: "var(--amber)" }}>·</span>AC
           </span>
