@@ -1520,10 +1520,17 @@ name = "risk-registry"
 version = "0.1.0"
 dependencies = [
  "casper-contract",
- "casper-engine-test-support",
  "casper-event-standard",
  "casper-types",
  "dlmalloc",
+]
+
+[[package]]
+name = "risk-registry-tests"
+version = "0.1.0"
+dependencies = [
+ "casper-engine-test-support",
+ "casper-types",
 ]
 
 [[package]]

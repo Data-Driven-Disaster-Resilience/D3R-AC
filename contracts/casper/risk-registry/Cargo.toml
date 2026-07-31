@@ -41,12 +41,16 @@ casper-event-standard = "0.7.0"
 # no-std-helpers handlers.
 dlmalloc = { version = "0.2.14", features = ["global"] }
 
-[dev-dependencies]
-# casper-execution-engine deliberately not listed here yet: no test
-# files exist in this package yet (see contracts/casper/README.md's
-# status list), and its current version pulls in casper-storage ->
-# casper-types 7.0.0 transitively, conflicting with the 6.1.0 this
-# package's actual dependencies need (casper-contract 5.1.1 requires
-# casper-types ^6.0.1). Add it back, version-aligned, when real test
-# code needs it.
-casper-engine-test-support = "8.1.1"
+# No [dev-dependencies]/tests here deliberately: this package's
+# `[[bin]]` is `#![no_std]` with its own `#[panic_handler]`, built only
+# for wasm32-unknown-unknown. Building it for the native host target --
+# which `cargo test` does by default for every workspace member unless
+# scoped away -- collides with the native toolchain's own panic
+# handler (confirmed via a real CI error: "duplicate lang item
+# `panic_impl`"). Integration tests live in the separate
+# `risk-registry-tests` workspace package instead, which loads the
+# already-compiled risk-registry.wasm from disk rather than ever
+# recompiling this crate's source for a non-wasm32 target -- the same
+# pattern every real-world Casper contract test suite in the ecosystem
+# uses (see e.g. casper-ecosystem/erc20's separate `erc20-test`/
+# `erc20-test-call` packages).

@@ -76,9 +76,16 @@ one `casper-types` version now resolves across the whole graph.
       sessions (this one, and a separate Claude Code session) across
       that iteration, which is *why* it converged as fast as it did.
 - [ ] Unit/integration tests against a local Casper network — written
-      (`risk-registry/tests/integration_tests.rs`: install, community
-      registration + duplicate-rejection, risk-score computation,
-      non-feeder rejection) and wired into CI, but **not yet confirmed
+      (`risk-registry-tests/tests/integration_tests.rs`: install,
+      community registration + duplicate-rejection, risk-score
+      computation, non-feeder rejection), in their own workspace
+      package deliberately (not `risk-registry/tests/`) — building
+      `risk-registry`'s `#![no_std]` binary for the native host target,
+      which `cargo test` does by default for every workspace member
+      unless scoped away, collided with the native toolchain's own
+      panic handler (a real, confirmed CI error: "duplicate lang item
+      `panic_impl`"). Wired into CI (scoped per-package for both the
+      wasm32 build and the native test run), but **not yet confirmed
       passing** — same disclosed uncertainty as every round of
       `src/main.rs` fixes so far: the exact
       `casper-engine-test-support` 8.1.1 API under the addressable-

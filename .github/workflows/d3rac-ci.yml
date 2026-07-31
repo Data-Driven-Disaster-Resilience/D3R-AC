@@ -376,7 +376,12 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          if ! cargo build --release --target wasm32-unknown-unknown 2>&1 | tee cargo-build-output.log; then
+          # Scoped to -p risk-registry deliberately: risk-registry-tests
+          # (this workspace's other member) depends on
+          # casper-engine-test-support, which isn't wasm32-compatible --
+          # building the whole workspace for this target would fail on
+          # that package, not just risk-registry itself.
+          if ! cargo build --release --target wasm32-unknown-unknown -p risk-registry 2>&1 | tee cargo-build-output.log; then
             # Same technique used to diagnose the Hardhat 3 migration:
             # raw job logs and artifact downloads both redirect through
             # an Azure Blob host outside this project's usual working
@@ -395,11 +400,11 @@ jobs:
           # casper-engine-test-support's ExecuteRequestBuilder looks for
           # compiled .wasm files in a conventional wasm/ dir relative to
           # the test binary's own package directory (the same convention
-          # Casper's own tutorial Makefiles use) -- not the
-          # target/wasm32-unknown-unknown/release/ build output path
-          # directly.
-          mkdir -p risk-registry/wasm
-          cp target/wasm32-unknown-unknown/release/risk-registry.wasm risk-registry/wasm/
+          # Casper's own tutorial Makefiles use) -- risk-registry-tests'
+          # own directory now that tests live in that separate package,
+          # not target/wasm32-unknown-unknown/release/ directly.
+          mkdir -p risk-registry-tests/wasm
+          cp target/wasm32-unknown-unknown/release/risk-registry.wasm risk-registry-tests/wasm/
 
       - name: Run native-target unit/integration tests
         if: steps.check.outputs.exists == 'true'
@@ -407,7 +412,17 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          if ! cargo test --release 2>&1 | tee cargo-test-output.log; then
+          # Scoped to -p risk-registry-tests deliberately: risk-registry
+          # itself is #![no_std] with its own #[panic_handler], built
+          # only for wasm32-unknown-unknown (see risk-registry/Cargo.toml's
+          # comment) -- building it for the native host target, which
+          # `cargo test` does for every workspace member by default,
+          # collides with the native toolchain's own panic handler
+          # (confirmed via a real CI error: "duplicate lang item
+          # panic_impl"). risk-registry-tests never touches
+          # risk-registry's own source -- it only loads the already-
+          # compiled .wasm staged above.
+          if ! cargo test --release -p risk-registry-tests 2>&1 | tee cargo-test-output.log; then
             ENCODED=$(tail -c 5000 cargo-test-output.log | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 10000)
             echo "::error::CASPER_TEST_FAILURE_TAIL: ${ENCODED}"
             exit 1
