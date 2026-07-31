@@ -27,7 +27,7 @@
 use casper_engine_test_support::{
     ExecuteRequestBuilder, LmdbWasmTestBuilder, DEFAULT_ACCOUNT_ADDR, LOCAL_GENESIS_REQUEST,
 };
-use casper_types::{runtime_args, Key, RuntimeArgs};
+use casper_types::{runtime_args, Key};
 
 const CONTRACT_WASM: &str = "risk-registry.wasm";
 const CONTRACT_HASH_KEY_NAME: &str = "risk_registry_contract_hash";
@@ -74,7 +74,8 @@ fn install() -> LmdbWasmTestBuilder {
 
 fn contract_hash(builder: &LmdbWasmTestBuilder) -> casper_types::AddressableEntityHash {
     builder
-        .get_expected_account(*DEFAULT_ACCOUNT_ADDR)
+        .get_account(*DEFAULT_ACCOUNT_ADDR)
+        .expect("should have account")
         .named_keys()
         .get(CONTRACT_HASH_KEY_NAME)
         .expect("contract hash named key should exist after install")
