@@ -1,8 +1,7 @@
-//! Integration tests for `risk-registry`, run against an in-process
-//! Casper execution engine (`InMemoryWasmTestBuilder`) -- no real
-//! network or funded account needed, matching Casper's own documented
-//! testing pattern (see docs.casper.network's "Testing Smart
-//! Contracts").
+//! Integration tests for `risk-registry`, run against a local Casper
+//! execution engine (`LmdbWasmTestBuilder`) -- no real network or
+//! funded account needed, matching Casper's own documented testing
+//! pattern (see docs.casper.network's "Testing Smart Contracts").
 //!
 //! UNVERIFIED beyond local syntax review, same disclosure as every
 //! round of `src/main.rs` fixes so far in this suite's history: the
@@ -12,15 +11,21 @@
 //! the sandbox this was written in -- no `wasm32-unknown-unknown`
 //! target is reachable there. Written against the core pattern that's
 //! stayed stable across many versions of Casper's own docs
-//! (`ExecuteRequestBuilder`, `InMemoryWasmTestBuilder`,
-//! `DEFAULT_ACCOUNT_ADDR`, `.exec().expect_success().commit()`), to be
-//! confirmed or corrected by CI's real compiler/test-runner output --
-//! the same iterate-on-real-feedback loop that got `src/main.rs`
-//! itself compiling.
+//! (`ExecuteRequestBuilder`, a test builder, `DEFAULT_ACCOUNT_ADDR`,
+//! `.exec().expect_success().commit()`), to be confirmed or corrected
+//! by CI's real compiler/test-runner output -- the same
+//! iterate-on-real-feedback loop that got `src/main.rs` itself
+//! compiling. `InMemoryWasmTestBuilder` and `DEFAULT_RUN_GENESIS_REQUEST`
+//! (both from older docs/examples) don't exist in this pinned version;
+//! renamed to `LmdbWasmTestBuilder` / `LOCAL_GENESIS_REQUEST` per a real
+//! compiler suggestion (rustc's E0432 "help: a similar name exists in
+//! the module" is generated from the module's actual contents, not a
+//! guess) -- consistent with the addressable-entity model unifying
+//! contracts and accounts, which also appears to have folded the
+//! previously-separate in-memory/LMDB-backed builder variants into one.
 
 use casper_engine_test_support::{
-    ExecuteRequestBuilder, InMemoryWasmTestBuilder, DEFAULT_ACCOUNT_ADDR,
-    DEFAULT_RUN_GENESIS_REQUEST,
+    ExecuteRequestBuilder, LmdbWasmTestBuilder, DEFAULT_ACCOUNT_ADDR, LOCAL_GENESIS_REQUEST,
 };
 use casper_types::{runtime_args, Key, RuntimeArgs};
 
@@ -49,9 +54,9 @@ const DEFAULT_THRESHOLD: u64 = SCALE / 2;
 /// `call()`'s `runtime::get_caller()` logic) and the sole initial data
 /// feeder -- the simplest fixture that can exercise every entry point
 /// without a second funded account.
-fn install() -> InMemoryWasmTestBuilder {
-    let mut builder = InMemoryWasmTestBuilder::default();
-    builder.run_genesis(&*DEFAULT_RUN_GENESIS_REQUEST).commit();
+fn install() -> LmdbWasmTestBuilder {
+    let mut builder = LmdbWasmTestBuilder::default();
+    builder.run_genesis(LOCAL_GENESIS_REQUEST.clone()).commit();
 
     let install_request = ExecuteRequestBuilder::standard(
         *DEFAULT_ACCOUNT_ADDR,
@@ -67,15 +72,14 @@ fn install() -> InMemoryWasmTestBuilder {
     builder
 }
 
-fn contract_hash(builder: &InMemoryWasmTestBuilder) -> casper_types::ContractHash {
+fn contract_hash(builder: &LmdbWasmTestBuilder) -> casper_types::AddressableEntityHash {
     builder
         .get_expected_account(*DEFAULT_ACCOUNT_ADDR)
         .named_keys()
         .get(CONTRACT_HASH_KEY_NAME)
         .expect("contract hash named key should exist after install")
-        .into_hash()
-        .map(casper_types::ContractHash::new)
-        .expect("contract hash named key should resolve to a hash")
+        .into_entity_hash()
+        .expect("contract hash named key should resolve to an addressable entity hash")
 }
 
 #[test]
