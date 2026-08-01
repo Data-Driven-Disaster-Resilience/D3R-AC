@@ -14,6 +14,7 @@ export default function App() {
       <WalletProvider>
         <BrowserRouter>
           <NavBar />
+
           <main>
             <Routes>
               <Route path="/" element={<Landing />} />
@@ -22,6 +23,7 @@ export default function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
+
           <Footer />
         </BrowserRouter>
       </WalletProvider>

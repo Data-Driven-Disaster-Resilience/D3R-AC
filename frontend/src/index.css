@@ -183,6 +183,59 @@ button {
 }
 
 @media (max-width: 560px) {
-  .nav-row { justify-content: center; text-align: center; }
-  .nav-links { justify-content: center; gap: 16px; }
+  .nav-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .nav-links {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
+/* ===== Extra Mobile Improvements ===== */
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 18px;
+  }
+
+  .hero-grid {
+    gap: 32px;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .card {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 2.4rem !important;
+    line-height: 1.1 !important;
+  }
+
+  h2 {
+    font-size: 1.8rem !important;
+  }
+
+  p {
+    font-size: 15px;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  .nav-links {
+    gap: 12px;
+  }
 }
