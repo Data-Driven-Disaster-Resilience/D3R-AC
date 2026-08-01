@@ -10,7 +10,15 @@ export default function ChainSelector() {
   const currentAvailable = availableChains.find((c) => c.id === chainId)?.available ?? false;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+    width: "100%",
+  }}
+>
       <select
         value={chainId}
         onChange={(e) => setChain(e.target.value as ChainId)}
@@ -36,9 +44,10 @@ export default function ChainSelector() {
         <span className="pill" title={address}>
           <span className="dot" style={{ background: "var(--teal)" }} />
           {truncate(address)}
+
         </span>
       ) : currentAvailable ? (
-        <button className="btn btn-primary" onClick={connect} disabled={connecting}>
+        <button className="btn btn-primary" style={{ flex: "1 1 auto" }} onClick={connect} disabled={connecting}>
           {connecting ? "Connecting…" : "Connect wallet"}
         </button>
       ) : (
@@ -47,6 +56,7 @@ export default function ChainSelector() {
           target="_blank"
           rel="noreferrer"
           className="btn btn-ghost"
+style={{ flex: "1 1 auto", textAlign: "center" }}
           title={`${adapter.label} wallet not detected — install it to connect`}
         >
           Install {adapter.label} wallet

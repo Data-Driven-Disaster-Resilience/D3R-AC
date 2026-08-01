@@ -10,14 +10,25 @@ const LINKS = [
 export default function NavBar() {
   return (
     <header style={{ borderBottom: "1px solid var(--border-soft)", position: "sticky", top: 0, background: "rgba(10,15,26,0.85)", backdropFilter: "blur(8px)", zIndex: 20 }}>
-      <div className="container nav-row">
-        <NavLink to="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em" }}>
+      <div
+  className="container nav-row"
+  style={{
+    rowGap: 12,
+    flexWrap: "wrap",
+  }}
+>
+         <NavLink to="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(18px, 4vw, 22px)", letterSpacing: "-0.01em" }}>
             D3R<span style={{ color: "var(--amber)" }}>·</span>AC
           </span>
         </NavLink>
 
-        <nav className="nav-links">
+        <nav
+  className="nav-links"
+  style={{
+    alignItems: "center",
+  }}
+>
           {LINKS.map((l) => (
             <NavLink
               key={l.to}

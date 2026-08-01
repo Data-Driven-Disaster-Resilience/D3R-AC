@@ -25,14 +25,20 @@ export default function Landing() {
       <section className="container hero-grid" style={{ paddingTop: 64, paddingBottom: 48 }}>
         <div>
           <p className="eyebrow" style={{ marginBottom: 16 }}>Blockchain-powered disaster resilience</p>
-          <h1 style={{ fontSize: 48, lineHeight: 1.05, marginBottom: 20 }}>
+          <h1 style={{ fontSize: "clamp(2.5rem, 7vw, 4rem)", lineHeight: 1.05, marginBottom: 20 }}>
             Predict the crisis.<br />Disburse before it lands.
           </h1>
-          <p style={{ fontSize: 17, color: "var(--text-muted)", maxWidth: 480, marginBottom: 32 }}>
+          <p style={{ fontSize: 17, color: "var(--text-muted)", maxWidth: "100%", marginBottom: 32 }}>
             D3R·AC treats disaster relief as a data and infrastructure problem. On-chain smart
             contracts release funds by verified milestone — transparent, auditable, and fast.
           </p>
-          <div style={{ display: "flex", gap: 12 }}>
+          <div
+  style={{
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
+  }}
+>
             <Link to="/dashboard" className="btn btn-primary">View risk dashboard</Link>
             <Link to="/disburse" className="btn btn-ghost">Open disbursement console</Link>
           </div>
