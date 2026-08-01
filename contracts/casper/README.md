@@ -133,7 +133,41 @@ Requires a machine (or CI runner) that can actually target
 ```bash
 cd contracts/casper
 rustup target add wasm32-unknown-unknown
-cargo build --release --target wasm32-unknown-unknown
+cargo build --release --target wasm32-unknown-unknown -p risk-registry
+```
+
+**One required post-processing step, not optional.** Rust's default
+codegen for `wasm32-unknown-unknown` can emit "bulk memory operations"
+(`memory.copy`/`memory.fill` — via the `dlmalloc` allocator, or LLVM's
+own optimizer under this workspace's LTO release profile), which
+Casper's execution engine rejects outright at deploy time:
+`WasmPreprocessing(Deserialize("Bulk memory operations are not
+supported"))`. This is a known, tracked ecosystem gap (see
+[casper-network/casper-node#4367](https://github.com/casper-network/casper-node/issues/4367):
+"Modern compilers i.e. rust and golang are emitting these extensions
+by default"), not something specific to this contract's code —
+disabling the target-feature at the `rustc` level (see
+`.cargo/config.toml`) does **not** fix it, since the instructions can
+come from a prebuilt object blob bundled in the Rust toolchain's own
+sysroot for this target (confirmed via
+[rust-lang/rust#140971](https://github.com/rust-lang/rust/issues/140971),
+a real upstream issue about exactly this), immune to this crate's own
+`rustflags`.
+
+The fix: post-process the compiled `.wasm` with
+[Binaryen](https://github.com/WebAssembly/binaryen)'s `wasm-opt
+--llvm-memory-copy-fill-lowering`, which rewrites `memory.copy`/
+`memory.fill` into equivalent byte-loop instructions using only WASM
+MVP-compatible opcodes. This needs a newer Binaryen than most package
+managers currently ship (this flag needs v109+; e.g. Ubuntu noble's
+`apt` package is v108) — download a
+[recent release](https://github.com/WebAssembly/binaryen/releases)
+directly if your package manager's version is too old:
+
+```bash
+wasm-opt target/wasm32-unknown-unknown/release/risk-registry.wasm \
+  --enable-bulk-memory --llvm-memory-copy-fill-lowering -Oz \
+  -o target/wasm32-unknown-unknown/release/risk-registry.wasm
 ```
 
 The compiled contract will be at

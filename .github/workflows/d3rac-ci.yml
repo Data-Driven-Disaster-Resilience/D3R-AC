@@ -399,6 +399,49 @@ jobs:
             exit 1
           fi
 
+      - name: Lower Wasm bulk-memory ops (Casper engine compatibility)
+        if: steps.check.outputs.exists == 'true'
+        working-directory: contracts/casper
+        run: |
+          # Rust's default codegen for wasm32-unknown-unknown can emit
+          # "bulk memory operations" (memory.copy/memory.fill) -- e.g.
+          # via the dlmalloc allocator, or LLVM's own optimizer under
+          # LTO -- which Casper's execution engine rejects outright
+          # during deploy validation:
+          #   WasmPreprocessing(Deserialize("Bulk memory operations are
+          #   not supported"))
+          # This is a known, tracked ecosystem gap (see
+          # casper-network/casper-node#4367: "Modern compilers i.e.
+          # rust and golang are emitting these extensions by default"),
+          # not something specific to this contract's code. Disabling
+          # the target-feature at the rustc level (see
+          # .cargo/config.toml) does NOT fix this: the actual bulk-memory
+          # instructions can come from a prebuilt object blob bundled in
+          # the Rust toolchain's own sysroot for this target, immune to
+          # this crate's own rustflags (confirmed via
+          # rust-lang/rust#140971, a real upstream issue about exactly
+          # this).
+          #
+          # The fix instead: post-process the compiled .wasm with
+          # Binaryen's wasm-opt --llvm-memory-copy-fill-lowering, which
+          # rewrites memory.copy/memory.fill into equivalent byte-loop
+          # instructions using only WASM MVP-compatible opcodes, and
+          # clears the bulk-memory requirement from the output module.
+          # Verified empirically against a synthetic test module before
+          # relying on it here.
+          #
+          # This specific flag needs a newer Binaryen than what apt
+          # currently ships (Ubuntu noble's binaryen package is v108;
+          # the flag needs v109+) -- downloading the latest release
+          # directly from GitHub instead.
+          BINARYEN_VERSION=version_129
+          curl -sL "https://github.com/WebAssembly/binaryen/releases/download/${BINARYEN_VERSION}/binaryen-${BINARYEN_VERSION}-x86_64-linux.tar.gz" -o /tmp/binaryen.tar.gz
+          tar -xzf /tmp/binaryen.tar.gz -C /tmp
+          WASM_OPT="/tmp/binaryen-${BINARYEN_VERSION}/bin/wasm-opt"
+
+          WASM_PATH="target/wasm32-unknown-unknown/release/risk-registry.wasm"
+          "$WASM_OPT" "$WASM_PATH" --enable-bulk-memory --llvm-memory-copy-fill-lowering -Oz -o "$WASM_PATH"
+
       - name: Stage compiled Wasm for integration tests
         if: steps.check.outputs.exists == 'true'
         working-directory: contracts/casper
