@@ -366,9 +366,15 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             contracts/casper/target
-          key: ${{ runner.os }}-cargo-casper-${{ hashFiles('contracts/casper/**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-casper-
+          key: ${{ runner.os }}-cargo-casper-${{ hashFiles('contracts/casper/**/Cargo.lock', 'contracts/casper/.cargo/config.toml') }}
+          # No restore-keys fallback right now, deliberately: a fuzzy
+          # prefix-match fallback would still restore a cache entry
+          # built before the bulk-memory rustflag fix, which is exactly
+          # what's suspected of causing the previous run's identical,
+          # unchanged failure despite that real fix. Guarantees a fully
+          # clean rebuild this round to know for certain whether the
+          # flag actually works, at the cost of one slower CI run.
+          # Re-add a restore-keys fallback once this is confirmed.
 
       - name: Build contracts (wasm32-unknown-unknown)
         if: steps.check.outputs.exists == 'true'
