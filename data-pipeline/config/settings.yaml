@@ -1,0 +1,39 @@
+# D3R·AC data-pipeline runtime settings.
+# Secrets (feeder private key, RPC credentials) are NEVER put in this file —
+# see .env.example. This file holds non-secret operational policy only.
+
+# FR-7: stale-data policy. If a community's hazard source hasn't returned
+# fresh data within `stale_after_hours`, the pipeline applies `stale_policy`:
+#   "hold_and_flag"     -> keep submitting the last-known H(t), but mark the
+#                          cycle log entry for that community as stale
+#   "stop_submitting"    -> skip on-chain submission for that community until
+#                          fresh data arrives
+stale_after_hours: 12
+stale_policy: hold_and_flag   # or: stop_submitting
+
+# How hazard sub-scores from multiple satellite/sensor adapters are combined
+# into a single H(t) in [0,1] per community. "max" means the single most
+# severe active signal (fire, quake, storm, flood...) drives H(t) for that
+# cycle, which matches how disaster response prioritization actually works
+# (you don't average a wildfire with a quiet season and call it "medium risk").
+hazard_combine_strategy: max   # or: weighted_mean
+
+hazard_weights:   # only used if hazard_combine_strategy == weighted_mean
+  satellite_fire: 1.0
+  seismic_usgs: 1.0
+  eonet_events: 1.0
+  gdacs_alerts: 1.0
+
+# Local state store (idempotency / change-detection, FR-2 + NFR-2). SQLite
+# file, created on first run.
+state_db_path: "./data-pipeline-state.sqlite3"
+
+# TRON chain config (non-secret parts only; feeder key comes from env).
+chain:
+  network: "shasta"          # shasta | nile | mainnet — see docs/deployment-guide.md
+  hub_address: ""            # fill in after Hub is deployed (see contracts/tron/README.md)
+  full_node: "https://api.shasta.trongrid.io"
+
+logging:
+  level: INFO
+  audit_log_path: "./data-pipeline-audit.log"   # NFR-3: source-data trace for every submitted value

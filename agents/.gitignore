@@ -1,0 +1,8 @@
+data/bus/*.jsonl
+node/node_modules/
+node/dist/
+python/*.egg-info/
+python/**/__pycache__/
+python/.pytest_cache/
+**/*.pyc
+node/src/config/generatedManifest.ts.bak

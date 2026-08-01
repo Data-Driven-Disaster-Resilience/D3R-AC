@@ -1,0 +1,94 @@
+version: 1
+project: d3rac-agents
+
+bus:
+  # "file" = zero-dependency local dev bus (JSONL under data/bus/). "redis" = production.
+  transport: file
+  file:
+    dir: data/bus
+  redis:
+    url: redis://localhost:6379
+  channel_prefix: d3rac
+
+# Every agent in the fleet is declared here, and ONLY here.
+# `scripts/build_manifest.py` codegens typed constants for both runtimes from this file,
+# so Python and Node can never disagree about an agent id or topic name.
+agents:
+  - id: hazard-ingestor
+    runtime: python
+    kind: data
+    entrypoint: d3rac_agents.hazard_agent:HazardAgent
+    description: Ingests hazard-probability signals (weather, seismic, flood feeds).
+    publishes: [hazard.signal]
+
+  - id: exposure-scorer
+    runtime: python
+    kind: data
+    entrypoint: d3rac_agents.exposure_agent:ExposureAgent
+    description: Computes exposure factor E(c) per community from population/asset data.
+    subscribes: [community.registry]
+    publishes: [exposure.score]
+
+  - id: vulnerability-scorer
+    runtime: python
+    kind: data
+    entrypoint: d3rac_agents.vulnerability_agent:VulnerabilityAgent
+    description: Computes vulnerability index V(c) from infrastructure + socioeconomic data.
+    subscribes: [community.registry]
+    publishes: [vulnerability.index]
+
+  - id: risk-model
+    runtime: python
+    kind: analysis
+    entrypoint: d3rac_agents.risk_model:RiskModelAgent
+    description: "Implements R(c,t) = H(t) * E(c) * V(c); fires when R crosses theta."
+    subscribes: [hazard.signal, exposure.score, vulnerability.index]
+    publishes: [risk.score]
+    config:
+      # NOTE: 0.15 is tuned only so the bundled sample data demonstrates a full
+      # trigger -> coordination -> alert -> contract-trigger run end-to-end via
+      # `make dev`. Recalibrate against real hazard/exposure/vulnerability data
+      # before using this in anything resembling production.
+      theta: 0.15
+
+  - id: brainbox
+    runtime: python
+    kind: analysis
+    entrypoint: d3rac_agents.brainbox:BrainboxAgent
+    description: >
+      Central LLM-backed controller. Reasons over all triggered risk.score events with
+      Claude and publishes one authoritative brainbox.directive per community, which
+      response-coordinator/community-alerter/contract-trigger read first (falling back
+      to their own built-in rules if brainbox produced no directive for that community).
+    subscribes: [risk.score]
+    publishes: [brainbox.directive]
+    config:
+      model: claude-sonnet-4-6
+      requires_env: ANTHROPIC_API_KEY
+
+  - id: response-coordinator
+    runtime: node
+    kind: coordination
+    entrypoint: agents/coordinationAgent
+    description: Drafts a milestone-based response plan once risk crosses threshold.
+    subscribes: [risk.score, brainbox.directive]
+    publishes: [response.plan]
+
+  - id: community-alerter
+    runtime: node
+    kind: coordination
+    entrypoint: agents/alertAgent
+    description: Notifies NGO/community coordinator channels (zero blockchain literacy required).
+    subscribes: [risk.score, response.plan, brainbox.directive]
+    publishes: [alert.sent]
+
+  - id: contract-trigger
+    runtime: node
+    kind: coordination
+    entrypoint: agents/contractTriggerAgent
+    description: Calls into TRON/Casper contracts to release milestone-based funds.
+    subscribes: [response.plan, brainbox.directive]
+    publishes: [fund.release.requested]
+    config:
+      tron_contracts_dir: contracts/tron
+      casper_contracts_dir: contracts/casper

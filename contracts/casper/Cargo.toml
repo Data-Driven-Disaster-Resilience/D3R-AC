@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = ["risk-registry", "risk-registry-tests"]
+
+[workspace.package]
+edition = "2021"
+license-file = "../../LICENSE"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"       # Wasm binary size is a direct cost (storage rent /
+                        # deploy payment) on Casper, unlike TRON/EVM gas,
+                        # which prices execution but not code size the
+                        # same way -- optimize for size, not speed.
+panic = "abort"        # No unwind support needed (or meaningfully usable)
+                        # in a no_std wasm contract; also removes any need
+                        # for an eh_personality lang item, which used to
+                        # come from casper-contract's no-std-helpers.

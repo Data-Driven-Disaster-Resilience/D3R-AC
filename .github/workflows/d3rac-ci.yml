@@ -32,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       contracts: ${{ steps.filter.outputs.contracts }}
+      contracts_casper: ${{ steps.filter.outputs.contracts_casper }}
       frontend: ${{ steps.filter.outputs.frontend }}
       data_pipeline: ${{ steps.filter.outputs.data_pipeline }}
     steps:
@@ -49,6 +50,8 @@ jobs:
           filters: |
             contracts:
               - 'contracts/tron/**'
+            contracts_casper:
+              - 'contracts/casper/**'
             frontend:
               - 'frontend/**'
             data_pipeline:
@@ -86,9 +89,14 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         run: npm install -g tronbox
 
+      - name: Install local dependencies
+        if: steps.check.outputs.exists == 'true'
+        working-directory: contracts/tron/tronbox
+        run: npm install
+
       - name: Compile TRON contracts
         if: steps.check.outputs.exists == 'true'
-        working-directory: contracts/tron
+        working-directory: contracts/tron/tronbox
         run: tronbox compile
 
       - name: Upload compiled artifacts
@@ -96,7 +104,60 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tron-build-artifacts
-          path: contracts/tron/build/
+          path: contracts/tron/tronbox/build/
+
+  # ---------------------------------------------------------------
+  # 1b. Contract logic tests (Hardhat) — see
+  #     contracts/tron/hardhat.config.js for why Hardhat is used
+  #     here instead of TronBox: these contracts use no TRON-specific
+  #     precompiles/opcodes, so they're exactly as testable against a
+  #     standard EVM. This does NOT replace a manual TronBox/testnet
+  #     pass before mainnet (see docs/deployment-guide.md).
+  #
+  #     Hardhat 3 requires "type": "module" AND requires its sources to
+  #     live inside its own project directory -- so Hardhat stays flat
+  #     at contracts/tron/, and TronBox (which needs a CommonJS config)
+  #     is nested instead, in contracts/tron/tronbox/, as its own
+  #     isolated package. contracts/tron/contracts is a symlink to
+  #     contracts/tron/tronbox/contracts (the real, physical directory)
+  #     -- one source of truth, referenced two ways, so each tool's
+  #     "sources must be inside my project root" check independently
+  #     passes.
+  # ---------------------------------------------------------------
+  contracts-test:
+    name: Contract Logic Tests (Hardhat)
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check test suite exists
+        id: check
+        run: |
+          if [ -f "contracts/tron/package.json" ] && [ -d "contracts/tron/test" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::contracts/tron has no test suite yet — skipping."
+          fi
+
+      - name: Set up Node.js
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        if: steps.check.outputs.exists == 'true'
+        working-directory: contracts/tron
+        run: npm install
+
+      - name: Run Hardhat test suite
+        if: steps.check.outputs.exists == 'true'
+        working-directory: contracts/tron
+        run: npx hardhat test
 
   # ---------------------------------------------------------------
   # 2. Solidity static analysis / linting (security hygiene)
@@ -135,7 +196,7 @@ jobs:
       - name: Run solhint
         if: steps.check.outputs.exists == 'true'
         working-directory: contracts/tron
-        run: solhint '**/*.sol' || true
+        run: solhint 'contracts/**/*.sol' || true
 
   # ---------------------------------------------------------------
   # 3. Frontend build & test (community access layer)
@@ -261,26 +322,144 @@ jobs:
         # visibility, no GitHub Marketplace Action license needed.
 
   # ---------------------------------------------------------------
+  # 5b. Smart contract compile check (Casper, Rust/WASM)
+  #     See contracts/casper/README.md. Unlike contracts/tron's Hardhat
+  #     job, this can't be verified at all in the sandbox this suite was
+  #     written in -- no wasm32-unknown-unknown Rust target is available
+  #     there (rustup's installer domain isn't reachable, and apt
+  #     doesn't package Rust cross-compile targets). This job is the
+  #     first real verification the Casper contracts get; treat early
+  #     failures here as expected first-pass feedback, the same way
+  #     contracts/tron's Hardhat 3 migration took several CI round-trips
+  #     to go green, not as a sign anything is unusually broken.
+  # ---------------------------------------------------------------
+  contracts-casper:
+    name: Contract Logic Build (Casper / Rust)
+    needs: changes
+    if: needs.changes.outputs.contracts_casper == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Casper contracts exist
+        id: check
+        run: |
+          if [ -f "contracts/casper/Cargo.toml" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::contracts/casper has no Cargo.toml yet — skipping."
+          fi
+
+      - name: Install Rust toolchain
+        if: steps.check.outputs.exists == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry and build artifacts
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            contracts/casper/target
+          key: ${{ runner.os }}-cargo-casper-${{ hashFiles('contracts/casper/**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-casper-
+
+      - name: Build contracts (wasm32-unknown-unknown)
+        if: steps.check.outputs.exists == 'true'
+        working-directory: contracts/casper
+        shell: bash
+        run: |
+          set -o pipefail
+          # Scoped to -p risk-registry deliberately: risk-registry-tests
+          # (this workspace's other member) depends on
+          # casper-engine-test-support, which isn't wasm32-compatible --
+          # building the whole workspace for this target would fail on
+          # that package, not just risk-registry itself.
+          if ! cargo build --release --target wasm32-unknown-unknown -p risk-registry 2>&1 | tee cargo-build-output.log; then
+            # Same technique used to diagnose the Hardhat 3 migration:
+            # raw job logs and artifact downloads both redirect through
+            # an Azure Blob host outside this project's usual working
+            # environment's network allowlist, so surface the real
+            # compiler output via a workflow annotation instead, which
+            # is reachable through the check-runs API.
+            ENCODED=$(sed 's/\x1b\[[0-9;]*m//g' cargo-build-output.log | grep -B2 -A25 -E '^error' | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 9000)
+            echo "::error::CASPER_BUILD_FAILURE_TAIL: ${ENCODED}"
+            exit 1
+          fi
+
+      - name: Stage compiled Wasm for integration tests
+        if: steps.check.outputs.exists == 'true'
+        working-directory: contracts/casper
+        run: |
+          # casper-engine-test-support's ExecuteRequestBuilder looks for
+          # compiled .wasm files in a conventional wasm/ dir relative to
+          # the test binary's own package directory (the same convention
+          # Casper's own tutorial Makefiles use) -- risk-registry-tests'
+          # own directory now that tests live in that separate package,
+          # not target/wasm32-unknown-unknown/release/ directly.
+          mkdir -p risk-registry-tests/wasm
+          cp target/wasm32-unknown-unknown/release/risk-registry.wasm risk-registry-tests/wasm/
+
+      - name: Run native-target unit/integration tests
+        if: steps.check.outputs.exists == 'true'
+        working-directory: contracts/casper
+        shell: bash
+        run: |
+          set -o pipefail
+          # Scoped to -p risk-registry-tests deliberately: risk-registry
+          # itself is #![no_std] with its own #[panic_handler], built
+          # only for wasm32-unknown-unknown (see risk-registry/Cargo.toml's
+          # comment) -- building it for the native host target, which
+          # `cargo test` does for every workspace member by default,
+          # collides with the native toolchain's own panic handler
+          # (confirmed via a real CI error: "duplicate lang item
+          # panic_impl"). risk-registry-tests never touches
+          # risk-registry's own source -- it only loads the already-
+          # compiled .wasm staged above.
+          if ! cargo test --release -p risk-registry-tests 2>&1 | tee cargo-test-output.log; then
+            ENCODED=$(sed 's/\x1b\[[0-9;]*m//g' cargo-test-output.log | grep -B2 -A25 -E '^error|panicked at' | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 9000)
+            echo "::error::CASPER_TEST_FAILURE_TAIL: ${ENCODED}"
+            exit 1
+          fi
+
+      - name: Upload compiled Wasm artifacts
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: casper-wasm-artifacts
+          path: contracts/casper/target/wasm32-unknown-unknown/release/*.wasm
+
+  # ---------------------------------------------------------------
   # 6. Summary job — single required status check for branch protection
   # ---------------------------------------------------------------
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [ changes, contracts-tron, contracts-lint, frontend, data-pipeline, secret-scan ]
+    needs: [ changes, contracts-tron, contracts-test, contracts-lint, contracts-casper, frontend, data-pipeline, secret-scan ]
     if: always()
     steps:
       - name: Report status
         run: |
           echo "Contracts changed:  ${{ needs.changes.outputs.contracts }}"
           echo "Contracts (TRON):   ${{ needs.contracts-tron.result }}"
+          echo "Contracts tests:    ${{ needs.contracts-test.result }}"
           echo "Contracts lint:     ${{ needs.contracts-lint.result }}"
+          echo "Contracts (Casper): ${{ needs.contracts-casper.result }}"
           echo "Frontend changed:   ${{ needs.changes.outputs.frontend }}"
           echo "Frontend:           ${{ needs.frontend.result }}"
           echo "Data pipeline:      ${{ needs.data-pipeline.result }}"
           echo "Secret scan:        ${{ needs.secret-scan.result }}"
 
           if [[ "${{ needs.contracts-tron.result }}" == "failure" ]] || \
+             [[ "${{ needs.contracts-test.result }}" == "failure" ]] || \
              [[ "${{ needs.contracts-lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.contracts-casper.result }}" == "failure" ]] || \
              [[ "${{ needs.frontend.result }}" == "failure" ]] || \
              [[ "${{ needs.data-pipeline.result }}" == "failure" ]] || \
              [[ "${{ needs.secret-scan.result }}" == "failure" ]]; then

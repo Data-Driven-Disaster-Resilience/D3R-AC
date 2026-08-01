@@ -1,0 +1,9 @@
+{
+  "name": "d3rac-tron-contracts-tronbox",
+  "private": true,
+  "version": "0.2.0",
+  "description": "TronBox project for D3R-AC's TRON contracts. Nested here, one level below ../package.json, deliberately: TronBox's config (tronbox-config.js) must stay CommonJS, while ../package.json is 'type': 'module' (required unconditionally by Hardhat 3, which lives at that level instead, since Hardhat 3 requires its sources inside its own project directory). Node resolves module type from the nearest package.json, so this directory boundary keeps the two tools' conflicting requirements from colliding. contracts_directory in tronbox-config.js points to '../contracts' -- the same .sol sources Hardhat tests against, so there's one source of truth for both tools.",
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

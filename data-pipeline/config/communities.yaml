@@ -1,0 +1,75 @@
+# Monitored communities for the D3R·AC data pipeline.
+#
+# `id` is the STABLE off-chain identifier this pipeline maps to an on-chain
+# bytes32 communityId (see src/d3rac_pipeline/community_id.py — it's the
+# keccak256 of this string, so never change an existing `id` once it has
+# been registered on-chain; add a new one instead).
+#
+# `bbox` is [min_lon, min_lat, max_lon, max_lat] — used to query satellite/
+# sensor sources (NASA FIRMS, USGS, EONET, GDACS) for events inside this
+# community's footprint. Keep boxes tight; a box that is too wide will pull
+# in hazard signal from neighboring communities and inflate H(t).
+#
+# `priority_region: africa` communities are always processed first in a
+# cycle and are never dropped if a run has to shed load; `global` is
+# processed after. This is the "prioritize Africa" behavior requested for
+# this pipeline — it does not mean non-African communities are ignored.
+#
+# exposure/vulnerability are static placeholders (see adapters/static_*.py)
+# pending the domain input flagged as an open decision in
+# docs/data-pipeline-srs.md §8. Update these numbers as real
+# geospatial/socioeconomic data becomes available.
+
+communities:
+  - id: kebbi-river-basin
+    name: "Kebbi River Basin"
+    region: "Kebbi, NG"
+    priority_region: africa
+    bbox: [3.6, 11.5, 4.6, 12.6]
+    exposure: 0.61
+    vulnerability: 0.58
+
+  - id: lokoja-confluence
+    name: "Lokoja Confluence"
+    region: "Kogi, NG"
+    priority_region: africa
+    bbox: [6.5, 7.5, 7.1, 8.1]
+    exposure: 0.70
+    vulnerability: 0.49
+
+  - id: maiduguri-corridor
+    name: "Maiduguri Corridor"
+    region: "Borno, NG"
+    priority_region: africa
+    bbox: [12.9, 11.6, 13.5, 12.2]
+    exposure: 0.66
+    vulnerability: 0.74
+
+  - id: port-harcourt-delta
+    name: "Port Harcourt Delta"
+    region: "Rivers, NG"
+    priority_region: africa
+    bbox: [6.7, 4.6, 7.3, 5.1]
+    exposure: 0.52
+    vulnerability: 0.35
+
+  - id: sokoto-frontier
+    name: "Sokoto Frontier"
+    region: "Sokoto, NG"
+    priority_region: africa
+    bbox: [4.7, 12.7, 5.5, 13.4]
+    exposure: 0.44
+    vulnerability: 0.51
+
+  - id: cross-river-uplands
+    name: "Cross River Uplands"
+    region: "Cross River, NG"
+    priority_region: africa
+    bbox: [8.2, 5.5, 9.2, 6.5]
+    exposure: 0.38
+    vulnerability: 0.31
+
+# Add more communities anywhere in the world by copying the block above.
+# Set priority_region to "global" for non-Africa communities; they will
+# still be monitored, just processed after every "africa" community in
+# each cycle (see pipeline.py's cycle-ordering logic).

@@ -1,0 +1,32 @@
+{
+  "name": "d3rac-agents-node",
+  "version": "0.1.0",
+  "description": "Coordination + contract-trigger AI agents for D3R.AC",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "ts-node src/orchestrator.ts",
+    "test": "jest",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "yaml": "^2.4.0"
+  },
+  "optionalDependencies": {
+    "redis": "^6.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^22.20.1",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.12",
+    "@types/jest": "^30.0.0",
+    "eslint": "^10.8.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "@typescript-eslint/eslint-plugin": "^8.65.0"
+  },
+  "overrides": {
+    "brace-expansion": "^5.0.8"
+  }
+}

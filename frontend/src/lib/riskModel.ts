@@ -27,13 +27,19 @@ export function riskTier(score: number): RiskTier {
   return "watch";
 }
 
-// Illustrative dataset standing in for the data-pipeline layer described
-// in the README, which is marked [TBD] there.
+// Illustrative fallback dataset, used by src/lib/dataFeed.ts whenever the
+// data-pipeline's live feed (frontend/public/data/communities.json,
+// written by data-pipeline/scripts/run_cycle.py) isn't reachable — see
+// data-pipeline/README.md. `id` values match the off-chain community
+// slugs in data-pipeline/config/communities.yaml so a live row and its
+// local milestone data (fundedMilestones/totalMilestones, which the
+// hazard pipeline doesn't compute — that's DisbursementController's job)
+// merge together correctly by id.
 export const COMMUNITIES: Community[] = [
-  { id: "c1", name: "Kebbi River Basin", region: "Kebbi, NG", hazard: 0.72, exposure: 0.61, vulnerability: 0.58, fundedMilestones: 1, totalMilestones: 4 },
-  { id: "c2", name: "Lokoja Confluence", region: "Kogi, NG", hazard: 0.55, exposure: 0.7, vulnerability: 0.49, fundedMilestones: 2, totalMilestones: 4 },
-  { id: "c3", name: "Maiduguri Corridor", region: "Borno, NG", hazard: 0.81, exposure: 0.66, vulnerability: 0.74, fundedMilestones: 0, totalMilestones: 5 },
-  { id: "c4", name: "Port Harcourt Delta", region: "Rivers, NG", hazard: 0.4, exposure: 0.52, vulnerability: 0.35, fundedMilestones: 3, totalMilestones: 3 },
-  { id: "c5", name: "Sokoto Frontier", region: "Sokoto, NG", hazard: 0.63, exposure: 0.44, vulnerability: 0.51, fundedMilestones: 1, totalMilestones: 4 },
-  { id: "c6", name: "Cross River Uplands", region: "Cross River, NG", hazard: 0.29, exposure: 0.38, vulnerability: 0.31, fundedMilestones: 2, totalMilestones: 2 },
+  { id: "kebbi-river-basin", name: "Kebbi River Basin", region: "Kebbi, NG", hazard: 0.72, exposure: 0.61, vulnerability: 0.58, fundedMilestones: 1, totalMilestones: 4 },
+  { id: "lokoja-confluence", name: "Lokoja Confluence", region: "Kogi, NG", hazard: 0.55, exposure: 0.7, vulnerability: 0.49, fundedMilestones: 2, totalMilestones: 4 },
+  { id: "maiduguri-corridor", name: "Maiduguri Corridor", region: "Borno, NG", hazard: 0.81, exposure: 0.66, vulnerability: 0.74, fundedMilestones: 0, totalMilestones: 5 },
+  { id: "port-harcourt-delta", name: "Port Harcourt Delta", region: "Rivers, NG", hazard: 0.4, exposure: 0.52, vulnerability: 0.35, fundedMilestones: 3, totalMilestones: 3 },
+  { id: "sokoto-frontier", name: "Sokoto Frontier", region: "Sokoto, NG", hazard: 0.63, exposure: 0.44, vulnerability: 0.51, fundedMilestones: 1, totalMilestones: 4 },
+  { id: "cross-river-uplands", name: "Cross River Uplands", region: "Cross River, NG", hazard: 0.29, exposure: 0.38, vulnerability: 0.31, fundedMilestones: 2, totalMilestones: 2 },
 ];

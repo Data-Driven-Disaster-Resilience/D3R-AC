@@ -4,13 +4,14 @@ This guide covers deploying D3R·AC's two deployable pieces: TRON smart
 contracts and the frontend. **Read the [Security](#security-checklist)
 section before deploying anything with real funds.**
 
-> **Status note:** as of this writing, no contract source is committed to
-> this repository yet (see [`contracts/tron/README.md`](../contracts/tron/README.md)).
-> The steps below describe the general TRON deployment process this
-> project will use once contracts land here — treat it as a process
-> reference, not confirmation that a deployable contract currently exists
-> in this repo. The frontend deployment section reflects what's actually
-> built.
+> **Status note:** contract source (seven contracts), a passing logic
+> test suite (83 tests, see
+> [`contracts/tron/README.md`](../contracts/tron/README.md)), and a
+> working TronBox compile config all exist now — but there is still no
+> testnet deployment and no professional audit. The steps below describe
+> the process this project will use for that next step; treat this as a
+> process reference, not confirmation of a currently-deployed contract.
+> The frontend deployment section reflects what's actually built.
 
 ## Smart contracts (TRON)
 
@@ -44,13 +45,30 @@ moves real disaster-relief funds, and testnet is free.
 
 ### Deploying with TronBox
 
+`contracts/tron/tronbox/tronbox-config.js` has `shasta`/`nile` network
+entries already, and `contracts/tron/tronbox/migrations/2_deploy_d3rac.js`
+deploys the full contract suite and performs the complete Hub-wiring
+sequence (see `contracts/tron/README.md`'s "Wiring the Hub" section) in
+one run, ending with `D3RACHub`'s admin handed to a freshly-deployed
+`MultiSigAdmin`. Don't run `tronbox init` over any of this — it already
+exists.
+
 ```bash
+cd contracts/tron/tronbox
 npm install -g tronbox
-tronbox init
-# configure network + private key in tronbox-config.js (see Security below)
+npm install                      # installs dotenv, used by tronbox-config.js
+cp .env.example .env             # fill in your deploy key + multisig config
 tronbox compile
 tronbox migrate --network shasta
 ```
+
+`.env` needs, at minimum, `TRON_PRIVATE_KEY_SHASTA` (or `_NILE`) and
+`MULTISIG_OWNERS`/`MULTISIG_THRESHOLD` — the migration deliberately
+refuses to run without a real multisig configured, since testing the
+exact production admin topology on testnet first is the point of doing
+this here rather than improvising it before mainnet. See
+`contracts/tron/tronbox/.env.example` for the full list and
+`migrations/2_deploy_d3rac.js`'s header comment for what each step does.
 
 TronBox is preferable once there's more than one contract or you need
 repeatable deployments (CI, multiple environments) — it scripts what
@@ -105,6 +123,9 @@ Before deploying anything beyond testnet:
 - [ ] **Consider a multisig** for any contract-owner or admin role that
       can move funds or change disbursement conditions — a single key
       compromise shouldn't be able to redirect relief funds.
+      `contracts/tron/contracts/MultiSigAdmin.sol` is available for
+      this; deploy it and point `D3RACToken`/`IdentityRegistry`/
+      `DisbursementController`'s admin/owner role at it before mainnet.
 - [ ] **Rate-limit and monitor** contract calls in production — sudden
       spikes in disbursement calls are worth alerting on, not just
       logging.

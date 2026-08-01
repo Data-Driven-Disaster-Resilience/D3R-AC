@@ -1,0 +1,33 @@
+{
+  "name": "d3rac-tron-contracts",
+  "private": true,
+  "type": "module",
+  "version": "0.2.0",
+  "description": "Hardhat 3 logic-test harness for D3R-AC's TRON contracts (D3RACToken, IdentityRegistry, DisbursementController, MultiSigAdmin, D3RACHub, RiskRegistry, FundingRequestRegistry). This is the main package.json ('type': 'module', required unconditionally by Hardhat 3) with contracts/ and hardhat.config.js at this same level -- Hardhat 3 requires its sources to live inside its own project directory, so they can't be nested elsewhere. TronBox (which needs a CommonJS config) is nested instead, in ./tronbox, as its own isolated package -- see ./tronbox/tronbox-config.js and docs/deployment-guide.md for actual TRON deployment. Hardhat is NOT how you deploy to TRON.",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "compile": "hardhat build",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.0",
+    "@nomicfoundation/hardhat-ethers-chai-matchers": "^3.0.0",
+    "@nomicfoundation/hardhat-mocha": "^3.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^3.0.0",
+    "chai": "^5.1.2",
+    "ethers": "^6.4.0",
+    "hardhat": "^3.0.0"
+  },
+  "overrides": {
+    "adm-zip": "^0.6.0",
+    "undici": "^6.27.0",
+    "tmp": "^0.2.6",
+    "serialize-javascript": "^7.0.5",
+    "uuid": "^12.0.1",
+    "cookie": "^0.7.0",
+    "diff": "^8.0.3",
+    "brace-expansion": "^5.0.8"
+  }
+}

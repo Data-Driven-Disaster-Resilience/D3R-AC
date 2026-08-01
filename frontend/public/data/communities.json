@@ -1,0 +1,71 @@
+{
+  "generatedAt": "2026-07-23T11:32:27.526453+00:00",
+  "communities": [
+    {
+      "id": "kebbi-river-basin",
+      "name": "Kebbi River Basin",
+      "region": "Kebbi, NG",
+      "hazard": 0.0,
+      "exposure": 0.61,
+      "vulnerability": 0.58,
+      "lastUpdated": "2026-07-23T11:32:27.526453+00:00",
+      "hazardSource": "none",
+      "stale": true
+    },
+    {
+      "id": "lokoja-confluence",
+      "name": "Lokoja Confluence",
+      "region": "Kogi, NG",
+      "hazard": 0.0,
+      "exposure": 0.7,
+      "vulnerability": 0.49,
+      "lastUpdated": "2026-07-23T11:32:27.526453+00:00",
+      "hazardSource": "none",
+      "stale": true
+    },
+    {
+      "id": "maiduguri-corridor",
+      "name": "Maiduguri Corridor",
+      "region": "Borno, NG",
+      "hazard": 0.0,
+      "exposure": 0.66,
+      "vulnerability": 0.74,
+      "lastUpdated": "2026-07-23T11:32:27.526453+00:00",
+      "hazardSource": "none",
+      "stale": true
+    },
+    {
+      "id": "port-harcourt-delta",
+      "name": "Port Harcourt Delta",
+      "region": "Rivers, NG",
+      "hazard": 0.0,
+      "exposure": 0.52,
+      "vulnerability": 0.35,
+      "lastUpdated": "2026-07-23T11:32:27.526453+00:00",
+      "hazardSource": "none",
+      "stale": true
+    },
+    {
+      "id": "sokoto-frontier",
+      "name": "Sokoto Frontier",
+      "region": "Sokoto, NG",
+      "hazard": 0.0,
+      "exposure": 0.44,
+      "vulnerability": 0.51,
+      "lastUpdated": "2026-07-23T11:32:27.526453+00:00",
+      "hazardSource": "none",
+      "stale": true
+    },
+    {
+      "id": "cross-river-uplands",
+      "name": "Cross River Uplands",
+      "region": "Cross River, NG",
+      "hazard": 0.0,
+      "exposure": 0.38,
+      "vulnerability": 0.31,
+      "lastUpdated": "2026-07-23T11:32:27.526453+00:00",
+      "hazardSource": "none",
+      "stale": true
+    }
+  ]
+}

@@ -1,21 +1,98 @@
-MIT License
+TAAD D3R·AC PROPRIETARY LICENSE
+Version 1.0, 2026
 
 Copyright (c) 2026 TAAD (The Abuja Algorithmic Defenders)
+Founder: Armstrong Usang Monday
+Abuja, Nigeria
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+ALL RIGHTS RESERVED.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+This repository and everything in it — including but not limited to
+the D3R·AC smart contracts (TRON and Casper), the Proof of Dev
+system, the community access layer / frontend, the data pipeline,
+all documentation, architecture notes, risk-model specifications,
+software requirements specifications, deployment guides, and any
+associated source code, object code, or compiled artifacts
+(collectively, the "Software") — is the proprietary and confidential
+property of TAAD (The Abuja Algorithmic Defenders) and its Founder,
+Armstrong Usang Monday.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+1. NO PERMISSION GRANTED BY ACCESS
+
+Visibility of this repository, or any part of it, on a public hosting
+platform does not grant any license, right, or permission to use,
+copy, modify, merge, publish, distribute, sublicense, deploy, or sell
+the Software, in whole or in part, for any purpose. Public visibility
+exists for review, portfolio, hackathon-submission, and evaluation
+purposes only, and does not constitute an open-source license under
+any circumstances.
+
+2. PERMISSION REQUIRED
+
+No person or entity — including but not limited to individuals,
+companies, NGOs, hackathon judges, or other developers ("Strangers")
+— may use, copy, modify, merge, publish, distribute, sublicense,
+deploy to any network (mainnet or testnet), fork for independent
+use, or create derivative works from the Software without the prior
+express **written** permission of TAAD (The Abuja Algorithmic
+Defenders), granted personally by its Founder, Armstrong Usang
+Monday, or an officer of TAAD explicitly authorized by the Founder
+to grant such permission.
+
+Written permission must specifically identify: (a) the permitted
+party, (b) the specific scope of use permitted, and (c) any
+conditions attached. Verbal, implied, or assumed permission is not
+sufficient and is not binding on TAAD.
+
+3. CONTRIBUTIONS
+
+Any code, documentation, or other material submitted to this
+repository by a contributor (a "Contribution") is submitted subject
+to this License. By submitting a Contribution, a contributor assigns
+to TAAD all right, title, and interest in that Contribution, and
+acknowledges that it becomes subject to the same restrictions as the
+rest of the Software — it does not create any license back to the
+contributor or to any third party. See `CONTRIBUTING.md` for the
+process required before a Contribution will be accepted.
+
+4. EVALUATION EXCEPTION
+
+Reading the Software, and executing it locally solely to evaluate,
+review, or judge it (e.g., as part of a hackathon, grant review, or
+technical assessment TAAD has itself submitted this project to), is
+permitted without separate written permission, provided that no
+Stranger deploys the Software to any live network, redistributes it,
+or uses it as the basis for a competing or derivative product or
+submission.
+
+5. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NONINFRINGEMENT. THIS PROJECT HAS NOT BEEN PROFESSIONALLY AUDITED.
+IN NO EVENT SHALL TAAD, ITS FOUNDER, OR ANY CONTRIBUTOR BE LIABLE FOR
+ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR
+ITS USE.
+
+6. ENFORCEMENT
+
+Unauthorized use of the Software is a violation of TAAD's
+intellectual property rights and may be pursued through all remedies
+available under applicable law.
+
+7. REQUESTING PERMISSION
+
+To request written permission to use, deploy, extend, or build upon
+any part of the Software, contact:
+
+TAAD (The Abuja Algorithmic Defenders)
+Founder: Armstrong Usang Monday
+Abuja, Nigeria
+
+--
+This License applies to the entire repository. Individual documents
+(such as `docs/data-pipeline-srs.md` and `docs/casper-contracts-srs.md`)
+may carry an additional, more restrictive notice specific to that
+document; where they do, both apply, with the more restrictive term
+controlling.

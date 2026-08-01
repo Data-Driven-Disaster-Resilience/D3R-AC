@@ -2,10 +2,17 @@
 
 Thanks for your interest in D3R·AC (Data-Driven Disaster Resilience for All
 Communities). This is humanitarian infrastructure — code here can affect how
-quickly real disaster relief funds reach real communities. Contributions are
-welcome from developers, humanitarian-tech practitioners, and NGO partners,
-and we ask for a bit more care than a typical open-source repo because of
-what's at stake.
+quickly real disaster relief funds reach real communities.
+
+**D3R·AC is proprietary software, owned by TAAD (The Abuja Algorithmic
+Defenders) — see [`LICENSE`](LICENSE).** It is not an open-source repo:
+contributions are welcome from developers, humanitarian-tech practitioners,
+and NGO partners, but only **by prior arrangement with TAAD**. Contact TAAD
+before starting non-trivial work, not just before opening a PR — this
+confirms you have permission to work with the codebase at all, separate
+from whether a given change gets merged. Submitting a Contribution assigns
+it to TAAD under the terms in `LICENSE` §3; it does not create any license
+back to you or to anyone else.
 
 ## Ways to contribute
 
@@ -56,7 +63,8 @@ npm run build
 
 ## Pull request process
 
-1. Fork the repo and branch from `main` (`feat/…`, `fix/…`, `docs/…`).
+1. Once TAAD has confirmed you may work on the codebase, fork the repo and
+   branch from `main` (`feat/…`, `fix/…`, `docs/…`).
 2. Keep PRs scoped to one concern — a contract change and a frontend change
    should be separate PRs.
 3. Write a clear PR description: what changed, why, and how you tested it.
@@ -109,5 +117,10 @@ keep discussion focused on what actually helps the mission.
 
 ## License
 
-By contributing, you agree your contributions are licensed under the
-project's [MIT License](LICENSE).
+D3R·AC is proprietary — **all rights reserved by TAAD (The Abuja
+Algorithmic Defenders)**. By contributing, you agree your Contribution
+is assigned to TAAD and governed by the same restrictions as the rest
+of the Software under the [TAAD D3R·AC Proprietary License](LICENSE):
+no use, redistribution, or deployment by any party without TAAD's
+prior express written permission. This project is **not** licensed
+under MIT or any other open-source license.
