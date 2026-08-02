@@ -117,7 +117,7 @@ pub extern "C" fn register_community() {
 
     let dict_uref = communities_dict();
     if storage::dictionary_get::<CommunityRisk>(dict_uref, &community_id)
-        .unwrap_or_revert()
+        .unwrap_or_revert_with(RiskRegistryError::DictionaryReadFailed)
         .is_some()
     {
         runtime::revert(RiskRegistryError::CommunityAlreadyRegistered);
@@ -163,7 +163,7 @@ pub extern "C" fn update_risk() {
 
     let dict_uref = communities_dict();
     let mut record: CommunityRisk = storage::dictionary_get(dict_uref, &community_id)
-        .unwrap_or_revert()
+        .unwrap_or_revert_with(RiskRegistryError::DictionaryReadFailed)
         .unwrap_or_revert_with(RiskRegistryError::CommunityNotRegistered);
 
     record.hazard = hazard;
@@ -205,7 +205,7 @@ pub extern "C" fn risk_score() {
     let community_id: String = runtime::get_named_arg(ARG_COMMUNITY_ID);
     let dict_uref = communities_dict();
     let record: CommunityRisk = storage::dictionary_get(dict_uref, &community_id)
-        .unwrap_or_revert()
+        .unwrap_or_revert_with(RiskRegistryError::DictionaryReadFailed)
         .unwrap_or_revert_with(RiskRegistryError::CommunityNotRegistered);
 
     let score = compute_risk_score(&record);
@@ -217,7 +217,7 @@ pub extern "C" fn is_above_threshold() {
     let community_id: String = runtime::get_named_arg(ARG_COMMUNITY_ID);
     let dict_uref = communities_dict();
     let record: CommunityRisk = storage::dictionary_get(dict_uref, &community_id)
-        .unwrap_or_revert()
+        .unwrap_or_revert_with(RiskRegistryError::DictionaryReadFailed)
         .unwrap_or_revert_with(RiskRegistryError::CommunityNotRegistered);
 
     let score = compute_risk_score(&record);
@@ -230,7 +230,7 @@ pub extern "C" fn get_community() {
     let community_id: String = runtime::get_named_arg(ARG_COMMUNITY_ID);
     let dict_uref = communities_dict();
     let record: CommunityRisk = storage::dictionary_get(dict_uref, &community_id)
-        .unwrap_or_revert()
+        .unwrap_or_revert_with(RiskRegistryError::DictionaryReadFailed)
         .unwrap_or_revert_with(RiskRegistryError::CommunityNotRegistered);
 
     let score = compute_risk_score(&record);
@@ -322,7 +322,7 @@ fn only_data_feeder() {
     let caller = Key::from(runtime::get_caller());
     let dict_uref = data_feeders_dict();
     let is_feeder: bool = storage::dictionary_get(dict_uref, &key_to_dict_key(&caller))
-        .unwrap_or_revert()
+        .unwrap_or_revert_with(RiskRegistryError::DictionaryReadFailed)
         .unwrap_or(false);
     if !is_feeder {
         runtime::revert(RiskRegistryError::CallerIsNotDataFeeder);

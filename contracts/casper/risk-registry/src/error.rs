@@ -38,6 +38,14 @@ pub enum RiskRegistryError {
     /// same "should be unreachable, but Casper's types don't guarantee
     /// it statically" reasoning as `MissingKey`.
     UnexpectedKeyType = 7,
+    /// `storage::dictionary_get`'s outer `Result` was `Err` (as
+    /// opposed to `Ok(None)` for a simply-missing key) -- added after
+    /// a real CI test failure surfaced as a generic, undiagnosable
+    /// `ApiError::None` from a bare `.unwrap_or_revert()` on exactly
+    /// this call; every `dictionary_get` call site in this contract
+    /// now uses this instead, so any future occurrence is immediately
+    /// attributable to a specific line rather than a mystery revert.
+    DictionaryReadFailed = 8,
 }
 
 impl From<RiskRegistryError> for ApiError {
