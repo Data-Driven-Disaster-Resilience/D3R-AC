@@ -46,13 +46,6 @@ pub enum RiskRegistryError {
     /// now uses this instead, so any future occurrence is immediately
     /// attributable to a specific line rather than a mystery revert.
     DictionaryReadFailed = 8,
-    /// TEMPORARY diagnostic marker, not a real error condition -- used
-    /// to bisect exactly where execution stops in register_community
-    /// after 4 tests all failed with the generic, unattributable
-    /// ApiError::None despite every one of this contract's own
-    /// explicit revert paths using distinct custom codes. Remove once
-    /// the actual cause is found.
-    DiagnosticMarker = 9,
 }
 
 impl From<RiskRegistryError> for ApiError {

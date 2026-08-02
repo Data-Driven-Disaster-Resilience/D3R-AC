@@ -38,6 +38,11 @@ pub const ENTRY_POINT_TRANSFER_OWNERSHIP: &str = "transfer_ownership";
 pub const ENTRY_POINT_ADD_DATA_FEEDER: &str = "add_data_feeder";
 pub const ENTRY_POINT_REMOVE_DATA_FEEDER: &str = "remove_data_feeder";
 pub const ENTRY_POINT_SET_RISK_THRESHOLD: &str = "set_risk_threshold";
+/// Self-initializing entry point (Casper's own documented pattern for
+/// contract-side setup that must run in the contract's own execution
+/// context, not the installer's) -- see the comment on `call()`'s
+/// `runtime::call_contract` invocation of it for why this exists.
+pub const ENTRY_POINT_INIT: &str = "init";
 
 // Runtime argument names
 pub const ARG_INITIAL_THRESHOLD: &str = "initial_threshold";

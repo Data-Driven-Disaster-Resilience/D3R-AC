@@ -76,6 +76,7 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
@@ -85,7 +86,8 @@ use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
     contracts::{EntryPoint, NamedKeys},
-    CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter, URef,
+    runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key,
+    Parameter, URef,
 };
 
 mod constants;
@@ -114,7 +116,6 @@ pub extern "C" fn register_community() {
     let community_id: String = runtime::get_named_arg(ARG_COMMUNITY_ID);
     let name: String = runtime::get_named_arg(ARG_NAME);
     let region: String = runtime::get_named_arg(ARG_REGION);
-    runtime::revert(RiskRegistryError::DiagnosticMarker); // TEMPORARY, see error.rs
 
     let dict_uref = communities_dict();
     if storage::dictionary_get::<CommunityRisk>(dict_uref, &community_id)
@@ -469,9 +470,60 @@ pub extern "C" fn call() {
         None,
     );
 
-    // Schemas registration for casper-event-standard -- must happen
-    // against the newly created contract's own named keys, hence after
-    // `new_locked_contract`, not before.
+    // CES schema registration and the initial-data-feeder event both
+    // need to run in the *contract's* own execution context (they call
+    // casper_event_standard::init()/emit(), which internally do
+    // runtime::put_key()/get_key() -- context-relative operations) --
+    // not call()'s own context, which is the calling account's, not
+    // the contract's. runtime::call_contract is what actually crosses
+    // that context boundary; a plain Rust function call from here
+    // wouldn't. See ENTRY_POINT_INIT's own entry point below for the
+    // full explanation this was fixed against a real CI-caught bug for.
+    runtime::call_contract::<()>(
+        contract_hash,
+        ENTRY_POINT_INIT,
+        runtime_args! {
+            ARG_INITIAL_DATA_FEEDER => initial_data_feeder,
+        },
+    );
+
+    runtime::put_key(CONTRACT_HASH_KEY_NAME, contract_hash.into());
+}
+
+/// Self-initializing entry point, called once by `call()` (via
+/// `runtime::call_contract`, immediately after this contract is
+/// created) to run setup that must execute in *this contract's* own
+/// context rather than the installing account's -- Casper's own
+/// documented pattern for exactly this ("Best Practices for Casper
+/// Smart Contract Authors": "including an explicit initialization
+/// entry point allows the contract to self-initialize... This entry
+/// point... cannot be called after the initial transaction").
+///
+/// Real bug this fixes, found via CI: `casper_event_standard::init()`
+/// and the initial-data-feeder `DataFeederAdded` emit were previously
+/// called directly from `call()`'s own body. Both internally call
+/// `runtime::put_key()`/`get_key()`, which operate on the *current
+/// execution context's* own named keys -- and `call()` runs as session
+/// code in the calling account's context, not this contract's
+/// (confirmed against Casper's own docs: "the current context is the
+/// context of the person who initiated the call function, usually an
+/// account entity"). CES's bookkeeping keys (`EVENTS_LENGTH` etc.) were
+/// silently being written onto the *account's* named keys instead of
+/// this contract's. Every subsequent `casper_event_standard::emit()`
+/// call from a genuine contract entry point (e.g. `register_community`)
+/// then looked for those keys on *this contract's* own named keys,
+/// found nothing, and casper-event-standard's own `emit_bytes()`
+/// reverted via a bare `Option::unwrap_or_revert()` -- exactly
+/// `ApiError::None`, the generic, otherwise-unattributable revert code
+/// every write-path entry point's integration test was failing with.
+///
+/// Idempotency: `casper_event_standard::init()` itself guards against
+/// being called twice (`expect_no_key(EVENTS_LENGTH)`, reverting if it
+/// already exists), so this can't be meaningfully re-invoked after the
+/// one legitimate call `call()` makes within the same install
+/// transaction -- no separate one-time-call guard needed here.
+#[no_mangle]
+pub extern "C" fn init() {
     let schemas = Schemas::new()
         .with::<CommunityRegistered>()
         .with::<RiskUpdated>()
@@ -481,8 +533,7 @@ pub extern "C" fn call() {
         .with::<ThresholdUpdated>();
     casper_event_standard::init(schemas);
 
-    runtime::put_key(CONTRACT_HASH_KEY_NAME, contract_hash.into());
-
+    let initial_data_feeder: Option<Key> = runtime::get_named_arg(ARG_INITIAL_DATA_FEEDER);
     if let Some(feeder) = initial_data_feeder {
         casper_event_standard::emit(DataFeederAdded { feeder });
     }
@@ -575,6 +626,17 @@ fn build_entry_points() -> EntryPoints {
     entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_SET_RISK_THRESHOLD,
         vec![Parameter::new(ARG_NEW_THRESHOLD, CLType::U64)],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Called,
+    ).into());
+
+    entry_points.add_entry_point(EntryPoint::new(
+        ENTRY_POINT_INIT,
+        vec![Parameter::new(
+            ARG_INITIAL_DATA_FEEDER,
+            CLType::Option(Box::new(CLType::Key)),
+        )],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Called,
