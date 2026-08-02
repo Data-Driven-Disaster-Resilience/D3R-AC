@@ -109,6 +109,7 @@ use model::{CommunityRisk, CommunityView};
 /// `RiskRegistry.sol::registerCommunity`.
 #[no_mangle]
 pub extern "C" fn register_community() {
+    runtime::revert(RiskRegistryError::DiagnosticMarker); // TEMPORARY, see error.rs
     only_owner();
 
     let community_id: String = runtime::get_named_arg(ARG_COMMUNITY_ID);
