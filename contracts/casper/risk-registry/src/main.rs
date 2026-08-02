@@ -110,11 +110,11 @@ use model::{CommunityRisk, CommunityView};
 #[no_mangle]
 pub extern "C" fn register_community() {
     only_owner();
-    runtime::revert(RiskRegistryError::DiagnosticMarker); // TEMPORARY, see error.rs
 
     let community_id: String = runtime::get_named_arg(ARG_COMMUNITY_ID);
     let name: String = runtime::get_named_arg(ARG_NAME);
     let region: String = runtime::get_named_arg(ARG_REGION);
+    runtime::revert(RiskRegistryError::DiagnosticMarker); // TEMPORARY, see error.rs
 
     let dict_uref = communities_dict();
     if storage::dictionary_get::<CommunityRisk>(dict_uref, &community_id)
