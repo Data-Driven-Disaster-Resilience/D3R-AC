@@ -58,7 +58,7 @@ d3rac/
 ## Getting Started
 
 ```bash
-git clone https://github.com/Data-Driven-Disaster-Resilience/D3R-AC.git
+git clone https://github.com/D3RAC/D3R-AC.git
 cd D3R-AC
 ```
 

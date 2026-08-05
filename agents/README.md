@@ -1,6 +1,6 @@
 # d3rac-agents
 
-**A manifest-driven AI agent build system for [D3R·AC](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC) — Data-Driven Disaster Resilience for All Communities.**
+**A manifest-driven AI agent build system for [D3R·AC](https://github.com/D3RAC/D3R-AC) — Data-Driven Disaster Resilience for All Communities.**
 
 This is a standalone package you drop into the D3R·AC repo (as a top-level `agents/` folder) that adds a fleet
 of AI agents implementing the risk model `R(c,t) = H(t) · E(c) · V(c)` and the response-coordination layer,
@@ -61,7 +61,7 @@ Set `ANTHROPIC_API_KEY` in the environment to get real Claude reasoning. Without
 ## Installing into the D3R·AC repo
 
 ```bash
-# from inside a clone of Data-Driven-Disaster-Resilience/D3R-AC
+# from inside a clone of D3RAC/D3R-AC
 git clone https://github.com/<you>/d3rac-agents agents
 cd agents
 make build
