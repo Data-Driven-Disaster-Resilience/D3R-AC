@@ -68,7 +68,7 @@ See [`docs/deployment-guide.md`](docs/deployment-guide.md) for full deployment s
 
 ### Smart contracts (Casper)
 
-See [`contracts/casper/README.md`](contracts/casper/README.md) for current status — one contract (`risk-registry`) written and now confirmed compiling in CI; the other six are not started. Requires a `wasm32-unknown-unknown`-capable Rust toolchain to build.
+See [`contracts/casper/README.md`](contracts/casper/README.md) for current status — one contract (`risk-registry`) written, compiling, and passing its local-network tests in CI; the other six are not started. Requires a `wasm32-unknown-unknown`-capable Rust toolchain to build.
 
 ### Frontend
 
@@ -112,12 +112,13 @@ with a 32-test suite (see [`data-pipeline/README.md`](data-pipeline/README.md))
 — but **not yet run against a deployed Hub/RiskRegistry**, since neither
 is deployed to any network yet. Casper contracts: one of seven
 contracts (`risk-registry`, chosen as the SRS's own standalone/
-no-dependency starting point) written and **confirmed compiling**
-against `wasm32-unknown-unknown` in CI — see
+no-dependency starting point) written, **confirmed compiling** against
+`wasm32-unknown-unknown`, and **passing all 5 of its integration tests**
+against a local Casper network, all CI-verified — see
 [`contracts/casper/README.md`](contracts/casper/README.md)
 for the honest, itemized status; the other six contracts, Hub wiring,
-frontend adapter completion, local-network/testnet testing, and any
-deployment are all still pending.
+frontend adapter completion, testnet testing, and any deployment are
+all still pending.
 The data pipeline SRS carries its own additional, even more restrictive
 notice on top of the proprietary [`LICENSE`](LICENSE) that already
 governs this entire repository.
