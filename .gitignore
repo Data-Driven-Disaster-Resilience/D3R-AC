@@ -25,3 +25,5 @@ Cargo.lock.bak
 # OS / editor cruft
 .DS_Store
 *.log
+overhaul.patch
+*.patch

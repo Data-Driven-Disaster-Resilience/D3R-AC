@@ -1,0 +1,381 @@
+name: Security Audit
+
+# Automated, professional-grade static-analysis audit for D3R·AC.
+#
+# This is NOT a replacement for a paid third-party audit before mainnet
+# (see docs/audit-pass-2026-07-25.md) — it's the automated layer that
+# should have caught regressions between manual audit passes, and that
+# gives any future paid auditor a continuous, dated trail to start from.
+#
+# Tools, one per language surface actually present in this repo:
+#   - Slither      -> Solidity (contracts/tron)      — the standard
+#                      free/open-source Solidity static analyzer.
+#   - cargo-audit  -> Rust (contracts/casper)         — checks Cargo.lock
+#                      against the RustSec advisory database.
+#   - npm audit    -> TypeScript/JS (frontend, agents/node) — checks
+#                      package-lock.json against the npm advisory DB.
+#   - pip-audit    -> Python (data-pipeline, agents/python) — checks
+#                      resolved deps against the PyPI advisory DB (OSV).
+#
+# Every run always finishes (individual findings never fail the job by
+# themselves — see "continue-on-error" below) so this is safe to run on
+# every PR without blocking merges on pre-existing findings. A HIGH/
+# CRITICAL finding still shows up loudly in the job summary and in the
+# recorded report; it's a decision point for a human, not an auto-block.
+#
+# Recording: every run writes a single aggregated Markdown report to the
+# GitHub Actions step summary and as a downloadable artifact. On pushes
+# to `main` only (not on PRs, to avoid noise), that same report is also
+# committed into docs/audit-reports/ so there is a permanent, versioned,
+# datestamped audit trail in the repo itself — not just ephemeral CI logs
+# that expire.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Weekly, so dependency-advisory drift (new CVEs against unchanged
+    # code) gets caught even with no new commits.
+    - cron: '0 6 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+
+  # ---------------------------------------------------------------
+  # Solidity static analysis (Slither)
+  # ---------------------------------------------------------------
+  slither:
+    name: Slither (Solidity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check contracts exist
+        id: check
+        run: |
+          if [ -d "contracts/tron/tronbox/contracts" ] && [ -n "$(find contracts/tron/tronbox/contracts -name '*.sol')" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Slither
+        if: steps.check.outputs.exists == 'true'
+        run: pip install slither-analyzer
+
+      - name: Install solc-select and target Solidity version
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          pip install solc-select
+          solc-select install 0.8.20
+          solc-select use 0.8.20
+
+      - name: Run Slither
+        if: steps.check.outputs.exists == 'true'
+        id: slither
+        continue-on-error: true
+        run: |
+          # Target the actual .sol directory directly, and force
+          # standalone-solc compilation explicitly, rather than letting
+          # crytic-compile auto-detect a platform from
+          # contracts/tron/tronbox/'s own unrelated package.json (no
+          # hardhat/truffle/foundry config lives there — that config is
+          # one level up, in contracts/tron/, and uses Hardhat 3's
+          # renamed `build` command, which crytic-compile doesn't know).
+          # Auto-detect previously fell through to "0 files" silently
+          # instead of raising, which `|| true` then masked entirely.
+          # None of these contracts import anything outside this
+          # directory (verified: only relative `./`-style imports), so
+          # standalone solc needs no remaps or node_modules.
+          set -o pipefail
+          slither contracts/tron/tronbox/contracts \
+            --json slither-report.json \
+            --checklist --markdown-root . \
+            --compile-force-framework solc \
+            2>&1 | tee slither-report.md
+          exit_code=$?
+          # Slither's own exit code is nonzero whenever it has findings,
+          # which is not itself a workflow failure — the job already
+          # tolerates findings via continue-on-error. What must not pass
+          # silently is finding zero contracts, which historically meant
+          # a compile/detection bug rather than an actually-clean scan.
+          if grep -q "^0 contracts with" slither-report.md || grep -q "No contract was analyzed" slither-report.md; then
+            echo "::error::Slither analyzed 0 contracts — this indicates a compile/detection failure, not a clean scan. See slither-report.md."
+            exit 1
+          fi
+          echo "ran=true" >> "$GITHUB_OUTPUT"
+          exit $exit_code
+
+      - name: Upload Slither report
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: slither-report
+          path: |
+            slither-report.json
+            slither-report.md
+          retention-days: 90
+
+      - name: Append to job summary
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          {
+            echo "## Slither (Solidity)"
+            echo
+            if [ -s slither-report.md ]; then
+              head -c 60000 slither-report.md
+            else
+              echo "No output captured — check the run log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------
+  # Rust / Casper dependency advisory scan (cargo-audit)
+  # ---------------------------------------------------------------
+  cargo-audit:
+    name: cargo-audit (Casper / Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Casper contracts exist
+        id: check
+        run: |
+          if [ -f "contracts/casper/Cargo.lock" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Rust toolchain
+        if: steps.check.outputs.exists == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        if: steps.check.outputs.exists == 'true'
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo-audit
+        if: steps.check.outputs.exists == 'true'
+        id: audit
+        continue-on-error: true
+        working-directory: contracts/casper
+        run: |
+          cargo audit --json > ../../cargo-audit-report.json 2> ../../cargo-audit-report.txt || true
+          cargo audit >> ../../cargo-audit-report.txt 2>&1 || true
+
+      - name: Upload cargo-audit report
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-audit-report
+          path: |
+            cargo-audit-report.json
+            cargo-audit-report.txt
+          retention-days: 90
+
+      - name: Append to job summary
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          {
+            echo "## cargo-audit (Casper / Rust dependencies)"
+            echo
+            echo '```'
+            cat cargo-audit-report.txt 2>/dev/null | head -c 30000
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------
+  # JS/TS dependency advisory scan (npm audit) — frontend + agents/node
+  # ---------------------------------------------------------------
+  npm-audit:
+    name: npm audit (frontend + agents/node)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [ frontend, agents/node ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check project exists
+        id: check
+        run: |
+          if [ -f "${{ matrix.project }}/package-lock.json" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run npm audit
+        if: steps.check.outputs.exists == 'true'
+        id: audit
+        continue-on-error: true
+        working-directory: ${{ matrix.project }}
+        run: |
+          npm audit --json > npm-audit-report.json 2>&1 || true
+          npm audit > npm-audit-report.txt 2>&1 || true
+
+      - name: Upload npm audit report
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report-${{ matrix.project == 'frontend' && 'frontend' || 'agents-node' }}
+          path: |
+            ${{ matrix.project }}/npm-audit-report.json
+            ${{ matrix.project }}/npm-audit-report.txt
+          retention-days: 90
+
+      - name: Append to job summary
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          {
+            echo "## npm audit (${{ matrix.project }})"
+            echo
+            echo '```'
+            cat ${{ matrix.project }}/npm-audit-report.txt 2>/dev/null | head -c 30000
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------
+  # Python dependency advisory scan (pip-audit) — data-pipeline + agents/python
+  # ---------------------------------------------------------------
+  pip-audit:
+    name: pip-audit (data-pipeline + agents/python)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [ data-pipeline, agents/python ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check project exists
+        id: check
+        run: |
+          if [ -f "${{ matrix.project }}/requirements.txt" ] || [ -f "${{ matrix.project }}/pyproject.toml" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        if: steps.check.outputs.exists == 'true'
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        if: steps.check.outputs.exists == 'true'
+        id: audit
+        continue-on-error: true
+        working-directory: ${{ matrix.project }}
+        run: |
+          SRC="requirements.txt"
+          [ -f "requirements.txt" ] || SRC="pyproject.toml"
+          if [ "$SRC" = "requirements.txt" ]; then
+            pip-audit -r requirements.txt -f json > pip-audit-report.json 2>&1 || true
+            pip-audit -r requirements.txt > pip-audit-report.txt 2>&1 || true
+          else
+            pip-audit -f json > pip-audit-report.json 2>&1 || true
+            pip-audit > pip-audit-report.txt 2>&1 || true
+          fi
+
+      - name: Upload pip-audit report
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report-${{ matrix.project == 'data-pipeline' && 'data-pipeline' || 'agents-python' }}
+          path: |
+            ${{ matrix.project }}/pip-audit-report.json
+            ${{ matrix.project }}/pip-audit-report.txt
+          retention-days: 90
+
+      - name: Append to job summary
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          {
+            echo "## pip-audit (${{ matrix.project }})"
+            echo
+            echo '```'
+            cat ${{ matrix.project }}/pip-audit-report.txt 2>/dev/null | head -c 30000
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------
+  # Aggregate everything into one dated, versioned report.
+  # Committed to the repo only on `main` / schedule — PRs get the
+  # summary + artifacts above, but don't get an auto-commit, so review
+  # diffs stay clean.
+  # ---------------------------------------------------------------
+  record-report:
+    name: Record Audit Report
+    needs: [ slither, cargo-audit, npm-audit, pip-audit ]
+    if: always() && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          path: audit-artifacts
+
+      - name: Build dated report
+        run: |
+          mkdir -p docs/audit-reports
+          DATE=$(date -u +%Y-%m-%d)
+          OUT="docs/audit-reports/${DATE}-automated.md"
+          {
+            echo "# Automated Security Audit — ${DATE}"
+            echo
+            echo "Generated by \`.github/workflows/security-audit.yml\` on"
+            echo "\`${{ github.ref_name }}\` at commit \`${{ github.sha }}\`."
+            echo
+            echo "> Automated static/dependency analysis only. Does not replace"
+            echo "> the manual review methodology in"
+            echo "> \`docs/audit-pass-2026-07-25.md\`, and does not replace a paid"
+            echo "> third-party audit before mainnet."
+            echo
+            for f in $(find audit-artifacts -name '*.txt' -o -name '*.md' | sort); do
+              echo "## Source: ${f#audit-artifacts/}"
+              echo
+              echo '```'
+              head -c 20000 "$f"
+              echo '```'
+              echo
+            done
+          } > "$OUT"
+          echo "REPORT_PATH=$OUT" >> "$GITHUB_ENV"
+
+      - name: Commit report
+        run: |
+          git config user.name "d3rac-audit-bot"
+          git config user.email "audit-bot@users.noreply.github.com"
+          git add "$REPORT_PATH"
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(audit): automated security report ${REPORT_PATH##*/}"
+            git push
+          else
+            echo "No changes to commit."
+          fi

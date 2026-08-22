@@ -197,3 +197,23 @@ hitting an opaque out-of-energy error.
    replacement for it.
 5. Re-run the full Hardhat test suite (115 tests) against any changes
    made in response to the above before merging.
+
+---
+
+## Status check (automated review, 2026-08-22)
+
+Re-verified against the current `main`: **M-1, M-2, and M-3 are all
+still open** — no `extcodesize` guard on admin/owner constructor args,
+no two-step `proposeNewAdmin`/`acceptAdmin` pattern on any of the six
+contracts, and `DisbursementController.releaseMilestone` still calls
+`ITRC20(c.token).transfer(...)` directly rather than a return-data-
+tolerant low-level call. None of these are urgent given the project's
+pre-mainnet status, but they remain the top three items before a paid
+audit engagement.
+
+A continuous automated layer (`.github/workflows/security-audit.yml`)
+now runs Slither, cargo-audit, npm audit, and pip-audit on every PR and
+weekly on a schedule, with results recorded both as CI artifacts and as
+dated reports under `docs/audit-reports/`. This catches regressions and
+new dependency CVEs between manual passes like this one — it does not
+replace either this manual review or a professional third-party audit.
