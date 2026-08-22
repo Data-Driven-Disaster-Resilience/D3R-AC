@@ -1,11 +1,13 @@
 # D3R·AC — Casper Contract Suite
 
-**Status: early, in progress — but the first contract now compiles.**
-This is not a parallel, complete implementation of the TRON suite yet
-— it's one contract of seven (`risk-registry`), now confirmed to build
-against `wasm32-unknown-unknown` in real CI, but not yet tested against
-a local Casper network, not deployed to testnet, and not audited. See
-"What's actually done" below for the honest, itemized breakdown, and
+**Status: early, in progress — but the first contract now compiles and
+passes its local-network tests.** This is not a parallel, complete
+implementation of the TRON suite yet — it's one contract of seven
+(`risk-registry`), confirmed via real CI to build against
+`wasm32-unknown-unknown` and pass all 5 of its integration tests
+against a local Casper network. Not yet deployed to testnet, and not
+audited. See "What's actually done" below for the honest, itemized
+breakdown, and
 [`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md)
 for the full requirements this suite is being built against.
 
@@ -75,7 +77,8 @@ one `casper-types` version now resolves across the whole graph.
       this file ended up being worked on by two parallel Claude
       sessions (this one, and a separate Claude Code session) across
       that iteration, which is *why* it converged as fast as it did.
-- [ ] Unit/integration tests against a local Casper network — written
+- [x] Unit/integration tests against a local Casper network — **all 5
+      passing, CI-confirmed**
       (`risk-registry-tests/tests/integration_tests.rs`: install,
       community registration + duplicate-rejection, risk-score
       computation, non-feeder rejection), in their own workspace
@@ -84,13 +87,18 @@ one `casper-types` version now resolves across the whole graph.
       which `cargo test` does by default for every workspace member
       unless scoped away, collided with the native toolchain's own
       panic handler (a real, confirmed CI error: "duplicate lang item
-      `panic_impl`"). Wired into CI (scoped per-package for both the
-      wasm32 build and the native test run), but **not yet confirmed
-      passing** — same disclosed uncertainty as every round of
-      `src/main.rs` fixes so far: the exact
-      `casper-engine-test-support` 8.1.1 API under the addressable-
-      entity model couldn't be locally verified, pending a real CI run
-      (`casper-engine-test-support`)
+      `panic_impl`"). Getting to green took several real, CI-verified
+      rounds beyond the build itself: a Wasm-level bug (Casper's engine
+      rejects "bulk memory operations," which modern Rust emits by
+      default — a known, tracked ecosystem gap, fixed via
+      `wasm-opt --llvm-memory-copy-fill-lowering` post-processing) and
+      an execution-context bug in this contract's own `call()` (Casper
+      Event Standard's `init`/first `emit` were running in the
+      installing account's context rather than the newly-created
+      contract's own, silently breaking every later `emit()` call --
+      found and fixed by a parallel Claude Code session working on this
+      same file, traced against the actual crate source rather than
+      guessed).
 - [ ] The other six contracts (`D3RACToken`/CEP-18, `IdentityRegistry`,
       `DisbursementController`, `MultiSigAdmin`, `D3RACHub`,
       `FundingRequestRegistry`)
