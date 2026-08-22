@@ -82,20 +82,41 @@ jobs:
           solc-select install 0.8.20
           solc-select use 0.8.20
 
-      - name: Install contract dependencies
-        if: steps.check.outputs.exists == 'true'
-        working-directory: contracts/tron/tronbox
-        run: npm install
-
       - name: Run Slither
         if: steps.check.outputs.exists == 'true'
         id: slither
         continue-on-error: true
-        working-directory: contracts/tron/tronbox
         run: |
-          slither . --json ../../../slither-report.json --checklist --markdown-root . \
-            > ../../../slither-report.md 2>&1 || true
+          # Target the actual .sol directory directly, and force
+          # standalone-solc compilation explicitly, rather than letting
+          # crytic-compile auto-detect a platform from
+          # contracts/tron/tronbox/'s own unrelated package.json (no
+          # hardhat/truffle/foundry config lives there — that config is
+          # one level up, in contracts/tron/, and uses Hardhat 3's
+          # renamed `build` command, which crytic-compile doesn't know).
+          # Auto-detect previously fell through to "0 files" silently
+          # instead of raising, which `|| true` then masked entirely.
+          # None of these contracts import anything outside this
+          # directory (verified: only relative `./`-style imports), so
+          # standalone solc needs no remaps or node_modules.
+          set -o pipefail
+          slither contracts/tron/tronbox/contracts \
+            --json slither-report.json \
+            --checklist --markdown-root . \
+            --compile-force-framework solc \
+            2>&1 | tee slither-report.md
+          exit_code=$?
+          # Slither's own exit code is nonzero whenever it has findings,
+          # which is not itself a workflow failure — the job already
+          # tolerates findings via continue-on-error. What must not pass
+          # silently is finding zero contracts, which historically meant
+          # a compile/detection bug rather than an actually-clean scan.
+          if grep -q "^0 contracts with" slither-report.md || grep -q "No contract was analyzed" slither-report.md; then
+            echo "::error::Slither analyzed 0 contracts — this indicates a compile/detection failure, not a clean scan. See slither-report.md."
+            exit 1
+          fi
           echo "ran=true" >> "$GITHUB_OUTPUT"
+          exit $exit_code
 
       - name: Upload Slither report
         if: steps.check.outputs.exists == 'true'
