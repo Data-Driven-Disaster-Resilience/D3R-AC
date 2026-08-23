@@ -382,12 +382,34 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          # Scoped to -p risk-registry deliberately: risk-registry-tests
-          # (this workspace's other member) depends on
-          # casper-engine-test-support, which isn't wasm32-compatible --
-          # building the whole workspace for this target would fail on
-          # that package, not just risk-registry itself.
-          if ! cargo build --release --target wasm32-unknown-unknown -p risk-registry 2>&1 | tee cargo-build-output.log; then
+          # Generalized over every wasm32 contract package in this
+          # workspace, not hardcoded to risk-registry alone -- each
+          # contract package is a directory with its own Cargo.toml
+          # whose name doesn't end in "-tests" (the *-tests packages are
+          # native-target-only, see the "Run native-target unit/
+          # integration tests" step below for why they're excluded
+          # here). Discovered from the filesystem so a newly added
+          # contract package is picked up automatically, without a
+          # further CI edit -- the same reasoning risk-registry's own
+          # Cargo.toml gives for scoping `cargo build -p` away from the
+          # whole workspace: building a *-tests package for this target
+          # would fail (it depends on casper-engine-test-support, which
+          # isn't wasm32-compatible).
+          CONTRACT_PACKAGES=()
+          for dir in */; do
+            name="${dir%/}"
+            if [[ "$name" != *-tests && -f "$name/Cargo.toml" && -f "$name/src/main.rs" ]]; then
+              CONTRACT_PACKAGES+=("$name")
+            fi
+          done
+          echo "Building: ${CONTRACT_PACKAGES[*]}"
+
+          BUILD_ARGS=()
+          for pkg in "${CONTRACT_PACKAGES[@]}"; do
+            BUILD_ARGS+=(-p "$pkg")
+          done
+
+          if ! cargo build --release --target wasm32-unknown-unknown "${BUILD_ARGS[@]}" 2>&1 | tee cargo-build-output.log; then
             # Same technique used to diagnose the Hardhat 3 migration:
             # raw job logs and artifact downloads both redirect through
             # an Azure Blob host outside this project's usual working
@@ -398,6 +420,11 @@ jobs:
             echo "::error::CASPER_BUILD_FAILURE_TAIL: ${ENCODED}"
             exit 1
           fi
+
+          # Persist the package list as a newline-separated file for the
+          # later steps in this job (GITHUB_OUTPUT/env don't cleanly
+          # carry bash arrays across steps).
+          printf '%s\n' "${CONTRACT_PACKAGES[@]}" > /tmp/casper-contract-packages.txt
 
       - name: Lower Wasm bulk-memory ops (Casper engine compatibility)
         if: steps.check.outputs.exists == 'true'
@@ -413,22 +440,23 @@ jobs:
           # This is a known, tracked ecosystem gap (see
           # casper-network/casper-node#4367: "Modern compilers i.e.
           # rust and golang are emitting these extensions by default"),
-          # not something specific to this contract's code. Disabling
+          # not something specific to any one contract's code. Disabling
           # the target-feature at the rustc level (see
           # .cargo/config.toml) does NOT fix this: the actual bulk-memory
           # instructions can come from a prebuilt object blob bundled in
           # the Rust toolchain's own sysroot for this target, immune to
-          # this crate's own rustflags (confirmed via
+          # any one crate's own rustflags (confirmed via
           # rust-lang/rust#140971, a real upstream issue about exactly
           # this).
           #
-          # The fix instead: post-process the compiled .wasm with
+          # The fix instead: post-process each compiled .wasm with
           # Binaryen's wasm-opt --llvm-memory-copy-fill-lowering, which
           # rewrites memory.copy/memory.fill into equivalent byte-loop
           # instructions using only WASM MVP-compatible opcodes, and
           # clears the bulk-memory requirement from the output module.
           # Verified empirically against a synthetic test module before
-          # relying on it here.
+          # relying on it here. Applied to every built contract's .wasm,
+          # not just risk-registry's.
           #
           # This specific flag needs a newer Binaryen than what apt
           # currently ships (Ubuntu noble's binaryen package is v108;
@@ -439,8 +467,11 @@ jobs:
           tar -xzf /tmp/binaryen.tar.gz -C /tmp
           WASM_OPT="/tmp/binaryen-${BINARYEN_VERSION}/bin/wasm-opt"
 
-          WASM_PATH="target/wasm32-unknown-unknown/release/risk-registry.wasm"
-          "$WASM_OPT" "$WASM_PATH" --enable-bulk-memory --llvm-memory-copy-fill-lowering -Oz -o "$WASM_PATH"
+          while read -r pkg; do
+            [ -z "$pkg" ] && continue
+            WASM_PATH="target/wasm32-unknown-unknown/release/${pkg}.wasm"
+            "$WASM_OPT" "$WASM_PATH" --enable-bulk-memory --llvm-memory-copy-fill-lowering -Oz -o "$WASM_PATH"
+          done < /tmp/casper-contract-packages.txt
 
       - name: Stage compiled Wasm for integration tests
         if: steps.check.outputs.exists == 'true'
@@ -448,12 +479,21 @@ jobs:
         run: |
           # casper-engine-test-support's ExecuteRequestBuilder looks for
           # compiled .wasm files in a conventional wasm/ dir relative to
-          # the test binary's own package directory (the same convention
-          # Casper's own tutorial Makefiles use) -- risk-registry-tests'
-          # own directory now that tests live in that separate package,
-          # not target/wasm32-unknown-unknown/release/ directly.
-          mkdir -p risk-registry-tests/wasm
-          cp target/wasm32-unknown-unknown/release/risk-registry.wasm risk-registry-tests/wasm/
+          # each *-tests package's own directory (the same convention
+          # Casper's own tutorial Makefiles use). Each contract package
+          # "foo" is paired with a "foo-tests" package by this suite's
+          # own naming convention (see risk-registry/risk-registry-tests
+          # and identity-registry/identity-registry-tests) -- stage into
+          # whichever of those exists for each built package, skipping
+          # any that doesn't have a paired *-tests package yet.
+          while read -r pkg; do
+            [ -z "$pkg" ] && continue
+            tests_dir="${pkg}-tests"
+            if [ -d "$tests_dir" ]; then
+              mkdir -p "${tests_dir}/wasm"
+              cp "target/wasm32-unknown-unknown/release/${pkg}.wasm" "${tests_dir}/wasm/"
+            fi
+          done < /tmp/casper-contract-packages.txt
 
       - name: Run native-target unit/integration tests
         if: steps.check.outputs.exists == 'true'
@@ -461,17 +501,29 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          # Scoped to -p risk-registry-tests deliberately: risk-registry
-          # itself is #![no_std] with its own #[panic_handler], built
-          # only for wasm32-unknown-unknown (see risk-registry/Cargo.toml's
-          # comment) -- building it for the native host target, which
-          # `cargo test` does for every workspace member by default,
-          # collides with the native toolchain's own panic handler
-          # (confirmed via a real CI error: "duplicate lang item
-          # panic_impl"). risk-registry-tests never touches
-          # risk-registry's own source -- it only loads the already-
-          # compiled .wasm staged above.
-          if ! cargo test --release -p risk-registry-tests 2>&1 | tee cargo-test-output.log; then
+          # Scoped to each *-tests package explicitly, never the whole
+          # workspace: every contract package (risk-registry,
+          # identity-registry, ...) is #![no_std] with its own
+          # #[panic_handler], built only for wasm32-unknown-unknown (see
+          # each package's own Cargo.toml comment) -- building one for
+          # the native host target, which `cargo test` does for every
+          # workspace member by default, collides with the native
+          # toolchain's own panic handler (confirmed via a real CI
+          # error: "duplicate lang item panic_impl"). Each *-tests
+          # package never touches its contract's own source -- it only
+          # loads the already-compiled .wasm staged above.
+          TEST_ARGS=()
+          while read -r pkg; do
+            [ -z "$pkg" ] && continue
+            tests_dir="${pkg}-tests"
+            if [ -d "$tests_dir" ]; then
+              TEST_ARGS+=(-p "$tests_dir")
+            fi
+          done < /tmp/casper-contract-packages.txt
+
+          if [ "${#TEST_ARGS[@]}" -eq 0 ]; then
+            echo "No *-tests packages found to run -- nothing to test."
+          elif ! cargo test --release "${TEST_ARGS[@]}" 2>&1 | tee cargo-test-output.log; then
             ENCODED=$(sed 's/\x1b\[[0-9;]*m//g' cargo-test-output.log | grep -B2 -A25 -E '^error|panicked at' | sed 's/%/%25/g; s/\r/%0D/g' | sed ':a;N;$!ba;s/\n/%0A/g' | head -c 9000)
             echo "::error::CASPER_TEST_FAILURE_TAIL: ${ENCODED}"
             exit 1
