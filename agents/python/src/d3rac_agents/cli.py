@@ -7,6 +7,8 @@ from __future__ import annotations
 import importlib
 import sys
 
+from dotenv import load_dotenv
+
 from . import _generated_manifest as manifest
 
 # Data agents first, then the risk model that joins their output.
@@ -35,6 +37,7 @@ def run_all() -> None:
 
 
 def main() -> None:
+    load_dotenv()  # picks up .env in the current working directory, if present
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
