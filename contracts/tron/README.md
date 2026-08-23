@@ -330,7 +330,7 @@ touches `contracts/tron/**` (see `contracts-tron` job in
 
 ## Test suite
 
-`test/` has a logic-level Hardhat/Mocha/Chai test suite (**115 tests**
+`test/` has a logic-level Hardhat/Mocha/Chai test suite (**116 tests**
 across `D3RACToken`, `IdentityRegistry`, `DisbursementController`,
 `MultiSigAdmin`, `RiskRegistry`, `FundingRequestRegistry`, and
 `D3RACHub`) covering the failure paths `docs/deployment-guide.md`'s
@@ -343,7 +343,7 @@ call routed through it reverts (and stays re-executable) if the
 underlying call reverts, a `RiskRegistry` test that reproduces
 `docs/risk-model.md`'s own example figures (H=0.81, E=0.66, V=0.74 →
 R≈0.3956) using the contract's exact fixed-point arithmetic rather than
-a rounded re-derivation, and a `D3RACHub` suite (now 40 tests on its
+a rounded re-derivation, and a `D3RACHub` suite (now 48 tests on its
 own) proving: the pause actually blocks the seven operational writes
 and doesn't block role-management or admin actions; every operational
 AND role-management function genuinely fails without its exact
@@ -369,9 +369,12 @@ npx hardhat test
 **Why Hardhat and not TronBox here:** these contracts use no
 TRON-specific precompiles or opcodes, so they're exactly as testable
 against a standard EVM as against the TVM — Hardhat's in-process network
-is faster to iterate against for logic tests. All 115 tests were run and
-passed against solc 0.8.20 during development, including the Hub's
-full-control wiring tests. This validates contract
+is faster to iterate against for logic tests. The suite (116 tests as
+of the `fix/two-step-admin-transfer-safe-erc20` merge, which added the
+M-2 two-step-transfer and M-3 safe-TRC-20-transfer coverage) was run
+and passed against solc 0.8.20 pre-merge on that branch; **re-run
+`npx hardhat test` after merging to reconfirm the full 116 before
+relying on this number**. This validates contract
 *logic*; it does not replace an actual TronBox/TronIDE deployment and
 exercise on Shasta or Nile, which is still required before mainnet (see
 `docs/deployment-guide.md`) to catch anything TVM-specific and to

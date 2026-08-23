@@ -96,7 +96,7 @@ admin role, a central coordinator ("Hub") with full role/ownership
 control over the other five contracts, an on-chain risk registry, and
 a funding-request board (seven contracts total; see
 [`contracts/tron/README.md`](contracts/tron/README.md)) — with a
-**logic-tested suite (115 passing tests)**, but **not yet deployed to any
+**logic-tested suite (116 passing tests)**, but **not yet deployed to any
 network and not yet professionally audited** (see
 [`docs/audit-pass-2026-07-25.md`](docs/audit-pass-2026-07-25.md) for an
 internal self-review pass — explicitly not a substitute for one).

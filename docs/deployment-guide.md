@@ -5,7 +5,7 @@ contracts and the frontend. **Read the [Security](#security-checklist)
 section before deploying anything with real funds.**
 
 > **Status note:** contract source (seven contracts), a passing logic
-> test suite (83 tests, see
+> test suite (116 tests, see
 > [`contracts/tron/README.md`](../contracts/tron/README.md)), and a
 > working TronBox compile config all exist now — but there is still no
 > testnet deployment and no professional audit. The steps below describe
