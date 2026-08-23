@@ -4,6 +4,7 @@ import type {
   TokenBalance,
   DisbursementResult,
 } from "./chainAdapter";
+import { formatUnits, parseUnits } from "./units";
 
 declare global {
   interface Window {
@@ -54,9 +55,7 @@ class TronAdapter implements ChainAdapter {
   ]);
 
   const raw = balance.toString();
-  const human = (
-    Number(raw) / Math.pow(10, Number(decimals))
-  ).toString();
+  const human = formatUnits(raw, Number(decimals));
 
   return {
     symbol,
@@ -81,8 +80,7 @@ class TronAdapter implements ChainAdapter {
 
   const decimals = await contract.decimals().call();
 
-  const value =
-    Number(params.amount) * Math.pow(10, Number(decimals));
+  const value = parseUnits(params.amount, Number(decimals));
 
   const txHash = await contract
     .transfer(params.to, value)

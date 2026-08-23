@@ -5,7 +5,7 @@ one layer of D3R·AC's architecture that turns real-world hazard signals
 into the `H(t)` / `E(c)` / `V(c)` inputs `RiskRegistry.sol` and
 `D3RACHub.sol` already expect, and pushes them on-chain.
 
-**Status:** implemented and unit-tested (24 passing tests), **not yet run
+**Status:** implemented and unit-tested (32 passing tests), **not yet run
 against a deployed Hub/RiskRegistry** — do that only after
 `contracts/tron` is deployed to a testnet per
 [`docs/deployment-guide.md`](../docs/deployment-guide.md), and after this
@@ -104,7 +104,7 @@ scheduler can own retry/backoff policy.
 pytest tests/
 ```
 
-24 tests covering fixed-point conversion accuracy (FR-3, including the
+32 tests covering fixed-point conversion accuracy (FR-3, including the
 exact `0.35 → 350000000000000000` example from `RiskRegistry.sol`'s own
 constructor comment), community-id derivation, hazard combination
 strategies, and full pipeline behavior (unchanged-value skipping,
@@ -137,7 +137,7 @@ src/d3rac_pipeline/
   audit_log.py          # NFR-3/NFR-4: append-only JSONL trace + per-cycle summary
   pipeline.py            # orchestrates one full refresh cycle (FR-1 through FR-7)
 scripts/run_cycle.py     # CLI entrypoint
-tests/                    # 24 tests, no network/chain dependency
+tests/                    # 32 tests, no network/chain dependency
 ```
 
 ## Security
