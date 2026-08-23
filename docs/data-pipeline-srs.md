@@ -201,7 +201,7 @@ risk scores for weeks.
 
 ## 6. Interfaces this pipeline depends on
 
-All already implemented and tested (115/115 passing, see
+All already implemented and tested (116/116 passing, see
 [`contracts/tron/README.md`](../contracts/tron/README.md)) — this
 pipeline is a consumer of these, not a modifier:
 

@@ -106,8 +106,7 @@ npm run build
 
 **Do not open a public issue for security vulnerabilities**, especially
 anything related to fund disbursement, private key handling, or contract
-logic. See [`SECURITY.md`](SECURITY.md) if present, or contact the
-maintainers directly.
+logic. See [`SECURITY.md`](SECURITY.md) for the reporting process.
 
 ## Code of conduct
 

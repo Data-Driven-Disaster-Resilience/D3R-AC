@@ -201,7 +201,7 @@ fail with `OutOfGas` on correct, well-formed calls.
 
 ## 6. Interfaces this suite must match
 
-Already implemented and tested on TRON (115/115 passing, see
+Already implemented and tested on TRON (116/116 passing, see
 [`contracts/tron/README.md`](../contracts/tron/README.md)) — this
 suite is a re-implementation targeting behavioral parity, not a
 consumer or a fork:

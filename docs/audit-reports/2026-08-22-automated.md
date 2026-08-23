@@ -305,73 +305,73 @@ Summary
 Impact: Low
 Confidence: Medium
  - [ ] ID-0
-[FundingRequestRegistry.closeRequest(uint256)](.contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L188-L198) uses timestamp for comparisons
+[FundingRequestRegistry.closeRequest(uint256)](../../contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L188-L198) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [require(bool,string)(msg.sender == r.requester || msg.sender == owner,FundingRequestRegistry: not authorized to close this request)](.contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L190-L193)
+	- [require(bool,string)(msg.sender == r.requester || msg.sender == owner,FundingRequestRegistry: not authorized to close this request)](../../contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L190-L193)
 
-.contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L188-L198
+../../contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L188-L198
 
 
  - [ ] ID-1
-[FundingRequestRegistry._getRequest(uint256)](.contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L238-L241) uses timestamp for comparisons
+[FundingRequestRegistry._getRequest(uint256)](../../contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L238-L241) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [require(bool,string)(requestId < _requests.length,FundingRequestRegistry: invalid request id)](.contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L239)
+	- [require(bool,string)(requestId < _requests.length,FundingRequestRegistry: invalid request id)](../../contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L239)
 
-.contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L238-L241
+../../contracts/tron/tronbox/contracts/FundingRequestRegistry.sol#L238-L241
 
 
  - [ ] ID-2
-[DisbursementController._requireCommitment(uint256)](.contracts/tron/tronbox/contracts/DisbursementController.sol#L276-L279) uses timestamp for comparisons
+[DisbursementController._requireCommitment(uint256)](../../contracts/tron/tronbox/contracts/DisbursementController.sol#L276-L279) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [require(bool,string)(commitmentId < _commitments.length,DisbursementController: commitment does not exist)](.contracts/tron/tronbox/contracts/DisbursementController.sol#L277)
+	- [require(bool,string)(commitmentId < _commitments.length,DisbursementController: commitment does not exist)](../../contracts/tron/tronbox/contracts/DisbursementController.sol#L277)
 
-.contracts/tron/tronbox/contracts/DisbursementController.sol#L276-L279
+../../contracts/tron/tronbox/contracts/DisbursementController.sol#L276-L279
 
 
  - [ ] ID-3
-[DisbursementController.attestMilestone(uint256,uint256)](.contracts/tron/tronbox/contracts/DisbursementController.sol#L185-L195) uses timestamp for comparisons
+[DisbursementController.attestMilestone(uint256,uint256)](../../contracts/tron/tronbox/contracts/DisbursementController.sol#L185-L195) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [require(bool,string)(! m.attested,DisbursementController: milestone already attested)](.contracts/tron/tronbox/contracts/DisbursementController.sol#L188)
+	- [require(bool,string)(! m.attested,DisbursementController: milestone already attested)](../../contracts/tron/tronbox/contracts/DisbursementController.sol#L188)
 
-.contracts/tron/tronbox/contracts/DisbursementController.sol#L185-L195
+../../contracts/tron/tronbox/contracts/DisbursementController.sol#L185-L195
 
 
  - [ ] ID-4
-[IdentityRegistry.revokeRecipient(address)](.contracts/tron/tronbox/contracts/IdentityRegistry.sol#L106-L111) uses timestamp for comparisons
+[IdentityRegistry.revokeRecipient(address)](../../contracts/tron/tronbox/contracts/IdentityRegistry.sol#L106-L111) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [require(bool,string)(recipients[recipient].verified,IdentityRegistry: recipient not verified)](.contracts/tron/tronbox/contracts/IdentityRegistry.sol#L107)
+	- [require(bool,string)(recipients[recipient].verified,IdentityRegistry: recipient not verified)](../../contracts/tron/tronbox/contracts/IdentityRegistry.sol#L107)
 
-.contracts/tron/tronbox/contracts/IdentityRegistry.sol#L106-L111
+../../contracts/tron/tronbox/contracts/IdentityRegistry.sol#L106-L111
 
 
  - [ ] ID-5
-[DisbursementController.releaseMilestone(uint256,uint256)](.contracts/tron/tronbox/contracts/DisbursementController.sol#L202-L220) uses timestamp for comparisons
+[DisbursementController.releaseMilestone(uint256,uint256)](../../contracts/tron/tronbox/contracts/DisbursementController.sol#L202-L220) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [require(bool,string)(m.attested,DisbursementController: milestone not attested)](.contracts/tron/tronbox/contracts/DisbursementController.sol#L205)
-	- [require(bool,string)(! m.released,DisbursementController: milestone already released)](.contracts/tron/tronbox/contracts/DisbursementController.sol#L206)
-	- [require(bool,string)(ITRC20(c.token).balanceOf(address(this)) >= m.amount,DisbursementController: insufficient contract balance for milestone)](.contracts/tron/tronbox/contracts/DisbursementController.sol#L207-L210)
-	- [require(bool,string)(ITRC20(c.token).transfer(c.recipient,m.amount),DisbursementController: token transfer failed)](.contracts/tron/tronbox/contracts/DisbursementController.sol#L219)
+	- [require(bool,string)(m.attested,DisbursementController: milestone not attested)](../../contracts/tron/tronbox/contracts/DisbursementController.sol#L205)
+	- [require(bool,string)(! m.released,DisbursementController: milestone already released)](../../contracts/tron/tronbox/contracts/DisbursementController.sol#L206)
+	- [require(bool,string)(ITRC20(c.token).balanceOf(address(this)) >= m.amount,DisbursementController: insufficient contract balance for milestone)](../../contracts/tron/tronbox/contracts/DisbursementController.sol#L207-L210)
+	- [require(bool,string)(ITRC20(c.token).transfer(c.recipient,m.amount),DisbursementController: token transfer failed)](../../contracts/tron/tronbox/contracts/DisbursementController.sol#L219)
 
-.contracts/tron/tronbox/contracts/DisbursementController.sol#L202-L220
+../../contracts/tron/tronbox/contracts/DisbursementController.sol#L202-L220
 
 
  - [ ] ID-6
-[RiskRegistry.getCommunity(bytes32)](.contracts/tron/tronbox/contracts/RiskRegistry.sol#L170-L186) uses timestamp for comparisons
+[RiskRegistry.getCommunity(bytes32)](../../contracts/tron/tronbox/contracts/RiskRegistry.sol#L170-L186) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [require(bool,string)(c.registered,RiskRegistry: community not registered)](.contracts/tron/tronbox/contracts/RiskRegistry.sol#L184)
+	- [require(bool,string)(c.registered,RiskRegistry: community not registered)](../../contracts/tron/tronbox/contracts/RiskRegistry.sol#L184)
 
-.contracts/tron/tronbox/contracts/RiskRegistry.sol#L170-L186
+../../contracts/tron/tronbox/contracts/RiskRegistry.sol#L170-L186
 
 
  - [ ] ID-7
-[RiskRegistry.registerCommunity(bytes32,string,string)](.contracts/tron/tronbox/contracts/RiskRegistry.sol#L112-L119) uses timestamp for comparisons
+[RiskRegistry.registerCommunity(bytes32,string,string)](../../contracts/tron/tronbox/contracts/RiskRegistry.sol#L112-L119) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [require(bool,string)(! communities[communityId].registered,RiskRegistry: community already registered)](.contracts/tron/tronbox/contracts/RiskRegistry.sol#L113)
+	- [require(bool,string)(! communities[communityId].registered,RiskRegistry: community already registered)](../../contracts/tron/tronbox/contracts/RiskRegistry.sol#L113)
 
-.contracts/tron/tronbox/contracts/RiskRegistry.sol#L112-L119
+../../contracts/tron/tronbox/contracts/RiskRegistry.sol#L112-L119
 
 
  - [ ] ID-8
-[RiskRegistry.updateRisk(bytes32,uint256,uint256,uint256)](.contracts/tron/tronbox/contracts/RiskRegistry.sol#L126-L147) uses timestamp for comparisons
+[RiskRegistry.updateRisk(bytes32,uint256,uint256,uint256)](../../contracts/tron/tronbox/contracts/RiskRegistry.sol#L126-L147) uses timestamp for comparisons
 	Dangerous```
 
