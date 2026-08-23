@@ -48,15 +48,20 @@ describe("D3RACHub", function () {
     // Hub's routine operational calls, and the ownership/admin transfer
     // for the Hub's role-management proxies to work at all.
     await registry.setVerifier(await hub.getAddress(), true);
-    await registry.transferAdmin(await hub.getAddress());
+    await registry.proposeNewAdmin(await hub.getAddress());
+    await hub.acceptIdentityRegistryAdmin();
     await controller.setAttester(await hub.getAddress(), true);
-    await controller.transferAdmin(await hub.getAddress());
+    await controller.proposeNewAdmin(await hub.getAddress());
+    await hub.acceptDisbursementControllerAdmin();
     await token.setMinter(await hub.getAddress(), true);
-    await token.transferOwnership(await hub.getAddress());
+    await token.proposeNewOwner(await hub.getAddress());
+    await hub.acceptTokenOwnership();
     await riskRegistry.addDataFeeder(await hub.getAddress());
-    await riskRegistry.transferOwnership(await hub.getAddress());
+    await riskRegistry.proposeNewOwner(await hub.getAddress());
+    await hub.acceptRiskRegistryOwnership();
     await fundingRegistry.addProposer(await hub.getAddress());
-    await fundingRegistry.transferOwnership(await hub.getAddress());
+    await fundingRegistry.proposeNewOwner(await hub.getAddress());
+    await hub.acceptFundingRequestRegistryOwnership();
   });
 
   describe("deployment", function () {
@@ -115,11 +120,17 @@ describe("D3RACHub", function () {
       expect(await hub.fundingRequestRegistry()).to.equal(ethers.ZeroAddress);
     });
 
-    it("only admin can transfer admin, and it takes effect immediately", async function () {
-      await expect(hub.connect(stranger).transferAdmin(stranger.address)).to.be.revertedWith(
+    it("only admin can propose a new admin, and it only takes effect once the proposed address accepts", async function () {
+      await expect(hub.connect(stranger).proposeNewAdmin(stranger.address)).to.be.revertedWith(
         "D3RACHub: caller is not admin"
       );
-      await hub.transferAdmin(stranger.address);
+      await hub.proposeNewAdmin(stranger.address);
+      // Not yet in effect — still needs acceptAdmin() from stranger.
+      expect(await hub.admin()).to.equal(admin.address);
+      await expect(hub.connect(recipient).acceptAdmin()).to.be.revertedWith(
+        "D3RACHub: caller is not the pending admin"
+      );
+      await hub.connect(stranger).acceptAdmin();
       expect(await hub.admin()).to.equal(stranger.address);
       await expect(hub.pause()).to.be.revertedWith("D3RACHub: caller is not admin");
     });
@@ -161,7 +172,7 @@ describe("D3RACHub", function () {
       await expect(hub.cancelCommitment(0)).to.not.revert(ethers);
       await expect(hub.closeFundingRequest(0)).to.not.revert(ethers);
       await expect(hub.setToken(await token.getAddress())).to.not.revert(ethers);
-      await expect(hub.transferAdmin(admin.address)).to.not.revert(ethers); // no-op transfer, still allowed
+      await expect(hub.proposeNewAdmin(admin.address)).to.not.revert(ethers); // no-op propose, still allowed
       await expect(hub.setIdentityVerifier(someone.address, true)).to.not.revert(ethers);
       await expect(hub.setDisbursementAttester(someone.address, true)).to.not.revert(ethers);
       await expect(hub.setTokenMinter(someone.address, true)).to.not.revert(ethers);
@@ -336,8 +347,10 @@ describe("D3RACHub", function () {
       expect(await registry.isVerified(recipient.address)).to.equal(false);
     });
 
-    it("transferIdentityRegistryAdmin forwards and genuinely moves IdentityRegistry's admin off the Hub", async function () {
-      await hub.transferIdentityRegistryAdmin(someone.address);
+    it("proposeIdentityRegistryAdmin + someone's own acceptAdmin() genuinely moves IdentityRegistry's admin off the Hub", async function () {
+      await hub.proposeIdentityRegistryAdmin(someone.address);
+      expect(await registry.admin()).to.equal(await hub.getAddress()); // not yet in effect
+      await registry.connect(someone).acceptAdmin();
       expect(await registry.admin()).to.equal(someone.address);
       await expect(hub.setIdentityVerifier(stranger.address, true)).to.be.revertedWith(
         "IdentityRegistry: caller is not admin"
@@ -372,8 +385,9 @@ describe("D3RACHub", function () {
       expect(await controller.attesters(someone.address)).to.equal(true);
     });
 
-    it("transferDisbursementControllerAdmin forwards and genuinely moves its admin off the Hub", async function () {
-      await hub.transferDisbursementControllerAdmin(someone.address);
+    it("proposeDisbursementControllerAdmin + someone's own acceptAdmin() genuinely moves its admin off the Hub", async function () {
+      await hub.proposeDisbursementControllerAdmin(someone.address);
+      await controller.connect(someone).acceptAdmin();
       expect(await controller.admin()).to.equal(someone.address);
       await expect(hub.setDisbursementAttester(stranger.address, true)).to.be.revertedWith(
         "DisbursementController: caller is not admin"
@@ -401,8 +415,9 @@ describe("D3RACHub", function () {
       await expect(bareHub.mintTokens(someone.address, 100)).to.not.revert(ethers);
     });
 
-    it("transferTokenOwnership forwards and genuinely moves D3RACToken's owner off the Hub", async function () {
-      await hub.transferTokenOwnership(someone.address);
+    it("proposeTokenOwnership + someone's own acceptOwnership() genuinely moves D3RACToken's owner off the Hub", async function () {
+      await hub.proposeTokenOwnership(someone.address);
+      await token.connect(someone).acceptOwnership();
       expect(await token.owner()).to.equal(someone.address);
       await expect(hub.setTokenMinter(stranger.address, true)).to.be.revertedWith(
         "D3RACToken: caller is not the owner"
@@ -423,20 +438,21 @@ describe("D3RACHub", function () {
       expect(await riskRegistry.riskThreshold()).to.equal(SCALE / 4n);
     });
 
-    it("transferRiskRegistryOwnership forwards and genuinely moves ownership off the Hub", async function () {
-      await hub.transferRiskRegistryOwnership(someone.address);
+    it("proposeRiskRegistryOwnership + someone's own acceptOwnership() genuinely moves ownership off the Hub", async function () {
+      await hub.proposeRiskRegistryOwnership(someone.address);
+      await riskRegistry.connect(someone).acceptOwnership();
       expect(await riskRegistry.owner()).to.equal(someone.address);
       await expect(hub.setRiskThreshold(1)).to.be.revertedWith("RiskRegistry: caller is not owner");
     });
 
-    it("reverts setRiskDataFeeder/setRiskThreshold/transferRiskRegistryOwnership when riskRegistry is not set", async function () {
+    it("reverts setRiskDataFeeder/setRiskThreshold/proposeRiskRegistryOwnership when riskRegistry is not set", async function () {
       const bareHub = await deploy(
         "D3RACHub", admin, admin.address, await token.getAddress(),
         await registry.getAddress(), await controller.getAddress(), ethers.ZeroAddress, ethers.ZeroAddress
       );
       await expect(bareHub.setRiskDataFeeder(someone.address, true)).to.be.revertedWith("D3RACHub: riskRegistry not set");
       await expect(bareHub.setRiskThreshold(1)).to.be.revertedWith("D3RACHub: riskRegistry not set");
-      await expect(bareHub.transferRiskRegistryOwnership(someone.address)).to.be.revertedWith("D3RACHub: riskRegistry not set");
+      await expect(bareHub.proposeRiskRegistryOwnership(someone.address)).to.be.revertedWith("D3RACHub: riskRegistry not set");
     });
   });
 
@@ -470,8 +486,9 @@ describe("D3RACHub", function () {
       await expect(hub.closeFundingRequest(0)).to.not.revert(ethers);
     });
 
-    it("transferFundingRequestRegistryOwnership forwards and genuinely moves ownership off the Hub", async function () {
-      await hub.transferFundingRequestRegistryOwnership(someone.address);
+    it("proposeFundingRequestRegistryOwnership + someone's own acceptOwnership() genuinely moves ownership off the Hub", async function () {
+      await hub.proposeFundingRequestRegistryOwnership(someone.address);
+      await fundingRegistry.connect(someone).acceptOwnership();
       expect(await fundingRegistry.owner()).to.equal(someone.address);
       await expect(hub.setFundingProposer(stranger.address, true)).to.be.revertedWith(
         "FundingRequestRegistry: caller is not owner"
@@ -486,7 +503,7 @@ describe("D3RACHub", function () {
       await expect(bareHub.setFundingProposer(someone.address, true)).to.be.revertedWith("D3RACHub: fundingRequestRegistry not set");
       await expect(bareHub.recordFundingPledge(0, 1, "x")).to.be.revertedWith("D3RACHub: fundingRequestRegistry not set");
       await expect(bareHub.linkFundingRequestToCommitment(0, 1)).to.be.revertedWith("D3RACHub: fundingRequestRegistry not set");
-      await expect(bareHub.transferFundingRequestRegistryOwnership(someone.address)).to.be.revertedWith("D3RACHub: fundingRequestRegistry not set");
+      await expect(bareHub.proposeFundingRequestRegistryOwnership(someone.address)).to.be.revertedWith("D3RACHub: fundingRequestRegistry not set");
     });
   });
 

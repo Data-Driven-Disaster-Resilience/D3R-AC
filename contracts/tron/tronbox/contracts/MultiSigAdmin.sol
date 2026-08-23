@@ -13,7 +13,7 @@ import "./base/D3RACProperties.sol";
 ///         Deploy this first, then pass its address as the `admin_` /
 ///         `owner_` constructor argument on the other contracts. Any call
 ///         those contracts would normally receive from a single admin key
-///         (setAttester, setVerifier, createCommitment, transferOwnership,
+///         (setAttester, setVerifier, createCommitment, proposeNewOwner,
 ///         etc.) instead gets proposed here via `submitTransaction` and
 ///         only executes once `threshold` owners have confirmed it.
 ///
@@ -21,8 +21,8 @@ import "./base/D3RACProperties.sol";
 ///      no owner-management-through-itself, no daily limits, no batching.
 ///      Owners are fixed at deployment; rotate by deploying a new
 ///      MultiSigAdmin and re-pointing the other contracts' admin role to
-///      it (each of those contracts supports transferAdmin/
-///      transferOwnership for exactly this).
+///      it (each of those contracts supports proposeNewAdmin/acceptAdmin/
+///      or proposeNewOwner/acceptOwnership for exactly this).
 contract MultiSigAdmin is D3RACProperties {
     bytes32 public constant OWNER_ROLE = keccak256("MultiSigAdmin.OWNER_ROLE");
 

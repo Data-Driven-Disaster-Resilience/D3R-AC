@@ -20,7 +20,8 @@ interface IDisbursementControllerHub {
     function cancelCommitment(uint256 commitmentId) external;
     function commitmentCount() external view returns (uint256);
     function setAttester(address account, bool isAttester) external;
-    function transferAdmin(address newAdmin) external;
+    function proposeNewAdmin(address newAdmin) external;
+    function acceptAdmin() external;
 }
 
 /// @dev Minimal interface onto D3RACToken — only what D3RACHub calls.
@@ -29,7 +30,8 @@ interface IMintableToken {
     function balanceOf(address account) external view returns (uint256);
     function mint(address to, uint256 value) external;
     function setMinter(address account, bool canMint) external;
-    function transferOwnership(address newOwner) external;
+    function proposeNewOwner(address newOwner) external;
+    function acceptOwnership() external;
 }
 
 /// @dev Minimal interface onto RiskRegistry — only what D3RACHub calls.
@@ -40,7 +42,8 @@ interface IRiskRegistryHub {
     function addDataFeeder(address feeder) external;
     function removeDataFeeder(address feeder) external;
     function setRiskThreshold(uint256 newThreshold) external;
-    function transferOwnership(address newOwner) external;
+    function proposeNewOwner(address newOwner) external;
+    function acceptOwnership() external;
 }
 
 /// @dev Minimal interface onto FundingRequestRegistry — only what D3RACHub calls.
@@ -58,7 +61,8 @@ interface IFundingRequestRegistryHub {
     function linkToCommitment(uint256 requestId, uint256 commitmentId) external;
     function addProposer(address proposer) external;
     function removeProposer(address proposer) external;
-    function transferOwnership(address newOwner) external;
+    function proposeNewOwner(address newOwner) external;
+    function acceptOwnership() external;
 }
 
 /// @title D3RACHub
@@ -110,7 +114,7 @@ interface IFundingRequestRegistryHub {
 ///      throughout: e.g. updateRisk/openFundingRequest need only additive
 ///      role grants, while registerCommunity/setRiskThreshold/
 ///      setRiskDataFeeder need the Hub to hold RiskRegistry's exclusive
-///      owner role via transferOwnership). Calling the underlying
+///      owner role via proposeNewOwner + acceptOwnership). Calling the underlying
 ///      contracts directly, bypassing the Hub, is still possible for
 ///      anyone who already holds a role there outside the Hub (e.g. a
 ///      role granted before the Hub existed, or granted to some other
@@ -133,6 +137,7 @@ interface IFundingRequestRegistryHub {
 ///      don't need the multi-holder role registry the other contracts use.
 contract D3RACHub is D3RACProperties {
     address public admin;
+    address public pendingAdmin;
     bool public paused;
 
     IMintableToken public token;
@@ -142,6 +147,7 @@ contract D3RACHub is D3RACProperties {
     IFundingRequestRegistryHub public fundingRequestRegistry;
 
     event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed proposedAdmin);
     event ModuleUpdated(bytes32 indexed module, address indexed previousAddress, address indexed newAddress);
     event Paused(address indexed by);
     event Unpaused(address indexed by);
@@ -204,10 +210,20 @@ contract D3RACHub is D3RACProperties {
     //    an incident that requires re-pointing a module or changing admin
     //    shouldn't be blocked by the pause meant to contain it) ──────────
 
-    function transferAdmin(address newAdmin) external onlyAdmin {
+    /// @notice Step 1 of Hub admin transfer — same rationale as the
+    ///         child-contract proposeNewAdmin functions.
+    function proposeNewAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "D3RACHub: new admin is zero address");
-        emit AdminTransferred(admin, newAdmin);
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    /// @notice Step 2: the proposed admin claims the role themselves.
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "D3RACHub: caller is not the pending admin");
+        emit AdminTransferred(admin, pendingAdmin);
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
     }
 
     function setToken(address newToken) external onlyAdmin {
@@ -302,7 +318,7 @@ contract D3RACHub is D3RACProperties {
 
     /// @notice Register a community via RiskRegistry. Requires riskRegistry
     ///         to be set AND the Hub to actually be RiskRegistry's `owner`
-    ///         (RiskRegistry.transferOwnership) — this is exclusive, not
+    ///         (RiskRegistry.proposeNewOwner/acceptOwnership) — this is exclusive, not
     ///         additive, same as DisbursementController's createCommitment.
     function registerCommunity(bytes32 communityId, string calldata name_, string calldata region)
         external
@@ -350,7 +366,7 @@ contract D3RACHub is D3RACProperties {
     ///         FundingRequestRegistry's owner to close it — so this only
     ///         succeeds for requests the Hub itself opened (see
     ///         openFundingRequest), unless the Hub has separately been
-    ///         made FundingRequestRegistry's owner via transferOwnership.
+    ///         made FundingRequestRegistry's owner via proposeNewOwner/acceptOwnership.
     ///         Deliberately NOT gated by whenNotPaused, matching
     ///         cancelCommitment — closing a bad request is a defensive
     ///         action a pause shouldn't block.
@@ -372,17 +388,29 @@ contract D3RACHub is D3RACProperties {
     //    it separately. ──────────────────────────────────────────────────
 
     /// @notice Grant/revoke verifier status on IdentityRegistry. Requires
-    ///         the Hub to be IdentityRegistry's admin (transferAdmin).
+    ///         the Hub to be IdentityRegistry's admin (proposeNewAdmin/acceptAdmin).
     function setIdentityVerifier(address account, bool isVerifier) external onlyAdmin {
         identityRegistry.setVerifier(account, isVerifier);
     }
 
-    /// @notice Transfer IdentityRegistry's own admin role elsewhere.
-    ///         Requires the Hub to currently hold it. Note this can move
-    ///         IdentityRegistry's admin OFF the Hub entirely if misused —
-    ///         same caution as any admin-transfer function.
-    function transferIdentityRegistryAdmin(address newAdmin) external onlyAdmin {
-        identityRegistry.transferAdmin(newAdmin);
+    /// @notice Propose a new admin for IdentityRegistry (step 1 of its
+    ///         two-step transfer). Requires the Hub to currently hold
+    ///         IdentityRegistry's admin role. The proposed address must
+    ///         then call `acceptAdmin()` directly on IdentityRegistry
+    ///         itself to complete the handoff — the Hub cannot do that
+    ///         step on their behalf.
+    function proposeIdentityRegistryAdmin(address newAdmin) external onlyAdmin {
+        identityRegistry.proposeNewAdmin(newAdmin);
+    }
+
+    /// @notice Complete step 2 of an admin transfer where the Hub itself
+    ///         is the proposed new admin of IdentityRegistry — makes the
+    ///         Hub the `msg.sender` on IdentityRegistry.acceptAdmin(),
+    ///         which only the Hub's own code can do (an EOA calling
+    ///         IdentityRegistry directly would make itself the admin
+    ///         instead of the Hub).
+    function acceptIdentityRegistryAdmin() external onlyAdmin {
+        identityRegistry.acceptAdmin();
     }
 
     /// @notice Revoke a previously verified recipient via IdentityRegistry.
@@ -401,24 +429,43 @@ contract D3RACHub is D3RACProperties {
         disbursementController.setAttester(account, isAttester);
     }
 
-    /// @notice Transfer DisbursementController's own admin role elsewhere.
-    ///         Requires the Hub to currently hold it.
-    function transferDisbursementControllerAdmin(address newAdmin) external onlyAdmin {
-        disbursementController.transferAdmin(newAdmin);
+    /// @notice Propose a new admin for DisbursementController (step 1 of
+    ///         its two-step transfer). Requires the Hub to currently hold
+    ///         it. The proposed address must call `acceptAdmin()` directly
+    ///         on DisbursementController to complete the handoff.
+    function proposeDisbursementControllerAdmin(address newAdmin) external onlyAdmin {
+        disbursementController.proposeNewAdmin(newAdmin);
+    }
+
+    /// @notice Complete step 2 where the Hub itself is the proposed new
+    ///         admin of DisbursementController — see
+    ///         acceptIdentityRegistryAdmin's NatSpec for why this must go
+    ///         through the Hub's own code rather than an EOA.
+    function acceptDisbursementControllerAdmin() external onlyAdmin {
+        disbursementController.acceptAdmin();
     }
 
     /// @notice Grant/revoke minter status on D3RACToken. Requires the Hub
-    ///         to be D3RACToken's owner (transferOwnership) — mintTokens
+    ///         to be D3RACToken's owner (proposeNewOwner/acceptOwnership) — mintTokens
     ///         above only requires minter status, which is a lower bar
     ///         than this function needs.
     function setTokenMinter(address account, bool canMint) external onlyAdmin {
         token.setMinter(account, canMint);
     }
 
-    /// @notice Transfer D3RACToken's own owner role elsewhere. Requires
-    ///         the Hub to currently hold it.
-    function transferTokenOwnership(address newOwner) external onlyAdmin {
-        token.transferOwnership(newOwner);
+    /// @notice Propose a new owner for D3RACToken (step 1 of its two-step
+    ///         transfer). Requires the Hub to currently hold it. The
+    ///         proposed address must call `acceptOwnership()` directly on
+    ///         D3RACToken to complete the handoff.
+    function proposeTokenOwnership(address newOwner) external onlyAdmin {
+        token.proposeNewOwner(newOwner);
+    }
+
+    /// @notice Complete step 2 where the Hub itself is the proposed new
+    ///         owner of D3RACToken — see acceptIdentityRegistryAdmin's
+    ///         NatSpec for why this must go through the Hub's own code.
+    function acceptTokenOwnership() external onlyAdmin {
+        token.acceptOwnership();
     }
 
     /// @notice Grant/revoke data-feeder status on RiskRegistry. Requires
@@ -440,11 +487,21 @@ contract D3RACHub is D3RACProperties {
         riskRegistry.setRiskThreshold(newThreshold);
     }
 
-    /// @notice Transfer RiskRegistry's own owner role elsewhere. Requires
-    ///         the Hub to currently hold it.
-    function transferRiskRegistryOwnership(address newOwner) external onlyAdmin {
+    /// @notice Propose a new owner for RiskRegistry (step 1 of its
+    ///         two-step transfer). Requires the Hub to currently hold it.
+    ///         The proposed address must call `acceptOwnership()` directly
+    ///         on RiskRegistry to complete the handoff.
+    function proposeRiskRegistryOwnership(address newOwner) external onlyAdmin {
         require(address(riskRegistry) != address(0), "D3RACHub: riskRegistry not set");
-        riskRegistry.transferOwnership(newOwner);
+        riskRegistry.proposeNewOwner(newOwner);
+    }
+
+    /// @notice Complete step 2 where the Hub itself is the proposed new
+    ///         owner of RiskRegistry — see acceptIdentityRegistryAdmin's
+    ///         NatSpec for why this must go through the Hub's own code.
+    function acceptRiskRegistryOwnership() external onlyAdmin {
+        require(address(riskRegistry) != address(0), "D3RACHub: riskRegistry not set");
+        riskRegistry.acceptOwnership();
     }
 
     /// @notice Grant/revoke proposer status on FundingRequestRegistry.
@@ -452,7 +509,7 @@ contract D3RACHub is D3RACProperties {
     ///         NOT automatically true just because the Hub can call
     ///         openFundingRequest (that only needs proposer status,
     ///         additive). This function specifically needs the exclusive
-    ///         owner role, via transferOwnership.
+    ///         owner role, via proposeNewOwner/acceptOwnership.
     function setFundingProposer(address proposer, bool isProposer) external onlyAdmin {
         require(address(fundingRequestRegistry) != address(0), "D3RACHub: fundingRequestRegistry not set");
         if (isProposer) {
@@ -485,11 +542,22 @@ contract D3RACHub is D3RACProperties {
         fundingRequestRegistry.linkToCommitment(requestId, commitmentId);
     }
 
-    /// @notice Transfer FundingRequestRegistry's own owner role elsewhere.
-    ///         Requires the Hub to currently hold it.
-    function transferFundingRequestRegistryOwnership(address newOwner) external onlyAdmin {
+    /// @notice Propose a new owner for FundingRequestRegistry (step 1 of
+    ///         its two-step transfer). Requires the Hub to currently hold
+    ///         it. The proposed address must call `acceptOwnership()`
+    ///         directly on FundingRequestRegistry to complete the handoff.
+    function proposeFundingRequestRegistryOwnership(address newOwner) external onlyAdmin {
         require(address(fundingRequestRegistry) != address(0), "D3RACHub: fundingRequestRegistry not set");
-        fundingRequestRegistry.transferOwnership(newOwner);
+        fundingRequestRegistry.proposeNewOwner(newOwner);
+    }
+
+    /// @notice Complete step 2 where the Hub itself is the proposed new
+    ///         owner of FundingRequestRegistry — see
+    ///         acceptIdentityRegistryAdmin's NatSpec for why this must go
+    ///         through the Hub's own code.
+    function acceptFundingRequestRegistryOwnership() external onlyAdmin {
+        require(address(fundingRequestRegistry) != address(0), "D3RACHub: fundingRequestRegistry not set");
+        fundingRequestRegistry.acceptOwnership();
     }
 
     // ── Aggregate status (one call instead of five contracts) ─────────

@@ -85,11 +85,16 @@ describe("D3RACToken", function () {
     await expect(token.connect(alice).burn(1)).to.be.revertedWith("D3RACToken: burn exceeds balance");
   });
 
-  it("only the owner can transfer ownership, and it takes effect", async function () {
-    await expect(token.connect(stranger).transferOwnership(alice.address)).to.be.revertedWith(
+  it("only the owner can propose a new owner, and it only takes effect once accepted", async function () {
+    await expect(token.connect(stranger).proposeNewOwner(alice.address)).to.be.revertedWith(
       "D3RACToken: caller is not the owner"
     );
-    await token.transferOwnership(alice.address);
+    await token.proposeNewOwner(alice.address);
+    expect(await token.owner()).to.equal(owner.address); // not yet in effect
+    await expect(token.connect(stranger).acceptOwnership()).to.be.revertedWith(
+      "D3RACToken: caller is not the pending owner"
+    );
+    await token.connect(alice).acceptOwnership();
     expect(await token.owner()).to.equal(alice.address);
     // old owner immediately loses admin rights
     await expect(token.setMinter(bob.address, true)).to.be.revertedWith(

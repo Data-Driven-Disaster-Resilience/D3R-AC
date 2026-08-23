@@ -23,6 +23,7 @@ contract D3RACToken is D3RACProperties {
     uint256 public totalSupply;
 
     address public owner;
+    address public pendingOwner;
 
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -30,6 +31,7 @@ contract D3RACToken is D3RACProperties {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferProposed(address indexed currentOwner, address indexed proposedOwner);
     event MinterUpdated(address indexed account, bool canMint);
 
     modifier onlyOwner() {
@@ -120,10 +122,18 @@ contract D3RACToken is D3RACProperties {
         emit MinterUpdated(account, canMint);
     }
 
-    function transferOwnership(address newOwner) external onlyOwner {
+    function proposeNewOwner(address newOwner) external onlyOwner {
         require(newOwner != address(0), "D3RACToken: new owner is zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
+        pendingOwner = newOwner;
+        emit OwnershipTransferProposed(owner, newOwner);
+    }
+
+    /// @notice Step 2: the proposed owner claims the role themselves.
+    function acceptOwnership() external {
+        require(msg.sender == pendingOwner, "D3RACToken: caller is not the pending owner");
+        emit OwnershipTransferred(owner, pendingOwner);
+        owner = pendingOwner;
+        pendingOwner = address(0);
     }
 
     // ── Internals ────────────────────────────────────────────────────────

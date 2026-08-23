@@ -18,11 +18,12 @@ pragma solidity ^0.8.20;
 ///         contract — is a couple of lines instead of copy-pasting a
 ///         mapping + modifier + setter + event again.
 /// @dev Deliberately does NOT touch the existing single owner/admin
-///      pattern (owner/admin + transferOwnership/transferAdmin) already
-///      used consistently across the suite — that already works, and
-///      folding a single, non-multi-holder role into a multi-holder role
-///      registry would be a needless behavior change. This contract only
-///      generalizes the *secondary* roles.
+///      pattern (owner/admin + proposeNewOwner/acceptOwnership or
+///      proposeNewAdmin/acceptAdmin) already used consistently across the
+///      suite — that already works, and folding a single, non-multi-holder
+///      role into a multi-holder role registry would be a needless
+///      behavior change. This contract only generalizes the *secondary*
+///      roles.
 ///
 ///      Every check here reverts with the exact message the calling
 ///      contract passes in (e.g. "IdentityRegistry: caller is not a

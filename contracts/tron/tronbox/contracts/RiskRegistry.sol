@@ -26,6 +26,7 @@ contract RiskRegistry is D3RACProperties {
     uint256 public riskThreshold; // theta, same scale
 
     address public owner;
+    address public pendingOwner;
 
     struct CommunityRisk {
         string name;
@@ -54,6 +55,7 @@ contract RiskRegistry is D3RACProperties {
     event DataFeederRemoved(address indexed feeder);
     event ThresholdUpdated(uint256 previousThreshold, uint256 newThreshold);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferProposed(address indexed currentOwner, address indexed proposedOwner);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "RiskRegistry: caller is not owner");
@@ -84,10 +86,18 @@ contract RiskRegistry is D3RACProperties {
     // ---------------------------------------------------------------
     // Admin
     // ---------------------------------------------------------------
-    function transferOwnership(address newOwner) external onlyOwner {
+    function proposeNewOwner(address newOwner) external onlyOwner {
         require(newOwner != address(0), "RiskRegistry: zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
+        pendingOwner = newOwner;
+        emit OwnershipTransferProposed(owner, newOwner);
+    }
+
+    /// @notice Step 2: the proposed owner claims the role themselves.
+    function acceptOwnership() external {
+        require(msg.sender == pendingOwner, "RiskRegistry: caller is not the pending owner");
+        emit OwnershipTransferred(owner, pendingOwner);
+        owner = pendingOwner;
+        pendingOwner = address(0);
     }
 
     function addDataFeeder(address feeder) external onlyOwner {
