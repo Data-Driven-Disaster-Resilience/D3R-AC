@@ -82,7 +82,7 @@ impl Default for Recipient {
         Recipient {
             verified: false,
             community: String::new(),
-            verified_by: Key::from(casper_types::AccountHash::new([0u8; 32])),
+            verified_by: Key::from(casper_types::account::AccountHash::new([0u8; 32])),
             verified_at: 0,
             revoked_at: 0,
         }
