@@ -24,12 +24,13 @@ Defenders), Abuja, Nigeria.
 
 # Casper Contracts — Software Requirements Specification
 
-**Status:** Draft — implementation started (`risk-registry`, one of
-seven contracts; not yet confirmed compiling). See
+**Status:** Draft — implementation started (`risk-registry`,
+`identity-registry`, two of seven contracts; both confirmed compiling
+and passing CI). See
 [`contracts/casper/README.md`](../contracts/casper/README.md) for
 current, itemized status.
 **Component:** `contracts/casper/` (declared in the top-level
-[`README.md`](../README.md)'s repository structure, not yet created).
+[`README.md`](../README.md)'s repository structure).
 
 ## 1. Purpose
 

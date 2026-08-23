@@ -24,9 +24,11 @@ Defenders), Abuja, Nigeria.
 
 # Data Pipeline — Software Requirements Specification
 
-**Status:** Draft — no implementation exists yet.
+**Status:** Implemented and unit-tested (32 passing tests) — see the
+Status line below for detail. Originally drafted before implementation
+existed; this header was not updated when the code landed.
 **Component:** `data-pipeline/` (declared in the top-level
-[`README.md`](../README.md)'s repository structure, not yet created).
+[`README.md`](../README.md)'s repository structure).
 
 ## 1. Purpose
 

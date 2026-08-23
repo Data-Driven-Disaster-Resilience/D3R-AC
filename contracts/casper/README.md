@@ -99,7 +99,30 @@ one `casper-types` version now resolves across the whole graph.
       found and fixed by a parallel Claude Code session working on this
       same file, traced against the actual crate source rather than
       guessed).
-- [ ] The other six contracts (`D3RACToken`/CEP-18, `IdentityRegistry`,
+- [x] `identity-registry/` — full source written (installer, all entry
+      points, error type, event definitions, on-chain record type),
+      implementing SRS FR-2: admin-designated verifiers can verify a
+      recipient account against a community label and revoke that
+      verification. Two-step admin transfer (`propose_new_admin`/
+      `accept_admin`) matches TRON's `IdentityRegistry.sol`
+      `proposeNewAdmin`/`acceptAdmin` exactly (the M-2 fix on `main`).
+      Followed `risk-registry/src/main.rs`'s already-CI-confirmed
+      template for every hard-won pattern (global allocator, panic
+      handler, CES event registration, `new_locked_contract`'s 5-arg
+      signature, dictionary-backed storage, AccountHash-normalized
+      addressing).
+- [x] **Confirmed compiling** — `identity-registry.wasm` builds
+      successfully against `wasm32-unknown-unknown` in CI, using the
+      now-generalized `contracts-casper` job (see below).
+- [x] Unit/integration tests against a local Casper network — **all 9
+      passing, CI-confirmed**
+      (`identity-registry-tests/tests/integration_tests.rs`).
+- [x] CI generalized: the Casper build/test job was hardcoded to
+      `-p risk-registry`; it now discovers every contract package in
+      the workspace and builds/lowers-bulk-memory-ops/stages/tests all
+      of them, so each new contract in the SRS doesn't need its own CI
+      edit going forward.
+- [ ] The other five contracts (`D3RACToken`/CEP-18,
       `DisbursementController`, `MultiSigAdmin`, `D3RACHub`,
       `FundingRequestRegistry`)
 - [ ] Hub wiring (FR-8)
