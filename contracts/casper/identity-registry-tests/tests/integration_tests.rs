@@ -10,7 +10,7 @@
 use casper_engine_test_support::{
     ExecuteRequestBuilder, LmdbWasmTestBuilder, DEFAULT_ACCOUNT_ADDR, LOCAL_GENESIS_REQUEST,
 };
-use casper_types::{account::AccountHash, runtime_args, Key};
+use casper_types::{account::AccountHash, runtime_args, Key, U512};
 
 const CONTRACT_WASM: &str = "identity-registry.wasm";
 const CONTRACT_HASH_KEY_NAME: &str = "identity_registry_contract_hash";
@@ -55,6 +55,28 @@ fn contract_hash(builder: &LmdbWasmTestBuilder) -> casper_types::AddressableEnti
         .expect("contract hash named key should exist after install")
         .into_entity_hash()
         .expect("contract hash named key should resolve to an addressable entity hash")
+}
+
+/// A fresh `AccountHash` doesn't exist in global state until something
+/// funds it -- executing a deploy AS that account before that point
+/// fails with `KeyNotFound`, not a graceful contract-level revert (the
+/// engine can't even find a purse to charge gas from). Needed only for
+/// tests where the fresh account must itself successfully call an
+/// entry point (e.g. accepting a proposed admin transfer); tests that
+/// only need a fresh account to demonstrate a REJECTED call don't need
+/// this -- `KeyNotFound` is itself already an execution failure, so
+/// `.expect_failure()` accepts it either way.
+fn fund_account(builder: &mut LmdbWasmTestBuilder, account: AccountHash) {
+    let transfer_request = ExecuteRequestBuilder::transfer(
+        *DEFAULT_ACCOUNT_ADDR,
+        runtime_args! {
+            "target" => account,
+            "amount" => U512::from(30_000_000_000u64),
+            "id" => Option::<u64>::None,
+        },
+    )
+    .build();
+    builder.exec(transfer_request).expect_success().commit();
 }
 
 #[test]
@@ -225,6 +247,12 @@ fn should_two_step_transfer_admin_and_reject_a_stranger_accepting() {
     )
     .build();
     builder.exec(propose_request).expect_success().commit();
+
+    // stranger never needs to successfully execute anything below
+    // (only rejected calls), so it's deliberately left unfunded --
+    // see fund_account's doc comment. new_admin DOES need to
+    // successfully call accept_admin, so fund it first.
+    fund_account(&mut builder, new_admin);
 
     // A stranger (not the proposed admin) trying to accept must fail --
     // matches IdentityRegistry.sol's "caller is not the pending admin"
