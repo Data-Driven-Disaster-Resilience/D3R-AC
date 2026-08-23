@@ -93,40 +93,62 @@ module.exports = async function (deployer, network, accounts) {
   // ---- 2. Full Hub wiring -----------------------------------------------
   //   Role mappings (verifier/attester/dataFeeder/proposer/minter) are
   //   ADDITIVE -- granting the Hub one doesn't remove the deployer's own
-  //   access. Single admin/owner addresses are EXCLUSIVE -- transferring
-  //   one to the Hub replaces the deployer as the holder immediately.
-  //   Grant the additive role first, transfer exclusive admin/owner
-  //   second, per contract -- matches the order in
-  //   test/D3RACHub.test.js's beforeEach exactly.
+  //   access. Single admin/owner addresses are EXCLUSIVE and now use a
+  //   two-step handoff (propose from the current admin/owner, accept from
+  //   the new one) -- the Hub proposes itself, then the Hub's own code
+  //   must separately accept, since only the Hub's own code can make the
+  //   Hub the `msg.sender` of that acceptance call (see D3RACHub.sol's
+  //   acceptIdentityRegistryAdmin/acceptDisbursementControllerAdmin/
+  //   acceptTokenOwnership/acceptRiskRegistryOwnership/
+  //   acceptFundingRequestRegistryOwnership wrapper functions).
+  //   Grant the additive role, propose, then accept, per contract --
+  //   matches the order in test/D3RACHub.test.mjs's beforeEach exactly.
   console.log("Wiring the Hub...");
 
   await identityRegistry.setVerifier(hub.address, true);
-  await identityRegistry.transferAdmin(hub.address);
+  await identityRegistry.proposeNewAdmin(hub.address);
+  await hub.acceptIdentityRegistryAdmin();
 
   await disbursementController.setAttester(hub.address, true);
-  await disbursementController.transferAdmin(hub.address);
+  await disbursementController.proposeNewAdmin(hub.address);
+  await hub.acceptDisbursementControllerAdmin();
 
   await token.setMinter(hub.address, true);
-  await token.transferOwnership(hub.address);
+  await token.proposeNewOwner(hub.address);
+  await hub.acceptTokenOwnership();
 
   await riskRegistry.addDataFeeder(hub.address);
-  await riskRegistry.transferOwnership(hub.address);
+  await riskRegistry.proposeNewOwner(hub.address);
+  await hub.acceptRiskRegistryOwnership();
 
   await fundingRequestRegistry.addProposer(hub.address);
-  await fundingRequestRegistry.transferOwnership(hub.address);
+  await fundingRequestRegistry.proposeNewOwner(hub.address);
+  await hub.acceptFundingRequestRegistryOwnership();
 
   console.log("Hub wiring complete -- Hub now holds admin/owner on all five modules.\n");
 
-  // ---- 3. Deploy MultiSigAdmin and move the Hub's own admin role to it -
-  //         Everything above already funnels through the Hub, so the Hub
-  //         is the single admin surface that needs to move off a lone
-  //         deployer key and onto the multisig.
+  // ---- 3. Deploy MultiSigAdmin and propose moving the Hub's own admin
+  //         role to it. Everything above already funnels through the Hub,
+  //         so the Hub is the single admin surface that needs to move off
+  //         a lone deployer key and onto the multisig.
+  //
+  //         NOTE: this script only completes the PROPOSE step. Accepting
+  //         (hub.acceptAdmin(), called with the multisig itself as
+  //         msg.sender) is deliberately NOT automated here -- it requires
+  //         the multisig's own owners to submit, confirm, and execute a
+  //         MultiSigAdmin transaction targeting `hub` with `acceptAdmin()`
+  //         calldata, which is a governance action for the multisig
+  //         owners to carry out themselves, not something a deploy script
+  //         should do on their behalf.
   await deployer.deploy(MultiSigAdmin, multisigOwners, multisigThreshold);
   const multisig = await MultiSigAdmin.deployed();
 
-  await hub.transferAdmin(multisig.address);
+  await hub.proposeNewAdmin(multisig.address);
 
-  console.log("Hub admin transferred to MultiSigAdmin.\n");
+  console.log(
+    "Hub admin transfer PROPOSED to MultiSigAdmin -- still needs the multisig owners to " +
+    "submit/confirm/execute a transaction calling hub.acceptAdmin() to complete it.\n"
+  );
 
   // ---- 4. Record what was deployed --------------------------------------
   //   docs/deployment-guide.md's post-deployment step: record the

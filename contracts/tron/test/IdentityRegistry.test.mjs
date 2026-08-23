@@ -67,11 +67,15 @@ describe("IdentityRegistry", function () {
     );
   });
 
-  it("only admin can transfer admin, and it takes effect immediately", async function () {
-    await expect(registry.connect(stranger).transferAdmin(verifier.address)).to.be.revertedWith(
+  it("only admin can propose a new admin, and it only takes effect once the proposed address accepts", async function () {
+    await expect(registry.connect(stranger).proposeNewAdmin(verifier.address)).to.be.revertedWith(
       "IdentityRegistry: caller is not admin"
     );
-    await registry.transferAdmin(verifier.address);
+    await registry.proposeNewAdmin(verifier.address);
+    await expect(registry.connect(stranger).acceptAdmin()).to.be.revertedWith(
+      "IdentityRegistry: caller is not the pending admin"
+    );
+    await registry.connect(verifier).acceptAdmin();
     expect(await registry.admin()).to.equal(verifier.address);
     await expect(registry.setVerifier(stranger.address, true)).to.be.revertedWith(
       "IdentityRegistry: caller is not admin"

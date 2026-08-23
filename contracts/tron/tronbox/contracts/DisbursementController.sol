@@ -56,6 +56,7 @@ contract DisbursementController is D3RACProperties {
 
     IdentityRegistry public immutable registry;
     address public admin;
+    address public pendingAdmin;
 
     Commitment[] private _commitments;
 
@@ -71,6 +72,7 @@ contract DisbursementController is D3RACProperties {
     event MilestoneReleased(uint256 indexed commitmentId, uint256 indexed milestoneIndex, address indexed recipient, uint256 amount);
     event CommitmentCancelled(uint256 indexed commitmentId, address indexed cancelledBy, uint256 unreleasedAmount);
     event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed proposedAdmin);
     event AttesterUpdated(address indexed account, bool isAttester);
 
     modifier onlyAdmin() {
@@ -114,10 +116,21 @@ contract DisbursementController is D3RACProperties {
         emit AttesterUpdated(account, isAttester);
     }
 
-    function transferAdmin(address newAdmin) external onlyAdmin {
+    /// @notice Step 1 of admin transfer — see IdentityRegistry.sol's
+    ///         proposeNewAdmin for the rationale (no unrecoverable loss
+    ///         from a mistyped address).
+    function proposeNewAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "DisbursementController: new admin is zero address");
-        emit AdminTransferred(admin, newAdmin);
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    /// @notice Step 2: the proposed admin claims the role themselves.
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "DisbursementController: caller is not the pending admin");
+        emit AdminTransferred(admin, pendingAdmin);
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
     }
 
     // ── Commitment lifecycle ─────────────────────────────────────────────
@@ -216,7 +229,27 @@ contract DisbursementController is D3RACProperties {
 
         emit MilestoneReleased(commitmentId, milestoneIndex, c.recipient, m.amount);
 
-        require(ITRC20(c.token).transfer(c.recipient, m.amount), "DisbursementController: token transfer failed");
+        _safeTransfer(c.token, c.recipient, m.amount);
+    }
+
+    /// @dev M-3 fix: some real-world TRC-20/ERC-20 tokens (most famously
+    ///      Ethereum USDT and its forks) don't return a `bool` from
+    ///      `transfer` at all. `require(ITRC20(token).transfer(...))`
+    ///      against such a token reverts on ABI-decoding the missing
+    ///      return value even though the transfer itself succeeded,
+    ///      permanently soft-locking that milestone's funds. This helper
+    ///      (the same pattern as OpenZeppelin's SafeERC20) tolerates a
+    ///      missing return value, but still requires the call itself to
+    ///      succeed and any actual returned bool to be true.
+    function _safeTransfer(address token, address to, uint256 value) private {
+        (bool success, bytes memory returnData) = token.call(
+            abi.encodeWithSelector(ITRC20.transfer.selector, to, value)
+        );
+        require(success, "DisbursementController: token transfer call failed");
+        require(
+            returnData.length == 0 || abi.decode(returnData, (bool)),
+            "DisbursementController: token transfer returned false"
+        );
     }
 
     /// @notice Cancel a commitment, halting any further milestone

@@ -194,7 +194,7 @@ Hub, with one deliberate exception noted below.
   role/ownership-management function above, and all
   admin/module-management functions (`setToken`, `setIdentityRegistry`,
   `setDisbursementController`, `setRiskRegistry`,
-  `setFundingRequestRegistry`, `transferAdmin`) stay callable while
+  `setFundingRequestRegistry`, `proposeNewAdmin`, `acceptAdmin`) stay callable while
   paused deliberately — these are config/defensive actions, not the
   fund/data-moving operations a pause exists to halt, and you need them
   available *during* an incident (e.g. revoking a compromised
@@ -256,23 +256,37 @@ original (pre-full-control) wiring required:
   `registerCommunity`) *and* every role-management proxy
   (`setIdentityVerifier`, `setDisbursementAttester`, `setTokenMinter`,
   `setRiskDataFeeder`, `setRiskThreshold`, `setFundingProposer`, every
-  `transfer*` function). For any of these to work through the Hub, the
-  Hub must actually *become* that admin/owner — which is **exclusive**,
-  not additive. The previous holder loses direct access to
-  admin-gated functions the moment this runs:
+  `propose*`/`accept*` function). For any of these to work through the
+  Hub, the Hub must actually *become* that admin/owner — which is
+  **exclusive**, not additive, and uses a two-step handoff rather than
+  an immediate one: the current admin/owner *proposes* the Hub, then
+  the Hub's own code must separately *accept* (only the Hub's own code
+  can make the Hub the `msg.sender` of that acceptance call — an EOA
+  calling `acceptAdmin()` directly would make itself the admin
+  instead). The previous holder loses direct access to admin-gated
+  functions only once the accept step completes:
   ```solidity
-  identityRegistry.transferAdmin(hubAddress);
-  disbursementController.transferAdmin(hubAddress);
-  token.transferOwnership(hubAddress);
-  riskRegistry.transferOwnership(hubAddress);
-  fundingRequestRegistry.transferOwnership(hubAddress);
+  identityRegistry.proposeNewAdmin(hubAddress);
+  hub.acceptIdentityRegistryAdmin();
+
+  disbursementController.proposeNewAdmin(hubAddress);
+  hub.acceptDisbursementControllerAdmin();
+
+  token.proposeNewOwner(hubAddress);
+  hub.acceptTokenOwnership();
+
+  riskRegistry.proposeNewOwner(hubAddress);
+  hub.acceptRiskRegistryOwnership();
+
+  fundingRequestRegistry.proposeNewOwner(hubAddress);
+  hub.acceptFundingRequestRegistryOwnership();
   ```
-  Note `D3RACToken.transferOwnership` and
-  `FundingRequestRegistry.transferOwnership` are *new* requirements for
-  full coverage — the original Hub wiring only needed `minters`/
-  `proposers` (additive) for `mintTokens`/`openFundingRequest` to work;
-  `setTokenMinter` and `setFundingProposer` need the exclusive owner
-  role on top of that.
+  Note `D3RACToken.proposeNewOwner`/`acceptOwnership` and
+  `FundingRequestRegistry.proposeNewOwner`/`acceptOwnership` are *new*
+  requirements for full coverage — the original Hub wiring only needed
+  `minters`/`proposers` (additive) for `mintTokens`/`openFundingRequest`
+  to work; `setTokenMinter` and `setFundingProposer` need the exclusive
+  owner role on top of that.
 - `FundingRequestRegistry.recordPledge`/`linkToCommitment`/
   `closeRequest` check `msg.sender == request.requester || msg.sender
   == owner`. Because `openRequest` records the *caller* as `requester`,
@@ -280,7 +294,7 @@ original (pre-full-control) wiring required:
   through the Hub for all three — no extra wiring needed for those
   specific requests. A request opened directly (bypassing the Hub) can
   only be managed through the Hub if the Hub has *also* been made the
-  registry's owner via `transferOwnership` (which full-control wiring
+  registry's owner via `proposeNewOwner`/`acceptOwnership` (which full-control wiring
   already requires, so this resolves itself once you've done the step
   above).
 
@@ -290,9 +304,10 @@ e.g. `hub.setRiskDataFeeder(hubAddress, true)` to grant the Hub itself
 data-feeder status, callable by the Hub's own admin, no separate direct
 call to `RiskRegistry` needed.
 
-Mixing these up — assuming a `transferAdmin`/`transferOwnership` is
-additive, or that granting a role covers a function that actually needs
-exclusive ownership — is exactly the kind of mistake
+Mixing these up — assuming a `proposeNewAdmin`/`proposeNewOwner` is
+additive, forgetting the Hub must separately `accept*` before the
+handoff takes effect, or assuming a role grant covers a function that
+actually needs exclusive ownership — is exactly the kind of mistake
 `test/D3RACHub.test.mjs` was written to catch; see its `beforeEach` for
 the full wiring sequence exercised in the test suite, and its "full
 control end-to-end" test for a single sequence exercising every write
@@ -401,7 +416,8 @@ field at wherever it gets deployed.
   `D3RACToken`, `IdentityRegistry`, or `DisbursementController` know
   `MultiSigAdmin` exists. Deploy `MultiSigAdmin` first, then pass its
   address as the constructor's `admin_`/`owner_` argument on the others
-  (or call `transferOwnership`/`transferAdmin` after the fact). From
+  (or propose it and have `MultiSigAdmin` accept via a submitted
+  transaction after the fact). From
   then on, every admin action needs `threshold` confirmations submitted
   through `MultiSigAdmin.submitTransaction`/`confirmTransaction`/
   `executeTransaction`, not a single signature.

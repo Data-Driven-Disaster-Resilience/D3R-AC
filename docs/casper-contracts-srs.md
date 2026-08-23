@@ -104,8 +104,8 @@ implementable as a single `balance_of` query returning the same
 **FR-2 — Identity registry parity with `IdentityRegistry.sol`.** An
 admin-designated `verifiers` role must be able to verify a recipient
 account (by public key or account hash) against a community label, and
-revoke that verification, with the same admin-transfer semantics
-(`transferAdmin`) as the TRON contract.
+revoke that verification, with the same two-step admin-transfer
+semantics (`proposeNewAdmin`/`acceptAdmin`) as the TRON contract.
 
 **FR-3 — Disbursement controller parity with
 `DisbursementController.sol`.** Commitment creation (recipient, token,

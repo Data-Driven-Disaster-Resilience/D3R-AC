@@ -41,6 +41,7 @@ contract FundingRequestRegistry is D3RACProperties {
     }
 
     address public owner;
+    address public pendingOwner;
 
     FundingRequest[] private _requests;
 
@@ -59,6 +60,7 @@ contract FundingRequestRegistry is D3RACProperties {
     event ProposerAdded(address indexed proposer);
     event ProposerRemoved(address indexed proposer);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferProposed(address indexed currentOwner, address indexed proposedOwner);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "FundingRequestRegistry: caller is not owner");
@@ -87,10 +89,18 @@ contract FundingRequestRegistry is D3RACProperties {
     // ---------------------------------------------------------------
     // Admin
     // ---------------------------------------------------------------
-    function transferOwnership(address newOwner) external onlyOwner {
+    function proposeNewOwner(address newOwner) external onlyOwner {
         require(newOwner != address(0), "FundingRequestRegistry: zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
+        pendingOwner = newOwner;
+        emit OwnershipTransferProposed(owner, newOwner);
+    }
+
+    /// @notice Step 2: the proposed owner claims the role themselves.
+    function acceptOwnership() external {
+        require(msg.sender == pendingOwner, "FundingRequestRegistry: caller is not the pending owner");
+        emit OwnershipTransferred(owner, pendingOwner);
+        owner = pendingOwner;
+        pendingOwner = address(0);
     }
 
     function addProposer(address proposer) external onlyOwner {

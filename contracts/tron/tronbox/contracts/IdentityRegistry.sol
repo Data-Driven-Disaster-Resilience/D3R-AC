@@ -28,9 +28,11 @@ contract IdentityRegistry is D3RACProperties {
     }
 
     address public admin;
+    address public pendingAdmin;
     mapping(address => Recipient) public recipients;
 
     event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
+    event AdminTransferProposed(address indexed currentAdmin, address indexed proposedAdmin);
     event VerifierUpdated(address indexed account, bool isVerifier);
     event RecipientVerified(address indexed recipient, string community, address indexed verifiedBy);
     event RecipientRevoked(address indexed recipient, address indexed revokedBy);
@@ -71,10 +73,25 @@ contract IdentityRegistry is D3RACProperties {
         emit VerifierUpdated(account, isVerifier);
     }
 
-    function transferAdmin(address newAdmin) external onlyAdmin {
+    /// @notice Step 1 of admin transfer: propose a new admin. Takes effect
+    ///         only once `newAdmin` itself calls `acceptAdmin()` — a
+    ///         mistyped address here (e.g. a TRON base58 address, which
+    ///         has no checksum) simply never gets accepted, rather than
+    ///         permanently and unrecoverably locking out admin access the
+    ///         moment this transaction confirms.
+    function proposeNewAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "IdentityRegistry: new admin is zero address");
-        emit AdminTransferred(admin, newAdmin);
-        admin = newAdmin;
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    /// @notice Step 2: the proposed admin claims the role themselves,
+    ///         proving they control that address before anything changes.
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "IdentityRegistry: caller is not the pending admin");
+        emit AdminTransferred(admin, pendingAdmin);
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
     }
 
     // ── Recipient verification (verifier role) ──────────────────────────
