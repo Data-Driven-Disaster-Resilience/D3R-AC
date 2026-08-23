@@ -74,6 +74,41 @@ TronBox is preferable once there's more than one contract or you need
 repeatable deployments (CI, multiple environments) — it scripts what
 TronIDE does by hand.
 
+### Deploying via GitHub Actions
+
+`.github/workflows/deploy-tron-testnet.yml` runs the exact same
+`tronbox compile && tronbox migrate` sequence above, but from CI. It is
+**`workflow_dispatch`-only, deliberately** — it never runs on a push,
+PR, or merge, and it also requires typing `deploy` into a text input
+before it will do anything. Nothing about opening, reviewing, or
+merging a PR (including this one) will trigger it.
+
+One-time setup, before first use:
+
+1. In the repo's **Settings → Environments**, create two environments
+   named `shasta` and `nile` (matching the workflow's network choices).
+   Adding required reviewers to these environments is recommended —
+   that turns "click Run workflow" into "click Run workflow, then a
+   second person has to approve it," which is a good property for
+   anything that broadcasts transactions.
+2. On each environment, add the same secrets `.env.example` lists:
+   `TRON_PRIVATE_KEY_SHASTA` (or `_NILE` on that environment),
+   `MULTISIG_OWNERS`, `MULTISIG_THRESHOLD`, and optionally
+   `D3RAC_INITIAL_SUPPLY`/`RISK_THRESHOLD`. Nobody associated with this
+   repo (including any AI assistant working on it) should ever
+   generate, see, or be given this private key — fund a fresh address
+   yourself from the testnet faucets linked in `.env.example` and paste
+   only that key into the environment secret.
+3. From the **Actions** tab, run **Deploy TRON contracts (testnet)**,
+   pick a network, type `deploy`, and confirm.
+
+The workflow publishes the deployed addresses (including
+`MultiSigAdmin`'s — the address that becomes `D3RACHub`'s admin) to
+the run's job summary and as a downloadable artifact. It does not
+commit anything back to the repo automatically; recording the address
+publicly (the Post-deployment step below) stays a deliberate, reviewed
+action.
+
 ### Post-deployment
 
 - Record the deployed contract address and the exact source/commit hash

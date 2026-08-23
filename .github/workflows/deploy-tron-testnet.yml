@@ -1,0 +1,108 @@
+name: Deploy TRON contracts (testnet)
+
+# Deliberately workflow_dispatch ONLY -- this deploys real (test)funds-
+# moving contracts and hands D3RACHub's admin role to a MultiSigAdmin.
+# It must never run on push/PR/merge; a deployment this consequential
+# should only ever happen because a human opened the Actions tab,
+# picked a network, and clicked "Run workflow" on purpose. See
+# docs/deployment-guide.md before using this for the first time.
+#
+# Mainnet is intentionally NOT an option here -- see
+# contracts/tron/tronbox/tronbox-config.js's comment on why mainnet
+# has no network block yet (no professional audit).
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: "Testnet to deploy to"
+        required: true
+        type: choice
+        options:
+          - shasta
+          - nile
+      confirm:
+        description: 'Type "deploy" to confirm you mean to broadcast real transactions'
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.network }}
+    steps:
+      - name: Require explicit confirmation
+        if: inputs.confirm != 'deploy'
+        run: |
+          echo "::error::Input 'confirm' must be exactly 'deploy'. Refusing to run."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install TronBox
+        run: npm install -g tronbox
+
+      - name: Install local dependencies
+        working-directory: contracts/tron/tronbox
+        run: npm install
+
+      - name: Check required secrets are configured
+        working-directory: contracts/tron/tronbox
+        env:
+          KEY: ${{ inputs.network == 'shasta' && secrets.TRON_PRIVATE_KEY_SHASTA || secrets.TRON_PRIVATE_KEY_NILE }}
+          MULTISIG_OWNERS: ${{ secrets.MULTISIG_OWNERS }}
+          MULTISIG_THRESHOLD: ${{ secrets.MULTISIG_THRESHOLD }}
+        run: |
+          missing=()
+          [ -z "$KEY" ] && missing+=("TRON_PRIVATE_KEY_${{ inputs.network == 'shasta' && 'SHASTA' || 'NILE' }}")
+          [ -z "$MULTISIG_OWNERS" ] && missing+=("MULTISIG_OWNERS")
+          [ -z "$MULTISIG_THRESHOLD" ] && missing+=("MULTISIG_THRESHOLD")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets on the '${{ inputs.network }}' environment: ${missing[*]}"
+            echo "See docs/deployment-guide.md's 'Deploying via GitHub Actions' section."
+            exit 1
+          fi
+          echo "All required secrets present."
+
+      - name: Compile
+        working-directory: contracts/tron/tronbox
+        run: tronbox compile
+
+      - name: Deploy to ${{ inputs.network }}
+        id: deploy
+        working-directory: contracts/tron/tronbox
+        env:
+          TRON_PRIVATE_KEY_SHASTA: ${{ secrets.TRON_PRIVATE_KEY_SHASTA }}
+          TRON_PRIVATE_KEY_NILE: ${{ secrets.TRON_PRIVATE_KEY_NILE }}
+          MULTISIG_OWNERS: ${{ secrets.MULTISIG_OWNERS }}
+          MULTISIG_THRESHOLD: ${{ secrets.MULTISIG_THRESHOLD }}
+          D3RAC_INITIAL_SUPPLY: ${{ secrets.D3RAC_INITIAL_SUPPLY }}
+          RISK_THRESHOLD: ${{ secrets.RISK_THRESHOLD }}
+        run: tronbox migrate --network ${{ inputs.network }} 2>&1 | tee /tmp/deploy.log
+
+      - name: Publish deployment addresses to job summary
+        if: always()
+        run: |
+          {
+            echo "## TRON deployment -- network: \`${{ inputs.network }}\`"
+            echo '```'
+            sed -n '/=== D3R-AC deployment complete ===/,/===================================/p' /tmp/deploy.log
+            echo '```'
+            echo ""
+            echo "**Next step:** the multisig owners above must submit/confirm/execute"
+            echo "a MultiSigAdmin transaction calling \`hub.acceptAdmin()\` to finish the"
+            echo "admin handoff -- this workflow deliberately does not do that for you."
+            echo "See \`docs/deployment-guide.md\`'s Post-deployment section."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload full deploy log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-log-${{ inputs.network }}-${{ github.run_id }}
+          path: /tmp/deploy.log
+          retention-days: 90

@@ -102,7 +102,8 @@ jobs:
           set -o pipefail
           slither contracts/tron/tronbox/contracts \
             --json slither-report.json \
-            --checklist --markdown-root . \
+            --checklist \
+            --markdown-root "https://github.com/${{ github.repository }}/blob/${{ github.sha }}/" \
             --compile-force-framework solc \
             2>&1 | tee slither-report.md
           exit_code=$?
