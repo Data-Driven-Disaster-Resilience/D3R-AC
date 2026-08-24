@@ -21,7 +21,9 @@
 use casper_engine_test_support::{
     ExecuteRequestBuilder, LmdbWasmTestBuilder, DEFAULT_ACCOUNT_ADDR, LOCAL_GENESIS_REQUEST,
 };
-use casper_types::{account::AccountHash, runtime_args, ContractHash, Key, U256};
+use casper_types::{
+    account::AccountHash, contracts::ContractHash, runtime_args, AddressableEntityHash, Key, U256,
+};
 
 const DISBURSEMENT_CONTROLLER_WASM: &str = "disbursement-controller.wasm";
 const IDENTITY_REGISTRY_WASM: &str = "identity-registry.wasm";
@@ -47,7 +49,7 @@ const ARG_INITIAL_VERIFIER: &str = "initial_verifier";
 /// placeholder token Key is used everywhere in this file -- no real
 /// CEP-18 exists yet (see module comment) -- since create_commitment
 /// itself doesn't validate the token address beyond storing it.
-fn install() -> (LmdbWasmTestBuilder, ContractHash, ContractHash) {
+fn install() -> (LmdbWasmTestBuilder, AddressableEntityHash, AddressableEntityHash) {
     let mut builder = LmdbWasmTestBuilder::default();
     builder.run_genesis(LOCAL_GENESIS_REQUEST.clone()).commit();
 
@@ -71,7 +73,7 @@ fn install() -> (LmdbWasmTestBuilder, ContractHash, ContractHash) {
     let install_dc = ExecuteRequestBuilder::standard(
         *DEFAULT_ACCOUNT_ADDR,
         DISBURSEMENT_CONTROLLER_WASM,
-        runtime_args! { ARG_REGISTRY_HASH => Key::from(registry_hash) },
+        runtime_args! { ARG_REGISTRY_HASH => Key::from(ContractHash::from(registry_hash)) },
     )
     .build();
     builder.exec(install_dc).expect_success().commit();
@@ -88,7 +90,7 @@ fn install() -> (LmdbWasmTestBuilder, ContractHash, ContractHash) {
     (builder, dc_hash, registry_hash)
 }
 
-fn verify_recipient(builder: &mut LmdbWasmTestBuilder, registry_hash: ContractHash, recipient: Key) {
+fn verify_recipient(builder: &mut LmdbWasmTestBuilder, registry_hash: AddressableEntityHash, recipient: Key) {
     let request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
         registry_hash,
