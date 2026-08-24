@@ -36,12 +36,12 @@ pub const ENTRY_POINT_INIT: &str = "init";
 // CEP-18 entry point this contract calls on the token it's configured
 // with -- see docs/casper-contracts-srs.md and the CEP-18 standard
 // (ceps/text/0018-token-standard.md): transfer(recipient: Key, amount:
-// U256), no return value, reverts on failure.
+// U256), no return value, reverts on failure -- including on
+// insufficient balance, which is why this contract doesn't need its
+// own separate balance_of pre-check (see release_milestone's comment).
 pub const CEP18_ENTRY_POINT_TRANSFER: &str = "transfer";
-pub const CEP18_ENTRY_POINT_BALANCE_OF: &str = "balance_of";
 pub const CEP18_ARG_RECIPIENT: &str = "recipient";
 pub const CEP18_ARG_AMOUNT: &str = "amount";
-pub const CEP18_ARG_ACCOUNT: &str = "account";
 
 // This contract's own runtime argument names
 pub const ARG_ACCOUNT: &str = "account";

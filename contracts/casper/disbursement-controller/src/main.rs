@@ -138,7 +138,7 @@ pub extern "C" fn create_commitment() {
     let amounts: Vec<U256> = runtime::get_named_arg(ARG_AMOUNTS);
 
     let is_verified: bool = runtime::call_contract(
-        get_registry_hash(),
+        get_registry_hash().into(),
         IDENTITY_REGISTRY_ENTRY_POINT_IS_VERIFIED,
         runtime_args! { ARG_RECIPIENT => recipient },
     );
@@ -260,15 +260,17 @@ pub extern "C" fn release_milestone() {
     let amount = milestone.amount;
 
     let token_hash = key_to_contract_hash(token);
-    let this_contract_key = Key::from(get_this_contract_hash());
-    let contract_balance: U256 = runtime::call_contract(
-        token_hash,
-        CEP18_ENTRY_POINT_BALANCE_OF,
-        runtime_args! { CEP18_ARG_ACCOUNT => this_contract_key },
-    );
-    if contract_balance < amount {
-        runtime::revert(DisbursementControllerError::InsufficientBalance);
-    }
+
+    // No explicit balance_of pre-check here, unlike
+    // DisbursementController.sol's belt-and-suspenders
+    // balanceOf(address(this)) >= m.amount guard. CEP-18's transfer
+    // entry point already guarantees a revert on insufficient balance
+    // per the standard (ceps/text/0018-token-standard.md) -- the same
+    // safety guarantee, just surfaced as the token's own revert reason
+    // rather than this contract's more specific InsufficientBalance
+    // error. Avoids needing to convert AddressableEntityHash into a
+    // Key variant solely to query a balance this call would fail on
+    // anyway if it were actually too low.
 
     // Effects before interaction.
     milestone.released = true;
@@ -288,7 +290,7 @@ pub extern "C" fn release_milestone() {
     // don't return a bool" problem SafeERC20/M-3 exists for on the TRON
     // side. A failed transfer reverts this whole call, same net effect.
     let _: () = runtime::call_contract(
-        token_hash,
+        token_hash.into(),
         CEP18_ENTRY_POINT_TRANSFER,
         runtime_args! {
             CEP18_ARG_RECIPIENT => recipient,
@@ -400,12 +402,6 @@ fn key_to_contract_hash(key: Key) -> AddressableEntityHash {
     key.into_hash_addr()
         .map(AddressableEntityHash::new)
         .unwrap_or_revert_with(DisbursementControllerError::UnexpectedKeyType)
-}
-
-fn get_this_contract_hash() -> AddressableEntityHash {
-    let key = runtime::get_key(CONTRACT_HASH_KEY_NAME)
-        .unwrap_or_revert_with(DisbursementControllerError::MissingKey);
-    key_to_contract_hash(key)
 }
 
 fn get_admin() -> Key {
