@@ -25,8 +25,9 @@ Defenders), Abuja, Nigeria.
 # Casper Contracts — Software Requirements Specification
 
 **Status:** Draft — implementation started (`risk-registry`,
-`identity-registry`, and `disbursement-controller` of seven contracts;
-see [`contracts/casper/README.md`](../contracts/casper/README.md) for
+`identity-registry`, `disbursement-controller`, and `d3rac-token` of
+seven contracts; see
+[`contracts/casper/README.md`](../contracts/casper/README.md) for
 which have confirmed-passing CI vs. are pending their first real
 compiler pass). See that file for current, itemized status.
 **Component:** `contracts/casper/` (declared in the top-level
