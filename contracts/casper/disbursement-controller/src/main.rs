@@ -14,7 +14,7 @@
 //! 1. **Cross-contract calls**, both to `identity-registry` (checking
 //!    `is_verified` in `create_commitment`) and to whatever CEP-18
 //!    token a commitment names (`transfer` in `release_milestone`).
-//!    Uses `runtime::call_contract::<T>(ContractHash, entry_point,
+//!    Uses `runtime::call_contract::<T>(AddressableEntityHash, entry_point,
 //!    RuntimeArgs) -> T` -- confirmed against Casper's own
 //!    cross-contract-communication docs and reference tutorials, not
 //!    guessed.
@@ -60,7 +60,7 @@ use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
     contracts::{EntryPoint, NamedKeys},
-    runtime_args, CLType, CLValue, ContractHash, EntryPointAccess, EntryPointType, EntryPoints,
+    runtime_args, AddressableEntityHash, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints,
     Key, Parameter, URef, U256,
 };
 
@@ -396,13 +396,13 @@ fn get_milestone_mut(commitment: &mut Commitment, milestone_index: u64) -> &mut 
         .unwrap_or_revert_with(DisbursementControllerError::MilestoneDoesNotExist)
 }
 
-fn key_to_contract_hash(key: Key) -> ContractHash {
-    key.into_hash()
-        .map(ContractHash::new)
+fn key_to_contract_hash(key: Key) -> AddressableEntityHash {
+    key.into_hash_addr()
+        .map(AddressableEntityHash::new)
         .unwrap_or_revert_with(DisbursementControllerError::UnexpectedKeyType)
 }
 
-fn get_this_contract_hash() -> ContractHash {
+fn get_this_contract_hash() -> AddressableEntityHash {
     let key = runtime::get_key(CONTRACT_HASH_KEY_NAME)
         .unwrap_or_revert_with(DisbursementControllerError::MissingKey);
     key_to_contract_hash(key)
@@ -427,7 +427,7 @@ fn set_pending_admin(pending: Option<Key>) {
     write_uref_value(KEY_PENDING_ADMIN, pending);
 }
 
-fn get_registry_hash() -> ContractHash {
+fn get_registry_hash() -> AddressableEntityHash {
     let key: Key = read_uref_value(KEY_REGISTRY_HASH);
     key_to_contract_hash(key)
 }
