@@ -480,20 +480,27 @@ jobs:
           # casper-engine-test-support's ExecuteRequestBuilder looks for
           # compiled .wasm files in a conventional wasm/ dir relative to
           # each *-tests package's own directory (the same convention
-          # Casper's own tutorial Makefiles use). Each contract package
-          # "foo" is paired with a "foo-tests" package by this suite's
-          # own naming convention (see risk-registry/risk-registry-tests
-          # and identity-registry/identity-registry-tests) -- stage into
-          # whichever of those exists for each built package, skipping
-          # any that doesn't have a paired *-tests package yet.
-          while read -r pkg; do
-            [ -z "$pkg" ] && continue
-            tests_dir="${pkg}-tests"
-            if [ -d "$tests_dir" ]; then
-              mkdir -p "${tests_dir}/wasm"
+          # Casper's own tutorial Makefiles use). Every *-tests package
+          # gets EVERY built contract's .wasm, not just its own
+          # same-named pair (see risk-registry/risk-registry-tests and
+          # identity-registry/identity-registry-tests) -- a contract's
+          # own integration tests often need to install OTHER contracts
+          # too (e.g. disbursement-controller-tests installing a real
+          # identity-registry to exercise the is_verified cross-contract
+          # check disbursement-controller makes), and that only grows
+          # truer for contracts still to come (a Hub-equivalent
+          # installing everything). Simpler and more future-proof than
+          # tracking a per-package dependency list here.
+          for tests_dir in */; do
+            tests_dir="${tests_dir%/}"
+            [[ "$tests_dir" == *-tests ]] || continue
+            [ -d "$tests_dir" ] || continue
+            mkdir -p "${tests_dir}/wasm"
+            while read -r pkg; do
+              [ -z "$pkg" ] && continue
               cp "target/wasm32-unknown-unknown/release/${pkg}.wasm" "${tests_dir}/wasm/"
-            fi
-          done < /tmp/casper-contract-packages.txt
+            done < /tmp/casper-contract-packages.txt
+          done
 
       - name: Run native-target unit/integration tests
         if: steps.check.outputs.exists == 'true'
