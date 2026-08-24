@@ -64,7 +64,7 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
-    contracts::{EntryPoint, NamedKeys},
+    bytesrepr::ToBytes, contracts::{EntryPoint, NamedKeys},
     runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter,
     URef, U256,
 };
