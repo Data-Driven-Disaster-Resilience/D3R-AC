@@ -8,27 +8,31 @@
 //! `disbursement-controller` already calls `transfer`/expects to exist
 //! at a `Key` it's configured with.
 //!
-//! **One deliberate point of standard non-compliance**: the CEP-18
-//! spec's storage-interface section mandates a specific dictionary-key
-//! derivation for `balances` (base64-encoded CLType bytes of the
-//! account `Key`) and `allowances` (blake2b hash of the concatenated
-//! owner+spender bytes, hex-encoded) -- this exists so external tooling
-//! can read balances directly from raw contract storage without going
-//! through an entry point. This contract's named keys (`name`,
-//! `symbol`, `decimals`, `total_supply`, `balances`, `allowances`) and
-//! every entry point's name/signature match the standard exactly, but
-//! the dictionary VALUES are keyed using this suite's own established
-//! `key_to_dict_key` (`Key::to_string()`) pattern instead -- the same
-//! one risk-registry/identity-registry/disbursement-controller already
-//! use successfully. That preserves full entry-point-level
-//! composability (what `disbursement-controller` and anything else in
-//! this suite actually needs -- `balance_of`/`transfer` work exactly
-//! as specified), but a generic CEP-18 block explorer expecting the
+//! **One deliberate point of standard non-compliance, for `balances`
+//! only**: the CEP-18 spec's storage-interface section mandates a
+//! specific dictionary-key derivation for `balances` (base64-encoded
+//! CLType bytes of the account `Key`) so external tooling can read
+//! balances directly from raw contract storage without going through
+//! an entry point. `balances`' named key and entry-point signatures
+//! match the standard exactly, but its dictionary VALUES are keyed
+//! using this suite's own established `key_to_dict_key`
+//! (`Key::to_string()`) pattern instead -- full entry-point-level
+//! composability is preserved (`balance_of`/`transfer` work exactly as
+//! specified), but a generic CEP-18 block explorer expecting the
 //! standard's exact storage layout wouldn't be able to read balances
-//! by direct storage query. Adding the standard's own key derivation
-//! needs a `base64` + a `blake2b` call this suite hasn't used before;
-//! deferred rather than guessed at blind, same reasoning as
-//! `disbursement-controller`'s own dropped `balance_of` pre-check.
+//! by direct storage query. `balances` only ever stores one `Key`'s
+//! worth of bytes per entry, which stays well under Casper's
+//! dictionary-item-key length limit either way, so this one is a real
+//! choice, not a workaround.
+//!
+//! `allowances`, by contrast, DOES use the standard's exact blake2b-hash
+//! derivation (see `allowance_dict_key`) -- concatenating two Key
+//! `Display` strings (this file's first draft) turned out to exceed
+//! that length limit in practice, confirmed by a real
+//! `ApiError::DictionaryItemKeyTooLarge` from this contract's own first
+//! CI run. The standard's fixed-length hash output exists specifically
+//! to solve that, not just for tooling compatibility -- so for
+//! `allowances` there was no real choice to make once that surfaced.
 //!
 //! Same boilerplate/design decisions as the rest of this suite --
 //! see risk-registry/src/main.rs's module comment.
@@ -384,10 +388,41 @@ fn set_allowance(owner: Key, spender: Key, amount: U256) {
     storage::dictionary_put(allowances_dict(), &key, amount);
 }
 
-/// See this file's module comment for why this differs from the
-/// standard's own blake2b-based allowance key derivation.
+/// Matches the CEP-18 standard's own allowance-key derivation exactly
+/// (ceps/text/0018-token-standard.md's example: blake2b hash of the
+/// concatenated owner+spender bytes, hex-encoded) -- this turned out
+/// to not be optional. The two Key Display strings this file's
+/// original `Key::to_string()`-based approach used are long enough
+/// that concatenating two of them exceeds Casper's dictionary item key
+/// length limit (confirmed by a real
+/// ApiError::DictionaryItemKeyTooLarge from CI on the first real test
+/// run against this contract) -- the standard's fixed-length hash
+/// output exists specifically to avoid that, not just for external
+/// tooling compatibility as this file's module comment originally
+/// assumed for the *balances* dictionary (which only ever holds ONE
+/// key's worth of bytes, well under the limit, so that one is
+/// unaffected).
 fn allowance_dict_key(owner: Key, spender: Key) -> String {
-    alloc::format!("{}:{}", owner, spender)
+    let mut preimage = owner
+        .to_bytes()
+        .unwrap_or_revert_with(D3racTokenError::UnexpectedKeyType);
+    preimage.extend(
+        spender
+            .to_bytes()
+            .unwrap_or_revert_with(D3racTokenError::UnexpectedKeyType),
+    );
+    let hash_bytes = runtime::blake2b(preimage);
+    hex_encode(&hash_bytes)
+}
+
+fn hex_encode(bytes: &[u8]) -> String {
+    const HEX_CHARS: &[u8; 16] = b"0123456789abcdef";
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        s.push(HEX_CHARS[(b >> 4) as usize] as char);
+        s.push(HEX_CHARS[(b & 0x0f) as usize] as char);
+    }
+    s
 }
 
 fn key_to_dict_key(key: &Key) -> String {
