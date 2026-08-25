@@ -62,6 +62,19 @@ tronbox compile
 tronbox migrate --network shasta
 ```
 
+**Default testnet deployer (Shasta/Nile).** A throwaway testnet-only
+account, `TVtWtzwpbstZ5kQQQQkPRB4P8BSJeoy1gd`, is the project's default
+deployer for CI-driven testnet deploys. Its address is public
+information and safe to reference here; its private key is **not** in
+this repo — it's stored as the `TRON_PRIVATE_KEY_SHASTA` encrypted
+GitHub Actions secret (Settings → Secrets and variables → Actions on
+this repo), consistent with `docs/casper-contracts-srs.md`'s NFR-1
+("must not be stored in plaintext in application config, source
+control, or logs"). Fund it via the
+[Shasta faucet](https://www.trongrid.io/shasta) or
+[Nile faucet](https://nileex.io/join/getJoinPage) before any workflow
+that deploys with it. Do not reuse this key for mainnet.
+
 `.env` needs, at minimum, `TRON_PRIVATE_KEY_SHASTA` (or `_NILE`) and
 `MULTISIG_OWNERS`/`MULTISIG_THRESHOLD` — the migration deliberately
 refuses to run without a real multisig configured, since testing the

@@ -203,3 +203,22 @@ wasm-opt target/wasm32-unknown-unknown/release/risk-registry.wasm \
 
 The compiled contract will be at
 `target/wasm32-unknown-unknown/release/risk-registry.wasm`.
+
+## Default testnet deployer (casper-test)
+
+A throwaway testnet-only account is the project's default deployer for
+CI-driven testnet deploys, once there's a deploy script to drive
+(there isn't one yet — see "What's left"). Its public key and account
+hash are public information and safe to record here; its secret key is
+**not** in this repo — it's stored as the `CASPER_TESTNET_SECRET_KEY`
+encrypted GitHub Actions secret, consistent with NFR-1 in
+[`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md).
+
+| | |
+|---|---|
+| Public key (account key) | `014e7ce46b68c09af0f7be462bd13bf73ae018f527604ff78641ca00ca4d6b0e6f` |
+| Account hash | `account-hash-23b198073de7006164021ea69f7901482c272499889e05424a8b3eba59d3acf9` |
+
+Fund it via the [Casper testnet faucet](https://testnet.cspr.live/tools/faucet)
+before any workflow that deploys with it. Do not reuse this key for
+mainnet.
