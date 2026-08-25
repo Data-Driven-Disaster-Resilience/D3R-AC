@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["risk-registry", "risk-registry-tests", "identity-registry", "identity-registry-tests"]
+members = ["risk-registry", "risk-registry-tests", "identity-registry", "identity-registry-tests", "multisig-admin"]
 
 [workspace.package]
 edition = "2021"
