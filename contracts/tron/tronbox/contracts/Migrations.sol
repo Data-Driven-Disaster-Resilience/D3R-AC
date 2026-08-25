@@ -10,7 +10,14 @@ pragma solidity ^0.8.20;
 ///         `tronbox migrate` doesn't re-run completed migrations on a
 ///         second invocation against the same network.
 contract Migrations {
-    address public owner;
+    address public immutable owner;
+    // NOTE: `last_completed_migration` deliberately keeps TronBox/Truffle's
+    // own snake_case convention rather than "fixing" it to mixedCase --
+    // this is boilerplate scaffolding TronBox itself generates and reads
+    // by this exact name; renaming it here would just be cosmetic and
+    // risks silently breaking `tronbox migrate`'s own convention-matching.
+    // Slither's naming-convention finding on this line is reviewed and
+    // intentionally not applied.
     uint256 public last_completed_migration;
 
     modifier restricted() {
