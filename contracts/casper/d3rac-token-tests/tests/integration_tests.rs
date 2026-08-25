@@ -20,6 +20,7 @@ use casper_types::{account::AccountHash, runtime_args, AddressableEntityHash, Ke
 const TOKEN_WASM: &str = "d3rac-token.wasm";
 const CONTRACT_HASH_KEY_NAME: &str = "d3rac_token_contract_hash";
 
+const ARG_OWNER_ARG: &str = "owner_";
 const ARG_INITIAL_SUPPLY: &str = "initial_supply";
 const ARG_ACCOUNT: &str = "account";
 const ARG_OWNER: &str = "owner";
@@ -41,7 +42,7 @@ fn install(initial_supply: u64) -> (LmdbWasmTestBuilder, AddressableEntityHash) 
         TOKEN_WASM,
         runtime_args! {
             ARG_INITIAL_SUPPLY => U256::from(initial_supply),
-            ARG_OWNER => Key::from(*DEFAULT_ACCOUNT_ADDR),
+            ARG_OWNER_ARG => Key::from(*DEFAULT_ACCOUNT_ADDR),
         },
     )
     .build();
