@@ -39,6 +39,14 @@ pub enum D3racTokenError {
     MissingKey = 6,
     UnexpectedKeyType = 7,
     DictionaryReadFailed = 8,
+    /// `runtime::get_immediate_caller()` returned a `CallerInfo` whose
+    /// `.kind()` didn't match any of the three variants
+    /// `casper_types::system::Caller` actually has (0/3/4) -- see
+    /// `main.rs`'s `immediate_caller_key` doc comment. Not expected to
+    /// be reachable against a real casper-types 6.1.0 node; exists so
+    /// a future API change fails loudly instead of silently
+    /// misresolving a caller identity.
+    UnrecognizedCallerKind = 9,
 }
 
 impl From<D3racTokenError> for ApiError {

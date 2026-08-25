@@ -64,7 +64,10 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
-    bytesrepr::ToBytes, contracts::{EntryPoint, NamedKeys},
+    account::AccountHash,
+    bytesrepr::ToBytes,
+    contracts::{ContractPackageHash, EntryPoint, NamedKeys},
+    package::PackageHash,
     runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter,
     URef, U256,
 };
@@ -125,7 +128,7 @@ pub extern "C" fn allowance() {
 /// the owner itself" (`CannotTargetSelfUser`).
 #[no_mangle]
 pub extern "C" fn transfer() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let recipient: Key = runtime::get_named_arg(ARG_RECIPIENT);
     let amount: U256 = runtime::get_named_arg(ARG_AMOUNT);
 
@@ -143,7 +146,7 @@ pub extern "C" fn transfer() {
 
 #[no_mangle]
 pub extern "C" fn transfer_from() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let owner: Key = runtime::get_named_arg(ARG_OWNER);
     let recipient: Key = runtime::get_named_arg(ARG_RECIPIENT);
     let amount: U256 = runtime::get_named_arg(ARG_AMOUNT);
@@ -170,7 +173,7 @@ pub extern "C" fn transfer_from() {
 
 #[no_mangle]
 pub extern "C" fn approve() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let spender: Key = runtime::get_named_arg(ARG_SPENDER);
     let amount: U256 = runtime::get_named_arg(ARG_AMOUNT);
 
@@ -184,7 +187,7 @@ pub extern "C" fn approve() {
 
 #[no_mangle]
 pub extern "C" fn increase_allowance() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let spender: Key = runtime::get_named_arg(ARG_SPENDER);
     let inc_by: U256 = runtime::get_named_arg(ARG_INC_BY);
 
@@ -205,7 +208,7 @@ pub extern "C" fn increase_allowance() {
 
 #[no_mangle]
 pub extern "C" fn decrease_allowance() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let spender: Key = runtime::get_named_arg(ARG_SPENDER);
     let decr_by: U256 = runtime::get_named_arg(ARG_DECR_BY);
 
@@ -246,10 +249,12 @@ pub extern "C" fn mint() {
 }
 
 /// Public -- burns the caller's own tokens, same as
-/// `D3RACToken.sol::burn(uint256 value)`.
+/// `D3RACToken.sol::burn(uint256 value)`. Uses `immediate_caller_key`
+/// (not `get_caller`) for the same reason `transfer` does -- a
+/// contract holding its own balance should be able to burn it.
 #[no_mangle]
 pub extern "C" fn burn() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let amount: U256 = runtime::get_named_arg(ARG_AMOUNT);
 
     let balance = get_balance(caller);
@@ -320,6 +325,84 @@ pub extern "C" fn accept_ownership() {
 // ---------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------
+
+/// The real msg.sender-equivalent for CEP-18's "direct caller"
+/// semantics -- NOT `runtime::get_caller()`, which returns the
+/// `AccountHash` of whichever account originally signed the deploy,
+/// all the way up the call stack (Casper's own docs describe it as
+/// "the account that initiated the transaction" -- the tx.origin
+/// equivalent, not msg.sender). When a contract like
+/// `disbursement-controller` calls this token's `transfer` on its own
+/// behalf, `get_caller()` still resolves to the original externally-
+/// owned account, not the calling contract -- so a caller-gated debit
+/// using `get_caller()` silently debits the wrong party's balance.
+///
+/// This was a real, CI-caught bug, not a hypothetical: the first
+/// version of this file used `Key::from(runtime::get_caller())` here,
+/// which compiled and passed every test that only ever called these
+/// entry points directly from an account -- and only failed once
+/// `disbursement-controller-tests` added a real end-to-end test
+/// calling `transfer` from inside another contract
+/// (`should_release_milestone_with_a_real_token_and_reject_when_unfunded`),
+/// which reverted with `InsufficientBalance` despite the calling
+/// contract genuinely holding the funds.
+///
+/// `runtime::get_immediate_caller()` is the correct primitive --
+/// confirmed directly against `casper-contract` 5.1.1's and
+/// `casper-types` 6.1.0's own source (downloaded and read, not
+/// guessed): it returns a `CallerInfo`, whose `.kind()` /
+/// `.get_field_by_index()` accessors are the only way to read it,
+/// since the field-index constants (`ACCOUNT`/`PACKAGE`/
+/// `CONTRACT_PACKAGE`/`ENTITY`/`CONTRACT` = 0/1/2/3/4) that `.kind()`
+/// returns are private to `casper_types::system::caller` -- there is
+/// no public `TryFrom<CallerInfo> for Caller` to convert back to the
+/// ergonomic public enum. The raw values below (0, 2, 4) are taken
+/// directly from that source's `TryFrom<Caller> for CallerInfo` impl,
+/// not inferred. Kind 3 (`Entity`, using field index 1 for its
+/// `PackageHash`) exists in the same source but has no test in this
+/// suite exercising it (only `SmartContract`, kind 4, has been
+/// observed) -- included for completeness against the source, not
+/// against an observed case.
+fn immediate_caller_key() -> Key {
+    let caller_info = runtime::get_immediate_caller().unwrap_or_revert();
+    match caller_info.kind() {
+        // ACCOUNT (0): Caller::Initiator -- an account called us
+        // directly (no intervening contract).
+        0 => {
+            let account_hash: Option<AccountHash> = caller_info
+                .get_field_by_index(0)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(account_hash.unwrap_or_revert())
+        }
+        // ENTITY (3): Caller::Entity -- field index 1 is the PackageHash.
+        3 => {
+            let package_hash: Option<PackageHash> = caller_info
+                .get_field_by_index(1)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(package_hash.unwrap_or_revert())
+        }
+        // CONTRACT (4): Caller::SmartContract -- field index 2 is the
+        // ContractPackageHash. This is the variant this suite's own
+        // contract-to-contract calls (disbursement-controller calling
+        // this token) have actually been observed to produce.
+        4 => {
+            let contract_package_hash: Option<ContractPackageHash> = caller_info
+                .get_field_by_index(2)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(contract_package_hash.unwrap_or_revert())
+        }
+        _ => runtime::revert(D3racTokenError::UnrecognizedCallerKind),
+    }
+}
 
 fn only_owner() {
     if Key::from(runtime::get_caller()) != get_owner() {
