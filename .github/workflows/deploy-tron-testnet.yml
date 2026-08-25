@@ -1,5 +1,8 @@
 name: Deploy TRON contracts (testnet)
 
+permissions:
+  contents: read
+
 # Deliberately workflow_dispatch ONLY -- this deploys real (test)funds-
 # moving contracts and hands D3RACHub's admin role to a MultiSigAdmin.
 # It must never run on push/PR/merge; a deployment this consequential
