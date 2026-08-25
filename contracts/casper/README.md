@@ -1,16 +1,12 @@
 # D3R·AC — Casper Contract Suite
 
-**Status: early, in progress — two contracts now compile and pass
-their local-network tests; a third (`multisig-admin`) is written but
-not yet independently verified.** This is not a parallel, complete
-implementation of the TRON suite yet — it's two contracts of seven
-(`risk-registry`, `identity-registry`) confirmed via real CI to build
-against `wasm32-unknown-unknown` and pass their integration tests
-against a local Casper network, plus a third (`multisig-admin`)
-written against the same patterns but not yet CI-confirmed (see below
-for exactly why, and what's least certain about it specifically). Not
-yet deployed to testnet, and not audited. See "What's actually done"
-below for the honest, itemized breakdown, and
+**Status: early, in progress — two contracts confirmed via real CI
+(`risk-registry`, `identity-registry`), a third merged after two
+real CI-caught fix rounds (`multisig-admin`), a fourth written but
+not yet CI-confirmed (`d3rac-token`).** This is not a parallel,
+complete implementation of the TRON suite yet. Not yet deployed to
+testnet, and not audited. See "What's actually done" below for the
+honest, itemized breakdown, and
 [`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md)
 for the full requirements this suite is being built against.
 
@@ -163,8 +159,23 @@ one `casper-types` version now resolves across the whole graph.
         statement about the code. GitHub's CI runners already handle
         this fine for the other two contracts; this is the real,
         first test for `multisig-admin`.
-- [ ] The other four contracts (`D3RACToken`/CEP-18,
-      `DisbursementController`, `D3RACHub`, `FundingRequestRegistry`)
+- [x] `d3rac-token/` -- full source written, targeting CEP-18-standard
+      parity (FR-1) with `contracts/tron/tronbox/contracts/D3RACToken.sol`:
+      standard `transfer`/`approve`/`transfer_from`/`balance_of`/
+      `allowance`/`total_supply`/`name`/`symbol`/`decimals`, plus the
+      non-standard owner-gated `mint`/`set_minter` and two-step
+      ownership this suite's other contracts already use. Uses
+      `casper_types::U256` for amounts. Standard CEP-18 semantics
+      (revert-on-failure, `Unit` returns) rather than `D3RACToken.sol`'s
+      ERC-20-style `bool` returns -- see `src/main.rs`'s module comment.
+- [ ] **NOT yet confirmed compiling.** Written against the same
+      casper-types 6.1.0 API surface `multisig-admin` needed two real
+      CI-caught fix rounds for (see that contract's PR #20 history) --
+      applied here from the start rather than re-discovered, but that's
+      not a substitute for this file's own CI round, which hasn't
+      happened yet as of this write-up.
+- [ ] The other three contracts (`DisbursementController`, `D3RACHub`,
+      `FundingRequestRegistry`)
 - [ ] Hub wiring (FR-8)
 - [ ] `casperAdapter.ts` completion (FR-9) — still throws "not deployed
       yet", correctly, since nothing is deployed yet
