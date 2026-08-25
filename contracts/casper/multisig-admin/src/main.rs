@@ -62,10 +62,10 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
-    contracts::{EntryPoint, NamedKeys},
-    bytesrepr::ToBytes,
-    runtime_args, CLType, CLValue, ContractPackageHash, EntryPointAccess, EntryPointType,
-    EntryPoints, Key, Parameter, RuntimeArgs, URef,
+    bytesrepr::FromBytes,
+    contracts::{ContractPackageHash, EntryPoint, NamedKeys},
+    runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter,
+    RuntimeArgs, URef,
 };
 
 mod constants;
@@ -361,7 +361,7 @@ fn key_to_dict_key(key: &Key) -> String {
 }
 
 fn key_to_package_hash(key: &Key) -> Option<ContractPackageHash> {
-    key.into_hash().map(ContractPackageHash::new)
+    key.into_hash_addr().map(ContractPackageHash::new)
 }
 
 fn get_owners() -> Vec<Key> {
