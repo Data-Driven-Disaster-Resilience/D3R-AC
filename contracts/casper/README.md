@@ -6,7 +6,7 @@ implementation of the TRON suite yet — `risk-registry`,
 `identity-registry`, `disbursement-controller`, and `d3rac-token` are
 confirmed via real CI to build against `wasm32-unknown-unknown` and
 pass every one of their integration tests against a local Casper
-network (39 tests total). Not yet deployed to testnet, and not
+network (41 tests total). Not yet deployed to testnet, and not
 audited. See "What's actually done" below for the honest, itemized
 breakdown, and
 [`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md)
@@ -147,18 +147,18 @@ one `casper-types` version now resolves across the whole graph.
       legacy `ContractHash` type), plus the same mistake repeated in
       the test file before `ContractHash`'s real path
       (`casper_types::contracts::ContractHash`) was confirmed.
-- [x] Unit/integration tests against a local Casper network — **all 12
+- [x] Unit/integration tests against a local Casper network — **all 14
       passing, CI-confirmed**
       (`disbursement-controller-tests/tests/integration_tests.rs`),
       installing a genuine `identity-registry` alongside it rather
-      than stubbing the cross-contract call. **Known gap**: no CEP-18
-      token existed yet when these were written, so
-      `release_milestone`'s success path and its insufficient-balance
-      guard (which needs a live `balance_of` call to succeed before
-      the guard's own comparison runs) weren't covered — every guard
-      that fails *before* reaching the token call is. `d3rac-token`
-      now exists (see below) but that follow-up test hasn't been added
-      yet.
+      than stubbing the cross-contract call. The previous "no CEP-18
+      token existed yet" gap in this test file's own coverage is
+      closed as of `d3rac-token` landing (see below) — one of these 14
+      tests now installs a real `d3rac-token` too and exercises the
+      full fund-release path end to end, including the
+      unfunded-contract rejection `release_milestone`'s "no explicit
+      `balance_of` pre-check" design decision relies on CEP-18's own
+      revert for.
 - [x] `d3rac-token/` — full source written, implementing SRS FR-1: a
       complete CEP-18 token (`ceps/text/0018-token-standard.md`) — all
       11 standard entry points, all 7 standard events, and the

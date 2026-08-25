@@ -117,7 +117,7 @@ compiling** against `wasm32-unknown-unknown`, **passing all 5 of its
 integration tests**), `identity-registry` (SRS FR-2, **passing all
 9 of its integration tests**), `disbursement-controller` (SRS FR-3,
 milestone-based fund release with a genuine cross-contract call into
-`identity-registry`'s `is_verified`, **passing all 12 of its
+`identity-registry`'s `is_verified`, **passing all 14 of its
 integration tests**), and `d3rac-token` (SRS FR-1, a full CEP-18
 token — all 11 standard entry points, standard events, and the
 standard's own exact error codes, **passing all 13 of its
