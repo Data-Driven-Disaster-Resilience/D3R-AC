@@ -26,10 +26,9 @@ Defenders), Abuja, Nigeria.
 
 **Status:** Draft — implementation started (`risk-registry`,
 `identity-registry`, `disbursement-controller`, and `d3rac-token` of
-seven contracts; see
+seven contracts, all four confirmed compiling and passing CI). See
 [`contracts/casper/README.md`](../contracts/casper/README.md) for
-which have confirmed-passing CI vs. are pending their first real
-compiler pass). See that file for current, itemized status.
+current, itemized status.
 **Component:** `contracts/casper/` (declared in the top-level
 [`README.md`](../README.md)'s repository structure).
 
