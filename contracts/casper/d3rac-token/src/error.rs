@@ -1,44 +1,52 @@
-//! Error variants. The first three preserve the CEP-18 standard's own
-//! exact numeric codes (ceps/text/0018-token-standard.md's `CEP18Error`
-//! enum: InsufficientBalance = 60001, InsufficientAllowance = 60002,
-//! CannotTargetSelfUser = 60003) -- these are part of the standard, not
-//! an internal convention, so callers built against CEP-18 generally
-//! (not specifically against this contract) can recognize them. This
-//! contract's own extensions (ownership/minter role) use a low, clearly
-//! separate number range so they can never collide with the standard's
-//! reserved 60001-60003.
+//! Error variants, one per `require(...)` revert reason in
+//! `D3RACToken.sol`, plus the same Casper-specific storage-layer
+//! failures risk-registry's error.rs documents (see that file's module
+//! comment for the full rationale -- identical reasoning applies here).
 
 use casper_types::ApiError;
 
 #[repr(u16)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum D3racTokenError {
-    /// CEP-18 standard, exact code.
-    InsufficientBalance = 60001,
-    /// CEP-18 standard, exact code.
-    InsufficientAllowance = 60002,
-    /// CEP-18 standard, exact code.
-    CannotTargetSelfUser = 60003,
-
-    /// D3RACToken.sol's onlyOwner modifier.
+    /// `D3RACToken.sol`'s `onlyOwner` modifier.
     CallerIsNotOwner = 1,
-    /// D3RACToken.sol's onlyMinter modifier
-    /// (_checkRole(MINTER_ROLE, ...)).
+    /// `D3RACToken.sol`'s `onlyMinter` modifier.
     CallerIsNotMinter = 2,
-    /// D3RACToken.sol::proposeNewOwner's zero-owner guard (see
-    /// IdentityRegistryError::NewAdminInvalid's identical Casper-vs-EVM
-    /// caveat).
-    NewOwnerInvalid = 3,
-    /// D3RACToken.sol::acceptOwnership's "caller is not the pending
-    /// owner" guard.
-    CallerIsNotPendingOwner = 4,
-    /// D3RACToken.sol::mint's "mint to zero address" guard -- see
-    /// NewOwnerInvalid's caveat; kept for API-shape symmetry.
-    MintToInvalidAddress = 5,
-
-    MissingKey = 6,
-    UnexpectedKeyType = 7,
-    DictionaryReadFailed = 8,
+    /// `D3RACToken.sol::transfer`/`_transfer`'s "transfer exceeds
+    /// balance" guard.
+    InsufficientBalance = 3,
+    /// `D3RACToken.sol::transferFrom`'s "transfer exceeds allowance"
+    /// guard.
+    InsufficientAllowance = 4,
+    /// `D3RACToken.sol::burn`/`_burn`'s "burn exceeds balance" guard.
+    BurnExceedsBalance = 5,
+    /// `D3RACToken.sol::proposeNewOwner`'s "new owner is zero address"
+    /// guard -- Casper has no zero-address concept the way EVM/TVM
+    /// does (see identity-registry's identical reasoning on
+    /// `NewAdminInvalid`), so this instead guards against a
+    /// `new_owner`/`to`/`spender`/`from` argument that isn't a usable
+    /// `Key`. As with identity-registry's equivalent, deserialization
+    /// already enforces a well-formed `Key`, so this exists for API-
+    /// shape symmetry with the TRON contract's guard rather than a
+    /// case reachable today.
+    InvalidAddress = 6,
+    /// `D3RACToken.sol::acceptOwnership`'s "caller is not the pending
+    /// owner" guard -- also covers the case where no ownership
+    /// transfer has been proposed at all (`pending_owner` is `None`).
+    CallerIsNotPendingOwner = 7,
+    /// `call()`'s initial-supply scaling (`initial_supply *
+    /// 10^decimals`) overflowed `U256` -- has no direct
+    /// `D3RACToken.sol` equivalent since Solidity 0.8's built-in
+    /// overflow checks handle this implicitly; Casper's `U256`
+    /// doesn't panic on overflow the way Solidity 0.8 does, so this
+    /// needs an explicit `checked_mul` + revert instead.
+    SupplyOverflow = 11,
+    /// Same as risk-registry's `MissingKey`.
+    MissingKey = 12,
+    /// Same as risk-registry's `UnexpectedKeyType`.
+    UnexpectedKeyType = 13,
+    /// Same as risk-registry's `DictionaryReadFailed`.
+    DictionaryReadFailed = 14,
 }
 
 impl From<D3racTokenError> for ApiError {

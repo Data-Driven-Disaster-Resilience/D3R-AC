@@ -1,11 +1,11 @@
 [package]
-name = "d3rac-token"
+name = "multisig-admin"
 version = "0.1.0"
 edition.workspace = true
 license-file.workspace = true
 
 [[bin]]
-name = "d3rac-token"
+name = "multisig-admin"
 path = "src/main.rs"
 bench = false
 doctest = false
@@ -24,4 +24,4 @@ dlmalloc = { version = "0.2.14", features = ["global"] }
 # risk-registry/Cargo.toml: this package's `[[bin]]` is `#![no_std]`
 # with its own `#[panic_handler]`, built only for
 # wasm32-unknown-unknown. Integration tests live in the separate
-# `d3rac-token-tests` workspace package instead.
+# `multisig-admin-tests` workspace package instead.

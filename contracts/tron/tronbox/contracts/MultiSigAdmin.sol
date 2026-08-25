@@ -35,7 +35,7 @@ contract MultiSigAdmin is D3RACProperties {
     }
 
     address[] public owners;
-    uint256 public threshold;
+    uint256 public immutable threshold;
 
     Transaction[] private _transactions;
     mapping(uint256 => mapping(address => bool)) private _confirmations;

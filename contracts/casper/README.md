@@ -1,14 +1,13 @@
 # D3R·AC — Casper Contract Suite
 
-**Status: early, in progress — four of seven contracts now compile and
-pass their local-network tests.** This is not a parallel, complete
-implementation of the TRON suite yet — `risk-registry`,
-`identity-registry`, `disbursement-controller`, and `d3rac-token` are
-confirmed via real CI to build against `wasm32-unknown-unknown` and
-pass every one of their integration tests against a local Casper
-network (41 tests total). Not yet deployed to testnet, and not
-audited. See "What's actually done" below for the honest, itemized
-breakdown, and
+**Status: early, in progress — five of seven contracts have source
+written; four of those are confirmed via real CI to build against
+`wasm32-unknown-unknown` and pass every one of their integration tests
+against a local Casper network (41 tests total: `risk-registry`,
+`identity-registry`, `d3rac-token`, `disbursement-controller`). The
+fifth, `multisig-admin`, is confirmed compiling but has no integration
+test suite yet.** Not yet deployed to testnet, and not audited. See
+"What's actually done" below for the honest, itemized breakdown, and
 [`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md)
 for the full requirements this suite is being built against.
 
@@ -122,7 +121,7 @@ one `casper-types` version now resolves across the whole graph.
       `-p risk-registry`; it now discovers every contract package in
       the workspace and builds/lowers-bulk-memory-ops/stages/tests all
       of them, so each new contract in the SRS doesn't need its own CI
-      edit going forward. Also generalized to stage EVERY built
+      edit going forward.      edit going forward. Also generalized to stage EVERY built
       contract's `.wasm` into EVERY `*-tests` package (not just its
       own same-named pair) — needed once `disbursement-controller-tests`
       had to install a real `identity-registry` alongside it to
@@ -193,7 +192,45 @@ one `casper-types` version now resolves across the whole graph.
       passing, CI-confirmed**
       (`d3rac-token-tests/tests/integration_tests.rs`).
 - [ ] The other three contracts (`MultiSigAdmin`, `D3RACHub`,
-      `FundingRequestRegistry`)
+- [x] `multisig-admin/` -- full source written (installer, all entry
+      points, error type, event definitions, on-chain record type),
+      targeting behavioral parity with FR-4 /
+      `contracts/tron/tronbox/contracts/MultiSigAdmin.sol`: fixed
+      N-of-M owner set, `submit_transaction` (auto-confirms from the
+      submitter), `confirm_transaction`/`revoke_confirmation`,
+      `execute_transaction` once a transaction clears `threshold`
+      confirmations. Followed `identity-registry/src/main.rs`'s
+      already-CI-confirmed template for every hard-won pattern.
+- [ ] **NOT yet confirmed compiling.** Unlike `risk-registry` and
+      `identity-registry`, this one hasn't had a CI round yet at all --
+      see `src/main.rs`'s own module comment for specifics on what's
+      least certain about it. Two things worth flagging explicitly:
+      - It has one real behavioral difference from the TRON contract,
+        not just a translation detail: `MultiSigAdmin.sol` takes
+        `to`/`value`/`bytes data` and does a raw, dynamically-typed
+        EVM `call`; Casper contract calls are typed and
+        entry-point-addressed. `execute_transaction` bridges this by
+        having `submit_transaction` take a target *entry-point name*
+        plus bytesrepr-serialized `RuntimeArgs`, deserialized back at
+        execution time -- see `main.rs`'s `execute_transaction` doc
+        comment for the full reasoning. This specific mechanism
+        (`RuntimeArgs::from_bytes` round-tripping, then
+        `runtime::call_versioned_contract`) is the least-tested part
+        of this contract -- no test in this suite has exercised a real
+        cross-contract call yet, on either the TRON or Casper side.
+      - This session tried to get a real compile in its own sandbox
+        (further than "not possible at all" -- `apt`'s `cargo`/`rustc`
+        1.75.0 *can* resolve most of this workspace's dependency
+        graph, further than expected) but hit a hard wall: `zeroize`
+        1.9.0, already pinned in `Cargo.lock` by the earlier
+        CI-verified contracts, requires Cargo's `edition2024` feature,
+        which stabilized after 1.75. Getting a newer toolchain needs
+        `rustup` (`static.rust-lang.org`, still unreachable from this
+        sandbox) -- so this remains a sandbox-only limitation, not a
+        statement about the code. GitHub's CI runners already handle
+        this fine for the other two contracts; this is the real,
+        first test for `multisig-admin`.
+- [ ] The other two contracts (`D3RACHub`, `FundingRequestRegistry`)
 - [ ] Hub wiring (FR-8)
 - [ ] `casperAdapter.ts` completion (FR-9) — still throws "not deployed
       yet", correctly, since nothing is deployed yet
@@ -273,4 +310,23 @@ done
 ```
 
 The compiled contracts will be at
-`target/wasm32-unknown-unknown/release/{risk-registry,identity-registry,disbursement-controller,d3rac-token}.wasm`.
+`target/wasm32-unknown-unknown/release/{risk-registry,identity-registry,multisig-admin,disbursement-controller,d3rac-token}.wasm`.
+
+## Default testnet deployer (casper-test)
+
+A throwaway testnet-only account is the project's default deployer for
+CI-driven testnet deploys, once there's a deploy script to drive
+(there isn't one yet — see "What's left"). Its public key and account
+hash are public information and safe to record here; its secret key is
+**not** in this repo — it's stored as the `CASPER_TESTNET_SECRET_KEY`
+encrypted GitHub Actions secret, consistent with NFR-1 in
+[`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md).
+
+| | |
+|---|---|
+| Public key (account key) | `014e7ce46b68c09af0f7be462bd13bf73ae018f527604ff78641ca00ca4d6b0e6f` |
+| Account hash | `account-hash-23b198073de7006164021ea69f7901482c272499889e05424a8b3eba59d3acf9` |
+
+Fund it via the [Casper testnet faucet](https://testnet.cspr.live/tools/faucet)
+before any workflow that deploys with it. Do not reuse this key for
+mainnet.
