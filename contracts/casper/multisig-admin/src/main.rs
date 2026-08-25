@@ -234,6 +234,13 @@ pub extern "C" fn execute_transaction() {
         .map(|(args, _rem)| args)
         .unwrap_or_revert_with(MultisigAdminError::MalformedTargetArgs);
 
+    // Taken before `tx` moves into `dictionary_put` below -- `Key` is
+    // `Copy` (package_hash above already copied out via
+    // `key_to_package_hash`), but `String` isn't, so this needs an
+    // explicit clone rather than a borrow that would otherwise dangle
+    // once `tx` is moved.
+    let target_entry_point = tx.target_entry_point.clone();
+
     // Mark executed *before* the call -- if the call traps, the whole
     // deploy (including this write) is rolled back by the runtime, so
     // there's no window where `executed = true` is visible on-chain
@@ -249,7 +256,7 @@ pub extern "C" fn execute_transaction() {
     runtime::call_versioned_contract::<()>(
         package_hash,
         None,
-        &tx.target_entry_point,
+        &target_entry_point,
         target_args,
     );
 
