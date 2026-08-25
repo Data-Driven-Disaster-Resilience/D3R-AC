@@ -1,12 +1,13 @@
 # D3R·AC — Casper Contract Suite
 
 **Status: early, in progress — two contracts confirmed via real CI
-(`risk-registry`, `identity-registry`), a third merged after two
-real CI-caught fix rounds (`multisig-admin`), a fourth written but
-not yet CI-confirmed (`d3rac-token`).** This is not a parallel,
-complete implementation of the TRON suite yet. Not yet deployed to
-testnet, and not audited. See "What's actually done" below for the
-honest, itemized breakdown, and
+(`risk-registry`, `identity-registry`), two more merged after CI
+rounds (`multisig-admin`, `d3rac-token`), a fifth written but not yet
+CI-confirmed and carrying a real open design question
+(`disbursement-controller`).** This is not a parallel, complete
+implementation of the TRON suite yet. Not yet deployed to testnet, and
+not audited. See "What's actually done" below for the honest, itemized
+breakdown, and
 [`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md)
 for the full requirements this suite is being built against.
 
@@ -174,8 +175,31 @@ one `casper-types` version now resolves across the whole graph.
       applied here from the start rather than re-discovered, but that's
       not a substitute for this file's own CI round, which hasn't
       happened yet as of this write-up.
-- [ ] The other three contracts (`DisbursementController`, `D3RACHub`,
-      `FundingRequestRegistry`)
+- [x] `disbursement-controller/` -- full source written, targeting
+      parity (FR-3) with `contracts/tron/tronbox/contracts/
+      DisbursementController.sol`: milestone-based commitments for a
+      recipient verified live against `identity-registry` (a real
+      cross-contract call, not a cached flag), attester-gated
+      milestone attestation, permissionless release once attested.
+      Two real simplifications, not just translation details -- see
+      `src/main.rs`'s module comment: no `_safeTransfer`
+      return-value-tolerance workaround needed (CEP-18's
+      revert-on-failure semantics don't have the ambiguity that
+      protects against), and this contract's own package hash stands
+      in for Solidity's `address(this)` when tracking its own token
+      balance.
+- [ ] **NOT yet confirmed compiling, and with a real open question**
+      beyond the usual "first CI round" uncertainty: `release_milestone`
+      assumes `d3rac-token`'s `runtime::get_caller()` resolves to
+      *this* contract's own identity during the nested `transfer`
+      call, not the original externally-owned account. This is new,
+      untested territory for this suite -- every cross-contract call
+      so far (`multisig-admin`) was about getting the call to compile
+      and execute, not about caller-identity semantics inside the
+      callee. If this assumption is wrong, the token debit would
+      target the wrong account. Needs a real local-network integration
+      test to confirm, not just a compile pass.
+- [ ] The other two contracts (`D3RACHub`, `FundingRequestRegistry`)
 - [ ] Hub wiring (FR-8)
 - [ ] `casperAdapter.ts` completion (FR-9) — still throws "not deployed
       yet", correctly, since nothing is deployed yet
