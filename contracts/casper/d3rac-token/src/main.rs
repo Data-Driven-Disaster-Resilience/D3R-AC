@@ -66,8 +66,7 @@ use casper_event_standard::Schemas;
 use casper_types::{
     account::AccountHash,
     bytesrepr::ToBytes,
-    contracts::{ContractPackageHash, EntryPoint, NamedKeys},
-    package::PackageHash,
+    contracts::{ContractPackageHash, EntryPoint, NamedKeys, PackageHash},
     runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter,
     URef, U256,
 };
