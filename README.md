@@ -110,22 +110,27 @@ or terrestrial. Data pipeline implemented per
 hazard ingestion (NASA FIRMS, USGS, NASA EONET, GDACS), Africa-prioritized,
 with a 32-test suite (see [`data-pipeline/README.md`](data-pipeline/README.md))
 — but **not yet run against a deployed Hub/RiskRegistry**, since neither
-is deployed to any network yet. Casper contracts: four of seven
-contracts written and CI-verified — `risk-registry` (chosen as the
+is deployed to any network yet. Casper contracts: five of seven
+contracts have source written — `risk-registry` (chosen as the
 SRS's own standalone/no-dependency starting point, **confirmed
 compiling** against `wasm32-unknown-unknown`, **passing all 5 of its
 integration tests**), `identity-registry` (SRS FR-2, **passing all
 9 of its integration tests**), `disbursement-controller` (SRS FR-3,
 milestone-based fund release with a genuine cross-contract call into
 `identity-registry`'s `is_verified`, **passing all 14 of its
-integration tests**), and `d3rac-token` (SRS FR-1, a full CEP-18
+integration tests** — though the funded-success path for its actual
+fund release isn't one of them yet, see
+[`contracts/casper/README.md`](contracts/casper/README.md) for why),
+`d3rac-token` (SRS FR-1, a full CEP-18
 token — all 11 standard entry points, standard events, and the
 standard's own exact error codes, **passing all 13 of its
-integration tests**), all against a local Casper network —
+integration tests**), and `multisig-admin` (SRS FR-4, **confirmed
+compiling** but with no integration test suite yet), all against a
+local Casper network —
 see
 [`contracts/casper/README.md`](contracts/casper/README.md)
-for the honest, itemized status; the remaining three contracts
-(`MultiSigAdmin`, `D3RACHub`, `FundingRequestRegistry`), Hub wiring,
+for the honest, itemized status; `D3RACHub` and
+`FundingRequestRegistry` (the remaining two contracts), Hub wiring,
 frontend adapter completion, testnet testing, and any deployment are
 all still pending.
 The data pipeline SRS carries its own additional, even more restrictive

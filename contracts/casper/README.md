@@ -150,14 +150,36 @@ one `casper-types` version now resolves across the whole graph.
       passing, CI-confirmed**
       (`disbursement-controller-tests/tests/integration_tests.rs`),
       installing a genuine `identity-registry` alongside it rather
-      than stubbing the cross-contract call. The previous "no CEP-18
-      token existed yet" gap in this test file's own coverage is
-      closed as of `d3rac-token` landing (see below) — one of these 14
-      tests now installs a real `d3rac-token` too and exercises the
-      full fund-release path end to end, including the
-      unfunded-contract rejection `release_milestone`'s "no explicit
-      `balance_of` pre-check" design decision relies on CEP-18's own
-      revert for.
+      than stubbing the cross-contract call. One test additionally
+      installs a real `d3rac-token` and confirms `release_milestone`
+      rejects when this contract holds none of the configured token
+      — the guard `release_milestone`'s "no explicit `balance_of`
+      pre-check" design decision relies on CEP-18's own revert for.
+      **The funded-success path is not yet covered** — see the ⚠️
+      below.
+- [ ] **⚠️ Funded-success path for `release_milestone` not yet
+      tested, pending a `Key`-encoding question**: an attempt to fund
+      `disbursement-controller` (by minting tokens to its own contract
+      address, then releasing) surfaced two real, separate issues in
+      sequence, not one. First: Casper's `runtime::get_caller()`
+      always resolves to the originating deploy-signing account, never
+      the immediate calling contract — `d3rac-token`'s `transfer` has
+      since been fixed elsewhere in this codebase to resolve the
+      acting party via `runtime::get_call_stack()`'s immediate caller
+      instead (see `d3rac-token/src/main.rs`'s `immediate_caller_key`).
+      Second, once that fix was in place: it resolves a calling
+      contract's identity to `Key::from(ContractPackageHash)` (the
+      contract's *package* identity), but the test was minting to
+      `Key::from(ContractHash::from(dc_hash))` (the contract's
+      specific-*version*/entity identity) — two different identifiers
+      in Casper's model that don't compare equal as dictionary keys, so
+      the mint never reached the balance bucket `transfer` actually
+      checks. Confirming exactly how a `*_package_hash` named key (as
+      read back through `casper-engine-test-support`) relates to
+      `ContractPackageHash`'s own `Key` encoding wasn't nailed down
+      with enough certainty to guess a third time in this same problem
+      area. Real, worthwhile follow-up — not abandoned, just not
+      asserted without evidence.
 - [x] `d3rac-token/` — full source written, implementing SRS FR-1: a
       complete CEP-18 token (`ceps/text/0018-token-standard.md`) — all
       11 standard entry points, all 7 standard events, and the
