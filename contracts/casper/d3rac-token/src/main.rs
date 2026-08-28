@@ -66,7 +66,7 @@ use casper_event_standard::Schemas;
 use casper_types::{
     account::AccountHash,
     bytesrepr::ToBytes,
-    contracts::{ContractPackageHash, EntryPoint, NamedKeys, PackageHash},
+    contracts::{ContractPackageHash, EntryPoint, NamedKeys},
     runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter,
     URef, U256,
 };
@@ -355,13 +355,12 @@ pub extern "C" fn accept_ownership() {
 /// `CONTRACT_PACKAGE`/`ENTITY`/`CONTRACT` = 0/1/2/3/4) that `.kind()`
 /// returns are private to `casper_types::system::caller` -- there is
 /// no public `TryFrom<CallerInfo> for Caller` to convert back to the
-/// ergonomic public enum. The raw values below (0, 2, 4) are taken
+/// ergonomic public enum. The raw values below (0, 4) are taken
 /// directly from that source's `TryFrom<Caller> for CallerInfo` impl,
-/// not inferred. Kind 3 (`Entity`, using field index 1 for its
-/// `PackageHash`) exists in the same source but has no test in this
-/// suite exercising it (only `SmartContract`, kind 4, has been
-/// observed) -- included for completeness against the source, not
-/// against an observed case.
+/// not inferred. Kind 3 (`Entity`) exists in that same source but
+/// isn't handled below -- see `immediate_caller_key`'s own comment on
+/// that match arm for why (a real, CI-caught `PackageHash` visibility
+/// problem, not a decision to skip it).
 fn immediate_caller_key() -> Key {
     let caller_info = runtime::get_immediate_caller().unwrap_or_revert();
     match caller_info.kind() {
@@ -376,16 +375,18 @@ fn immediate_caller_key() -> Key {
                 .unwrap_or_revert();
             Key::from(account_hash.unwrap_or_revert())
         }
-        // ENTITY (3): Caller::Entity -- field index 1 is the PackageHash.
-        3 => {
-            let package_hash: Option<PackageHash> = caller_info
-                .get_field_by_index(1)
-                .unwrap_or_revert()
-                .clone()
-                .into_t()
-                .unwrap_or_revert();
-            Key::from(package_hash.unwrap_or_revert())
-        }
+        // ENTITY (3): Caller::Entity. Not folded into a handled case --
+        // this suite has never actually observed this variant (only
+        // ACCOUNT and CONTRACT below), and the type needed to read its
+        // field (PackageHash) turned out to not be part of
+        // casper_types' public API in this version at any of the
+        // import paths its own source suggested (casper_types::package
+        // is private; casper_types::contracts re-imports it privately
+        // too, per two real, separate CI-caught E0603 errors on this
+        // exact line). Reverting here is honest about that rather than
+        // guessing a third import path for a branch nothing in this
+        // suite exercises -- revisit if a real call pattern ever
+        // actually produces this kind.
         // CONTRACT (4): Caller::SmartContract -- field index 2 is the
         // ContractPackageHash. This is the variant this suite's own
         // contract-to-contract calls (disbursement-controller calling
