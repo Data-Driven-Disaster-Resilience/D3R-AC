@@ -1,12 +1,13 @@
 # D3R·AC — Casper Contract Suite
 
-**Status: early, in progress — two contracts confirmed via real CI
-(`risk-registry`, `identity-registry`), a third merged after two
-real CI-caught fix rounds (`multisig-admin`), a fourth written but
-not yet CI-confirmed (`d3rac-token`).** This is not a parallel,
-complete implementation of the TRON suite yet. Not yet deployed to
-testnet, and not audited. See "What's actually done" below for the
-honest, itemized breakdown, and
+**Status: early, in progress — five of seven contracts have source
+written; four of those are confirmed via real CI to build against
+`wasm32-unknown-unknown` and pass every one of their integration tests
+against a local Casper network (41 tests total: `risk-registry`,
+`identity-registry`, `d3rac-token`, `disbursement-controller`). The
+fifth, `multisig-admin`, is confirmed compiling but has no integration
+test suite yet.** Not yet deployed to testnet, and not audited. See
+"What's actually done" below for the honest, itemized breakdown, and
 [`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md)
 for the full requirements this suite is being built against.
 
@@ -120,7 +121,99 @@ one `casper-types` version now resolves across the whole graph.
       `-p risk-registry`; it now discovers every contract package in
       the workspace and builds/lowers-bulk-memory-ops/stages/tests all
       of them, so each new contract in the SRS doesn't need its own CI
-      edit going forward.
+      edit going forward.      edit going forward. Also generalized to stage EVERY built
+      contract's `.wasm` into EVERY `*-tests` package (not just its
+      own same-named pair) — needed once `disbursement-controller-tests`
+      had to install a real `identity-registry` alongside it to
+      exercise a genuine cross-contract call, not a stub.
+- [x] `disbursement-controller/` — full source written, implementing
+      SRS FR-3: milestone-based fund release gated by an attester
+      role, checking recipient verification via a real cross-contract
+      call into `identity-registry`'s `is_verified` (confirmed against
+      Casper's own cross-contract-communication docs, not guessed).
+      No SafeERC20-style tolerant-decode wrapper needed the way
+      `DisbursementController.sol`'s `_safeTransfer` (M-3) requires —
+      CEP-18's `transfer` entry point simply reverts on failure
+      (confirmed against the CEP-18 standard text directly), unlike
+      ERC-20/TRC-20's return-bool ambiguity. Same two-step admin
+      transfer and reentrancy guard as the rest of this suite.
+- [x] **Confirmed compiling** — `disbursement-controller.wasm` builds
+      successfully against `wasm32-unknown-unknown` in CI. Took three
+      real, CI-verified fix rounds: `casper_types::ContractHash` isn't
+      exported from the crate root post-Entity-model migration (needed
+      `AddressableEntityHash` in most places, with a `.into()` at the
+      couple of spots `runtime::call_contract` itself still wants the
+      legacy `ContractHash` type), plus the same mistake repeated in
+      the test file before `ContractHash`'s real path
+      (`casper_types::contracts::ContractHash`) was confirmed.
+- [x] Unit/integration tests against a local Casper network — **all 14
+      passing, CI-confirmed**
+      (`disbursement-controller-tests/tests/integration_tests.rs`),
+      installing a genuine `identity-registry` alongside it rather
+      than stubbing the cross-contract call. One test additionally
+      installs a real `d3rac-token` and confirms `release_milestone`
+      rejects when this contract holds none of the configured token
+      — the guard `release_milestone`'s "no explicit `balance_of`
+      pre-check" design decision relies on CEP-18's own revert for.
+      **The funded-success path is not yet covered** — see the ⚠️
+      below.
+- [ ] **⚠️ Funded-success path for `release_milestone` not yet
+      tested, pending a `Key`-encoding question**: an attempt to fund
+      `disbursement-controller` (by minting tokens to its own contract
+      address, then releasing) surfaced two real, separate issues in
+      sequence, not one. First: Casper's `runtime::get_caller()`
+      always resolves to the originating deploy-signing account, never
+      the immediate calling contract — `d3rac-token`'s `transfer` has
+      since been fixed elsewhere in this codebase to resolve the
+      acting party via `runtime::get_call_stack()`'s immediate caller
+      instead (see `d3rac-token/src/main.rs`'s `immediate_caller_key`).
+      Second, once that fix was in place: it resolves a calling
+      contract's identity to `Key::from(ContractPackageHash)` (the
+      contract's *package* identity), but the test was minting to
+      `Key::from(ContractHash::from(dc_hash))` (the contract's
+      specific-*version*/entity identity) — two different identifiers
+      in Casper's model that don't compare equal as dictionary keys, so
+      the mint never reached the balance bucket `transfer` actually
+      checks. Confirming exactly how a `*_package_hash` named key (as
+      read back through `casper-engine-test-support`) relates to
+      `ContractPackageHash`'s own `Key` encoding wasn't nailed down
+      with enough certainty to guess a third time in this same problem
+      area. Real, worthwhile follow-up — not abandoned, just not
+      asserted without evidence.
+- [x] `d3rac-token/` — full source written, implementing SRS FR-1: a
+      complete CEP-18 token (`ceps/text/0018-token-standard.md`) — all
+      11 standard entry points, all 7 standard events, and the
+      standard's own exact error codes (`InsufficientBalance=60001`,
+      `InsufficientAllowance=60002`, `CannotTargetSelfUser=60003`),
+      confirmed directly against the spec text rather than guessed.
+      Plus `D3RACToken.sol`'s own extensions: minter-role-gated `mint`,
+      public `burn`, two-step ownership transfer. **One documented,
+      deliberate point of non-compliance**: `balances`' dictionary
+      values are keyed with this suite's own established
+      `Key::to_string()` pattern rather than the standard's
+      base64-CLType-bytes scheme — full entry-point composability
+      (what this suite actually needs) is preserved, only raw-storage
+      introspection by generic external CEP-18 tooling isn't. This
+      was a real, deliberate choice for `balances` (which only ever
+      stores one `Key`'s worth of bytes per entry, well under Casper's
+      dictionary-item-key length limit either way) — but turned out
+      **not** to be optional for `allowances`: concatenating two `Key`
+      Display strings for that dictionary's keys exceeded the length
+      limit in practice (a real `ApiError::DictionaryItemKeyTooLarge`
+      from CI), so `allowances` uses the standard's exact blake2b-hash
+      derivation instead, confirming the standard's own reasoning for
+      picking that scheme in the first place.
+- [x] **Confirmed compiling** — `d3rac-token.wasm` builds successfully
+      against `wasm32-unknown-unknown` in CI. Two real, CI-verified fix
+      rounds beyond the dictionary-key one above: a missing
+      `bytesrepr::ToBytes` trait import (needed to call
+      `Key::to_bytes()`), and sidestepping an unconfirmed
+      `U256::pow()` signature by hardcoding `10^18` as a literal for
+      supply scaling rather than guessing at another API.
+- [x] Unit/integration tests against a local Casper network — **all 13
+      passing, CI-confirmed**
+      (`d3rac-token-tests/tests/integration_tests.rs`).
+- [ ] The other three contracts (`MultiSigAdmin`, `D3RACHub`,
 - [x] `multisig-admin/` -- full source written (installer, all entry
       points, error type, event definitions, on-chain record type),
       targeting behavioral parity with FR-4 /
@@ -159,23 +252,7 @@ one `casper-types` version now resolves across the whole graph.
         statement about the code. GitHub's CI runners already handle
         this fine for the other two contracts; this is the real,
         first test for `multisig-admin`.
-- [x] `d3rac-token/` -- full source written, targeting CEP-18-standard
-      parity (FR-1) with `contracts/tron/tronbox/contracts/D3RACToken.sol`:
-      standard `transfer`/`approve`/`transfer_from`/`balance_of`/
-      `allowance`/`total_supply`/`name`/`symbol`/`decimals`, plus the
-      non-standard owner-gated `mint`/`set_minter` and two-step
-      ownership this suite's other contracts already use. Uses
-      `casper_types::U256` for amounts. Standard CEP-18 semantics
-      (revert-on-failure, `Unit` returns) rather than `D3RACToken.sol`'s
-      ERC-20-style `bool` returns -- see `src/main.rs`'s module comment.
-- [ ] **NOT yet confirmed compiling.** Written against the same
-      casper-types 6.1.0 API surface `multisig-admin` needed two real
-      CI-caught fix rounds for (see that contract's PR #20 history) --
-      applied here from the start rather than re-discovered, but that's
-      not a substitute for this file's own CI round, which hasn't
-      happened yet as of this write-up.
-- [ ] The other three contracts (`DisbursementController`, `D3RACHub`,
-      `FundingRequestRegistry`)
+- [ ] The other two contracts (`D3RACHub`, `FundingRequestRegistry`)
 - [ ] Hub wiring (FR-8)
 - [ ] `casperAdapter.ts` completion (FR-9) — still throws "not deployed
       yet", correctly, since nothing is deployed yet
@@ -215,7 +292,7 @@ Requires a machine (or CI runner) that can actually target
 ```bash
 cd contracts/casper
 rustup target add wasm32-unknown-unknown
-cargo build --release --target wasm32-unknown-unknown -p risk-registry
+cargo build --release --target wasm32-unknown-unknown -p risk-registry -p identity-registry -p disbursement-controller -p d3rac-token
 ```
 
 **One required post-processing step, not optional.** Rust's default
@@ -247,13 +324,15 @@ managers currently ship (this flag needs v109+; e.g. Ubuntu noble's
 directly if your package manager's version is too old:
 
 ```bash
-wasm-opt target/wasm32-unknown-unknown/release/risk-registry.wasm \
-  --enable-bulk-memory --llvm-memory-copy-fill-lowering -Oz \
-  -o target/wasm32-unknown-unknown/release/risk-registry.wasm
+for pkg in risk-registry identity-registry disbursement-controller d3rac-token; do
+  wasm-opt target/wasm32-unknown-unknown/release/${pkg}.wasm \
+    --enable-bulk-memory --llvm-memory-copy-fill-lowering -Oz \
+    -o target/wasm32-unknown-unknown/release/${pkg}.wasm
+done
 ```
 
-The compiled contract will be at
-`target/wasm32-unknown-unknown/release/risk-registry.wasm`.
+The compiled contracts will be at
+`target/wasm32-unknown-unknown/release/{risk-registry,identity-registry,multisig-admin,disbursement-controller,d3rac-token}.wasm`.
 
 ## Default testnet deployer (casper-test)
 

@@ -68,7 +68,7 @@ See [`docs/deployment-guide.md`](docs/deployment-guide.md) for full deployment s
 
 ### Smart contracts (Casper)
 
-See [`contracts/casper/README.md`](contracts/casper/README.md) for current status — two contracts (`risk-registry`, `identity-registry`) written, compiling, and passing their local-network tests in CI; the other five are not started. Requires a `wasm32-unknown-unknown`-capable Rust toolchain to build.
+See [`contracts/casper/README.md`](contracts/casper/README.md) for current status — four contracts (`risk-registry`, `identity-registry`, `disbursement-controller`, `d3rac-token`) written, compiling, and passing their local-network tests in CI; the other three (`MultiSigAdmin`, `D3RACHub`, `FundingRequestRegistry`) are not started. Requires a `wasm32-unknown-unknown`-capable Rust toolchain to build.
 
 ### Frontend
 
@@ -110,15 +110,27 @@ or terrestrial. Data pipeline implemented per
 hazard ingestion (NASA FIRMS, USGS, NASA EONET, GDACS), Africa-prioritized,
 with a 32-test suite (see [`data-pipeline/README.md`](data-pipeline/README.md))
 — but **not yet run against a deployed Hub/RiskRegistry**, since neither
-is deployed to any network yet. Casper contracts: two of seven
-contracts written and CI-verified — `risk-registry` (chosen as the
+is deployed to any network yet. Casper contracts: five of seven
+contracts have source written — `risk-registry` (chosen as the
 SRS's own standalone/no-dependency starting point, **confirmed
 compiling** against `wasm32-unknown-unknown`, **passing all 5 of its
-integration tests**) and `identity-registry` (SRS FR-2, **passing all
-9 of its integration tests**), both against a local Casper network —
+integration tests**), `identity-registry` (SRS FR-2, **passing all
+9 of its integration tests**), `disbursement-controller` (SRS FR-3,
+milestone-based fund release with a genuine cross-contract call into
+`identity-registry`'s `is_verified`, **passing all 14 of its
+integration tests** — though the funded-success path for its actual
+fund release isn't one of them yet, see
+[`contracts/casper/README.md`](contracts/casper/README.md) for why),
+`d3rac-token` (SRS FR-1, a full CEP-18
+token — all 11 standard entry points, standard events, and the
+standard's own exact error codes, **passing all 13 of its
+integration tests**), and `multisig-admin` (SRS FR-4, **confirmed
+compiling** but with no integration test suite yet), all against a
+local Casper network —
 see
 [`contracts/casper/README.md`](contracts/casper/README.md)
-for the honest, itemized status; the other five contracts, Hub wiring,
+for the honest, itemized status; `D3RACHub` and
+`FundingRequestRegistry` (the remaining two contracts), Hub wiring,
 frontend adapter completion, testnet testing, and any deployment are
 all still pending.
 The data pipeline SRS carries its own additional, even more restrictive
