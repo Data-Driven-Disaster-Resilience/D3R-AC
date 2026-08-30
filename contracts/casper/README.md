@@ -157,29 +157,52 @@ one `casper-types` version now resolves across the whole graph.
       pre-check" design decision relies on CEP-18's own revert for.
       **The funded-success path is not yet covered** — see the ⚠️
       below.
-- [ ] **⚠️ Funded-success path for `release_milestone` not yet
-      tested, pending a `Key`-encoding question**: an attempt to fund
-      `disbursement-controller` (by minting tokens to its own contract
-      address, then releasing) surfaced two real, separate issues in
-      sequence, not one. First: Casper's `runtime::get_caller()`
-      always resolves to the originating deploy-signing account, never
-      the immediate calling contract — `d3rac-token`'s `transfer` has
-      since been fixed elsewhere in this codebase to resolve the
-      acting party via `runtime::get_call_stack()`'s immediate caller
-      instead (see `d3rac-token/src/main.rs`'s `immediate_caller_key`).
-      Second, once that fix was in place: it resolves a calling
-      contract's identity to `Key::from(ContractPackageHash)` (the
-      contract's *package* identity), but the test was minting to
+- [ ] **⚠️ Funded-success path for `release_milestone` still not
+      tested, though its root cause is now fixed** — an earlier
+      attempt to fund `disbursement-controller` and release surfaced
+      two real, separate issues. First: Casper's
+      `runtime::get_caller()` always resolves to the originating
+      deploy-signing account, never the immediate calling contract —
+      this is now fixed suite-wide (see the "Systemic fix" bullet
+      below), including in `d3rac-token`'s own `transfer`. Second, once
+      that fix was in place: the fix resolves a calling contract's
+      identity to `Key::from(ContractPackageHash)` (the contract's
+      *package* identity), but the original test attempt minted to
       `Key::from(ContractHash::from(dc_hash))` (the contract's
       specific-*version*/entity identity) — two different identifiers
-      in Casper's model that don't compare equal as dictionary keys, so
-      the mint never reached the balance bucket `transfer` actually
-      checks. Confirming exactly how a `*_package_hash` named key (as
-      read back through `casper-engine-test-support`) relates to
-      `ContractPackageHash`'s own `Key` encoding wasn't nailed down
-      with enough certainty to guess a third time in this same problem
-      area. Real, worthwhile follow-up — not abandoned, just not
-      asserted without evidence.
+      in Casper's model that don't compare equal as dictionary keys.
+      That second, narrower `Key`-encoding question is the only thing
+      still blocking this specific test from being rewritten to assert
+      the real success path — real, worthwhile follow-up, not
+      abandoned.
+- [x] **Systemic fix: `runtime::get_caller()` → immediate-caller
+      resolution, across all five contracts with source**. Building
+      `multisig-admin-tests`' own cross-contract test
+      (`should_execute_a_confirmed_transaction_against_a_real_contract`,
+      installing a real `identity-registry` and exercising
+      `execute_transaction`'s call for real) surfaced that the fix
+      above wasn't actually applied everywhere it needed to be —
+      `identity-registry`'s `only_admin`/`only_verifier`/`accept_admin`,
+      `disbursement-controller`'s `only_admin`/`only_attester`/
+      `accept_admin`, `risk-registry`'s `only_owner`/`only_data_feeder`,
+      `multisig-admin`'s own `only_owner`, and even `d3rac-token`'s
+      `only_owner`/`only_minter`/`accept_ownership` (the earlier fix
+      only covered `transfer`/`transfer_from`/`approve`) all still used
+      plain `get_caller()`. Every one of these gates an admin/owner/role
+      check that can legitimately need to recognize a CONTRACT (most
+      importantly `multisig-admin` itself, after a two-step admin
+      transfer — the production pattern
+      [`docs/deployment-guide.md`](../../docs/deployment-guide.md)
+      recommends) as the acting party, not just a human account — with
+      plain `get_caller()`, that transfer-to-a-multisig pattern this
+      whole suite recommends would have silently and permanently locked
+      every affected contract's admin functions the moment ownership
+      actually moved to a multisig, since the multisig's own
+      `execute_transaction` calls would never be recognized as coming
+      from the right caller. Fixed identically across all five files
+      (a shared `immediate_caller_key()` pattern, each with its own
+      `UnrecognizedCallerKind` error variant) — **not yet independently
+      compiled or CI-confirmed as of this write-up.**
 - [x] `d3rac-token/` — full source written, implementing SRS FR-1: a
       complete CEP-18 token (`ceps/text/0018-token-standard.md`) — all
       11 standard entry points, all 7 standard events, and the

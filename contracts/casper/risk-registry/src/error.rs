@@ -46,6 +46,10 @@ pub enum RiskRegistryError {
     /// now uses this instead, so any future occurrence is immediately
     /// attributable to a specific line rather than a mystery revert.
     DictionaryReadFailed = 8,
+    /// `runtime::get_immediate_caller()` returned a `CallerInfo` kind
+    /// `immediate_caller_key` doesn't recognize -- see that function's
+    /// own comment for which kinds are handled and why.
+    UnrecognizedCallerKind = 9,
 }
 
 impl From<RiskRegistryError> for ApiError {

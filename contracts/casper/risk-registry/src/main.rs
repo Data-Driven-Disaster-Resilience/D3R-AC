@@ -85,7 +85,8 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
-    contracts::{EntryPoint, NamedKeys},
+    account::AccountHash,
+    contracts::{ContractPackageHash, EntryPoint, NamedKeys},
     runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key,
     Parameter, URef,
 };
@@ -176,7 +177,7 @@ pub extern "C" fn update_risk() {
     let score = compute_risk_score(&record);
     storage::dictionary_put(dict_uref, &community_id, record);
 
-    let feeder = Key::from(runtime::get_caller());
+    let feeder = immediate_caller_key();
 
     casper_event_standard::emit(RiskUpdated {
         community_id: community_id.clone(),
@@ -312,8 +313,46 @@ fn compute_risk_score(record: &CommunityRisk) -> u64 {
     (((h * e) / scale) * v / scale) as u64
 }
 
+/// Resolves the actual calling entity -- ported directly from
+/// `identity-registry/src/main.rs`'s `immediate_caller_key` (itself
+/// ported from `d3rac-token/src/main.rs`'s -- see that function's own
+/// extensive comment for the full `CallerInfo`/
+/// `get_immediate_caller()` API details, confirmed against downloaded
+/// `casper-contract`/`casper-types` source, not guessed). NOT
+/// `Key::from(runtime::get_caller())` for the same reason as every
+/// other fixed contract in this suite: `owner` here can legitimately
+/// be `multisig-admin` after a `transfer_ownership` call (the
+/// production pattern `docs/deployment-guide.md` recommends), and
+/// `get_caller()` would resolve to the original deploy-signing account
+/// instead of the multisig contract calling in via its own
+/// `execute_transaction`.
+fn immediate_caller_key() -> Key {
+    let caller_info = runtime::get_immediate_caller().unwrap_or_revert();
+    match caller_info.kind() {
+        0 => {
+            let account_hash: Option<AccountHash> = caller_info
+                .get_field_by_index(0)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(account_hash.unwrap_or_revert())
+        }
+        4 => {
+            let contract_package_hash: Option<ContractPackageHash> = caller_info
+                .get_field_by_index(2)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(contract_package_hash.unwrap_or_revert())
+        }
+        _ => runtime::revert(RiskRegistryError::UnrecognizedCallerKind),
+    }
+}
+
 fn only_owner() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let owner: Key = get_owner();
     if caller != owner {
         runtime::revert(RiskRegistryError::CallerIsNotOwner);
@@ -321,7 +360,7 @@ fn only_owner() {
 }
 
 fn only_data_feeder() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let dict_uref = data_feeders_dict();
     let is_feeder: bool = storage::dictionary_get(dict_uref, &key_to_dict_key(&caller))
         .unwrap_or_revert_with(RiskRegistryError::DictionaryReadFailed)

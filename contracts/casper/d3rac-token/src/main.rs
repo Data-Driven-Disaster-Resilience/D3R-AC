@@ -306,7 +306,7 @@ pub extern "C" fn propose_new_owner() {
 
 #[no_mangle]
 pub extern "C" fn accept_ownership() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     match get_pending_owner() {
         Some(pending_owner) if pending_owner == caller => {
             let previous_owner = get_owner();
@@ -405,13 +405,13 @@ fn immediate_caller_key() -> Key {
 }
 
 fn only_owner() {
-    if Key::from(runtime::get_caller()) != get_owner() {
+    if immediate_caller_key() != get_owner() {
         runtime::revert(D3racTokenError::CallerIsNotOwner);
     }
 }
 
 fn only_minter() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let is_minter: bool = storage::dictionary_get(minters_dict(), &key_to_dict_key(&caller))
         .unwrap_or_revert_with(D3racTokenError::DictionaryReadFailed)
         .unwrap_or(false);

@@ -38,6 +38,10 @@ pub enum IdentityRegistryError {
     UnexpectedKeyType = 8,
     /// Same as risk-registry's `DictionaryReadFailed`.
     DictionaryReadFailed = 9,
+    /// `runtime::get_immediate_caller()` returned a `CallerInfo` kind
+    /// this contract's `immediate_caller_key` doesn't recognize -- see
+    /// that function's own comment for which kinds are handled and why.
+    UnrecognizedCallerKind = 10,
 }
 
 impl From<IdentityRegistryError> for ApiError {

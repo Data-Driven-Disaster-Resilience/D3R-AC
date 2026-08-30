@@ -45,6 +45,10 @@ pub enum MultisigAdminError {
     UnexpectedKeyType = 13,
     /// Same as risk-registry's `DictionaryReadFailed`.
     DictionaryReadFailed = 14,
+    /// `runtime::get_immediate_caller()` returned a `CallerInfo` kind
+    /// `immediate_caller_key` doesn't recognize -- see that function's
+    /// own comment for which kinds are handled and why.
+    UnrecognizedCallerKind = 15,
 }
 
 impl From<MultisigAdminError> for ApiError {

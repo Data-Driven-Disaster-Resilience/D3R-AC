@@ -62,6 +62,7 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
+    account::AccountHash,
     bytesrepr::FromBytes,
     contracts::{ContractPackageHash, EntryPoint, NamedKeys},
     runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter,
@@ -109,7 +110,7 @@ pub extern "C" fn submit_transaction() {
     }
 
     let tx_id = get_tx_count();
-    let submitter = Key::from(runtime::get_caller());
+    let submitter = immediate_caller_key();
 
     let tx = Transaction {
         target_package_hash,
@@ -139,7 +140,7 @@ pub extern "C" fn confirm_transaction() {
     only_owner();
 
     let tx_id: u64 = runtime::get_named_arg(ARG_TX_ID);
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
 
     let tx = require_tx_exists_and_not_executed(tx_id);
     let _ = tx;
@@ -158,7 +159,7 @@ pub extern "C" fn revoke_confirmation() {
     only_owner();
 
     let tx_id: u64 = runtime::get_named_arg(ARG_TX_ID);
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
 
     let mut tx = require_tx_exists_and_not_executed(tx_id);
 
@@ -219,7 +220,7 @@ pub extern "C" fn execute_transaction() {
     only_owner();
 
     let tx_id: u64 = runtime::get_named_arg(ARG_TX_ID);
-    let executor = Key::from(runtime::get_caller());
+    let executor = immediate_caller_key();
 
     let mut tx = require_tx_exists_and_not_executed(tx_id);
 
@@ -302,8 +303,45 @@ pub extern "C" fn get_transaction() {
 // Internal helpers
 // ---------------------------------------------------------------
 
+/// Resolves the actual calling entity -- ported directly from
+/// `identity-registry/src/main.rs`'s `immediate_caller_key` (see that
+/// function's own extensive comment for the full `CallerInfo`/
+/// `get_immediate_caller()` API details, confirmed against downloaded
+/// `casper-contract`/`casper-types` source, not guessed). Applied here
+/// too for consistency with the rest of this suite, even though a
+/// typical deployment's owners are direct human signers (where
+/// `get_caller()` and this would agree) -- a nested multisig-of-
+/// multisigs or DAO-governance-contract-as-owner pattern is a
+/// legitimate, if more advanced, use this suite shouldn't silently
+/// foreclose by leaving this contract as the one inconsistent
+/// exception.
+fn immediate_caller_key() -> Key {
+    let caller_info = runtime::get_immediate_caller().unwrap_or_revert();
+    match caller_info.kind() {
+        0 => {
+            let account_hash: Option<AccountHash> = caller_info
+                .get_field_by_index(0)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(account_hash.unwrap_or_revert())
+        }
+        4 => {
+            let contract_package_hash: Option<ContractPackageHash> = caller_info
+                .get_field_by_index(2)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(contract_package_hash.unwrap_or_revert())
+        }
+        _ => runtime::revert(MultisigAdminError::UnrecognizedCallerKind),
+    }
+}
+
 fn only_owner() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     if !is_owner_internal(caller) {
         runtime::revert(MultisigAdminError::CallerIsNotOwner);
     }

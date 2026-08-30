@@ -49,6 +49,10 @@ pub enum DisbursementControllerError {
     MissingKey = 17,
     UnexpectedKeyType = 18,
     DictionaryReadFailed = 19,
+    /// `runtime::get_immediate_caller()` returned a `CallerInfo` kind
+    /// `immediate_caller_key` doesn't recognize -- see that function's
+    /// own comment for which kinds are handled and why.
+    UnrecognizedCallerKind = 20,
 }
 
 impl From<DisbursementControllerError> for ApiError {
