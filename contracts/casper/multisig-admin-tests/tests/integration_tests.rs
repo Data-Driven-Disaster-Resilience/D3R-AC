@@ -473,7 +473,12 @@ fn should_execute_a_confirmed_transaction_against_a_real_contract() {
         .expect("multisig contract hash named key should exist after install")
         .into_entity_hash()
         .expect("should resolve to an addressable entity hash");
-    let multisig_key = Key::from(casper_types::contracts::ContractHash::from(multisig_hash));
+    let multisig_key: Key = *builder
+        .get_account(*DEFAULT_ACCOUNT_ADDR)
+        .expect("should have account")
+        .named_keys()
+        .get("multisig_admin_package_hash")
+        .expect("multisig package hash named key should exist after install");
 
     let propose_admin_request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
