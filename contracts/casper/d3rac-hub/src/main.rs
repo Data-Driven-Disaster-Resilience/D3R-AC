@@ -99,8 +99,8 @@ use casper_event_standard::Schemas;
 use casper_types::{
     account::AccountHash,
     contracts::{ContractPackageHash, EntryPoint, NamedKeys},
-    runtime_args, AddressableEntityHash, CLType, CLValue, EntryPointAccess, EntryPointType,
-    EntryPoints, Key, Parameter, URef, U256,
+    runtime_args, AddressableEntityHash, CLType, CLValue, ContractHash, EntryPointAccess,
+    EntryPointType, EntryPoints, Key, Parameter, URef, U256,
 };
 
 mod constants;
@@ -758,14 +758,20 @@ fn only_funding_request_registry_set() {
     }
 }
 
-/// Same `Key` -> `AddressableEntityHash` conversion as
-/// `disbursement-controller`'s own `key_to_contract_hash` -- calling a
-/// contract via `runtime::call_contract` needs its
-/// `AddressableEntityHash`, not a bare `Key`.
-fn key_to_contract_hash(key: Key) -> AddressableEntityHash {
-    key.into_hash_addr()
+/// Same `Key` -> `AddressableEntityHash` -> `ContractHash` conversion
+/// `disbursement-controller`'s own `get_registry_hash()` +
+/// its call site's trailing `.into()` do together (`runtime::
+/// call_contract` needs a `ContractHash` specifically, not the
+/// `AddressableEntityHash` this contract's `Key` resolves to
+/// directly) -- done here inside the helper itself, once, rather than
+/// requiring every one of this file's 30+ call sites to remember an
+/// `.into()` the way disbursement-controller's single call site does.
+fn key_to_contract_hash(key: Key) -> ContractHash {
+    let entity_hash: AddressableEntityHash = key
+        .into_hash_addr()
         .map(AddressableEntityHash::new)
-        .unwrap_or_revert_with(D3racHubError::UnexpectedKeyType)
+        .unwrap_or_revert_with(D3racHubError::UnexpectedKeyType);
+    entity_hash.into()
 }
 
 fn get_uref(name: &str) -> URef {
