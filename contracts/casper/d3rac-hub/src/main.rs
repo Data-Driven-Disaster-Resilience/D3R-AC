@@ -98,9 +98,9 @@ use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
     account::AccountHash,
-    contracts::{ContractPackageHash, EntryPoint, NamedKeys},
-    runtime_args, AddressableEntityHash, CLType, CLValue, ContractHash, EntryPointAccess,
-    EntryPointType, EntryPoints, Key, Parameter, URef, U256,
+    contracts::{ContractHash, ContractPackageHash, EntryPoint, NamedKeys},
+    runtime_args, AddressableEntityHash, CLType, CLValue, EntryPointAccess, EntryPointType,
+    EntryPoints, Key, Parameter, URef, U256,
 };
 
 mod constants;
