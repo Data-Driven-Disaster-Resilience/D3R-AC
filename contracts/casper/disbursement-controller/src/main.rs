@@ -59,7 +59,8 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
-    contracts::{EntryPoint, NamedKeys},
+    account::AccountHash,
+    contracts::{ContractPackageHash, EntryPoint, NamedKeys},
     runtime_args, AddressableEntityHash, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints,
     Key, Parameter, URef, U256,
 };
@@ -108,7 +109,7 @@ pub extern "C" fn propose_new_admin() {
 
 #[no_mangle]
 pub extern "C" fn accept_admin() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     match get_pending_admin() {
         Some(pending_admin) if pending_admin == caller => {
             let previous_admin = get_admin();
@@ -216,7 +217,7 @@ pub extern "C" fn attest_milestone() {
         runtime::revert(DisbursementControllerError::MilestoneAlreadyAttested);
     }
 
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     milestone.attested = true;
     milestone.attested_by = Some(caller);
     milestone.attested_at = runtime::get_blocktime().into();
@@ -315,7 +316,7 @@ pub extern "C" fn cancel_commitment() {
 
     storage::dictionary_put(commitments_dict(), &commitment_id.to_string(), commitment);
 
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     casper_event_standard::emit(CommitmentCancelled {
         commitment_id,
         cancelled_by: caller,
@@ -358,14 +359,53 @@ pub extern "C" fn is_attester() {
 // Internal helpers
 // ---------------------------------------------------------------
 
+/// Resolves the actual calling entity -- ported directly from
+/// `identity-registry/src/main.rs`'s `immediate_caller_key`, itself
+/// ported from `d3rac-token/src/main.rs`'s (see that file's own
+/// extensive comment for the full `CallerInfo`/
+/// `get_immediate_caller()` API details, confirmed against downloaded
+/// `casper-contract`/`casper-types` source, not guessed). NOT
+/// `Key::from(runtime::get_caller())` for the same reason: `admin`
+/// here can legitimately be `multisig-admin` after a two-step
+/// transfer (the production pattern `docs/deployment-guide.md`
+/// recommends), and `get_caller()` would resolve to the original
+/// deploy-signing account instead of the multisig contract calling in
+/// via its own `execute_transaction`, exactly the bug
+/// `identity-registry`'s own `accept_admin`/`only_admin` needed this
+/// same fix for.
+fn immediate_caller_key() -> Key {
+    let caller_info = runtime::get_immediate_caller().unwrap_or_revert();
+    match caller_info.kind() {
+        0 => {
+            let account_hash: Option<AccountHash> = caller_info
+                .get_field_by_index(0)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(account_hash.unwrap_or_revert())
+        }
+        4 => {
+            let contract_package_hash: Option<ContractPackageHash> = caller_info
+                .get_field_by_index(2)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(contract_package_hash.unwrap_or_revert())
+        }
+        _ => runtime::revert(DisbursementControllerError::UnrecognizedCallerKind),
+    }
+}
+
 fn only_admin() {
-    if Key::from(runtime::get_caller()) != get_admin() {
+    if immediate_caller_key() != get_admin() {
         runtime::revert(DisbursementControllerError::CallerIsNotAdmin);
     }
 }
 
 fn only_attester() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let is_attester: bool = storage::dictionary_get(attesters_dict(), &key_to_dict_key(&caller))
         .unwrap_or_revert_with(DisbursementControllerError::DictionaryReadFailed)
         .unwrap_or(false);

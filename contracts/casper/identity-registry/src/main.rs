@@ -26,6 +26,24 @@
 //! patterns, but this is genuinely the first real compiler pass this
 //! specific code will get. See contracts/casper/README.md for current,
 //! itemized status; don't infer a green build from this comment alone.
+//!
+//! **Fixed after a real, CI-caught finding**: every caller-identity
+//! check (`only_admin`, `only_verifier`, `accept_admin`'s pending-admin
+//! check) now resolves the caller via `immediate_caller_key()`
+//! (`runtime::get_immediate_caller()`-based), not
+//! `Key::from(runtime::get_caller())`. `get_caller()` always resolves
+//! to the originating deploy-signing account, never an intervening
+//! contract -- invisible when admin is a plain EOA, but it breaks the
+//! moment admin is two-step-transferred to a contract like
+//! `multisig-admin` (the production pattern
+//! `docs/deployment-guide.md` recommends): `multisig-admin`'s own
+//! `execute_transaction` calling `accept_admin`/`set_verifier` on this
+//! contract's behalf would otherwise check the wrong identity and
+//! revert every time, found via
+//! `multisig-admin-tests/tests/integration_tests.rs`'s
+//! `should_execute_a_confirmed_transaction_against_a_real_contract` --
+//! the same class of bug `d3rac-token`'s `transfer` needed fixing for
+//! (see that file's own extensive comment for the full API details).
 
 #![no_std]
 #![no_main]
@@ -51,7 +69,8 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
-    contracts::{EntryPoint, NamedKeys},
+    account::AccountHash,
+    contracts::{ContractPackageHash, EntryPoint, NamedKeys},
     runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter,
     URef,
 };
@@ -114,7 +133,7 @@ pub extern "C" fn propose_new_admin() {
 /// been proposed at all (`pending_admin` is `None`).
 #[no_mangle]
 pub extern "C" fn accept_admin() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let pending = get_pending_admin();
 
     match pending {
@@ -144,7 +163,7 @@ pub extern "C" fn verify_recipient() {
         runtime::revert(IdentityRegistryError::CommunityLabelRequired);
     }
 
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let record = Recipient {
         verified: true,
         community: community.clone(),
@@ -185,7 +204,7 @@ pub extern "C" fn revoke_recipient() {
     record.revoked_at = runtime::get_blocktime().into();
     storage::dictionary_put(dict_uref, &key_to_dict_key(&recipient), record);
 
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     casper_event_standard::emit(RecipientRevoked {
         recipient,
         revoked_by: caller,
@@ -229,15 +248,68 @@ pub extern "C" fn is_verifier() {
 // Internal helpers
 // ---------------------------------------------------------------
 
+/// Resolves the actual calling entity -- an account if called
+/// directly, or a contract's own package identity if called via a
+/// cross-contract call (e.g. `multisig-admin`'s `execute_transaction`
+/// calling `accept_admin`/`set_verifier` on this contract's behalf,
+/// after `admin` was two-step-transferred to a multisig, exactly the
+/// production pattern `docs/deployment-guide.md` recommends).
+///
+/// NOT `Key::from(runtime::get_caller())` -- `get_caller()` always
+/// resolves to the ORIGINATING deploy-signing account, never the
+/// immediate calling contract, confirmed against Casper's own "Call
+/// Stacks" docs ("the session code would remain the caller",
+/// regardless of call-stack depth). That distinction is invisible for
+/// any admin who's a plain EOA (an account calling directly IS its own
+/// immediate caller, so both primitives agree) -- it only breaks once
+/// an admin role is transferred to a CONTRACT, which is exactly what
+/// two-step admin transfer to `multisig-admin` is for. Ported directly
+/// from `d3rac-token/src/main.rs`'s `immediate_caller_key` -- see that
+/// function's own extensive comment for the full `CallerInfo`/
+/// `get_immediate_caller()` API details (confirmed against downloaded
+/// `casper-contract`/`casper-types` source, not guessed), not
+/// re-derived here.
+fn immediate_caller_key() -> Key {
+    let caller_info = runtime::get_immediate_caller().unwrap_or_revert();
+    match caller_info.kind() {
+        // ACCOUNT (0): Caller::Initiator -- an account called us
+        // directly (no intervening contract).
+        0 => {
+            let account_hash: Option<AccountHash> = caller_info
+                .get_field_by_index(0)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(account_hash.unwrap_or_revert())
+        }
+        // CONTRACT (4): Caller::SmartContract -- field index 2 is the
+        // ContractPackageHash. See d3rac-token's identical comment for
+        // why kind 3 (Entity) isn't handled here either (a real,
+        // CI-caught PackageHash visibility problem in this dependency
+        // version, not a decision to skip it).
+        4 => {
+            let contract_package_hash: Option<ContractPackageHash> = caller_info
+                .get_field_by_index(2)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(contract_package_hash.unwrap_or_revert())
+        }
+        _ => runtime::revert(IdentityRegistryError::UnrecognizedCallerKind),
+    }
+}
+
 fn only_admin() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     if caller != get_admin() {
         runtime::revert(IdentityRegistryError::CallerIsNotAdmin);
     }
 }
 
 fn only_verifier() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let dict_uref = verifiers_dict();
     let is_verifier: bool = storage::dictionary_get(dict_uref, &key_to_dict_key(&caller))
         .unwrap_or_revert_with(IdentityRegistryError::DictionaryReadFailed)
