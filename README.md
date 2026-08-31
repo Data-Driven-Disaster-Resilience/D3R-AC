@@ -68,7 +68,7 @@ See [`docs/deployment-guide.md`](docs/deployment-guide.md) for full deployment s
 
 ### Smart contracts (Casper)
 
-See [`contracts/casper/README.md`](contracts/casper/README.md) for current status — four contracts (`risk-registry`, `identity-registry`, `disbursement-controller`, `d3rac-token`) written, compiling, and passing their local-network tests in CI; the other three (`MultiSigAdmin`, `D3RACHub`, `FundingRequestRegistry`) are not started. Requires a `wasm32-unknown-unknown`-capable Rust toolchain to build.
+See [`contracts/casper/README.md`](contracts/casper/README.md) for current status — four contracts (`risk-registry`, `identity-registry`, `disbursement-controller`, `d3rac-token`) written, compiling, and passing their local-network tests in CI; the other three (`multisig-admin`, `funding-request-registry`, `d3rac-hub`) now have source written too but are not yet confirmed compiling. Requires a `wasm32-unknown-unknown`-capable Rust toolchain to build.
 
 ### Frontend
 
@@ -119,7 +119,7 @@ with a 32-test suite (see [`data-pipeline/README.md`](data-pipeline/README.md))
 — but **not yet run against the now-deployed Hub/RiskRegistry** on
 Shasta; the pipeline's own on-chain submission path is still untested
 against a real network, deployment having only just happened. Casper
-contracts: five of seven contracts have source written — `risk-registry`
+contracts: all seven now have source written — `risk-registry`
 (chosen as the SRS's own standalone/no-dependency starting point,
 **confirmed compiling** against `wasm32-unknown-unknown`, **passing
 all 5 of its integration tests**), `identity-registry` (SRS FR-2,
@@ -132,18 +132,23 @@ fund release isn't one of them yet, see
 `d3rac-token` (SRS FR-1, a full CEP-18
 token — all 11 standard entry points, standard events, and the
 standard's own exact error codes, **passing all 13 of its
-integration tests**), and `multisig-admin` (SRS FR-4, **passing all 14
+integration tests**), `multisig-admin` (SRS FR-4, **passing all 14
 of its integration tests**, including a genuine cross-contract
 `execute_transaction` call against a real `identity-registry`) — **55
 Casper tests total**, all against a local Casper network. A systemic
 finding surfaced by that last test suite — every contract's
 admin/owner check used `runtime::get_caller()`, which can't recognize
 a *contract* (like `multisig-admin` itself) as the caller after a
-two-step admin transfer — is now fixed across all five contracts (see
+two-step admin transfer — was fixed across all five contracts (see
 [`contracts/casper/README.md`](contracts/casper/README.md) for the
-full writeup). See that file more generally
-for the honest, itemized status; `D3RACHub` and
-`FundingRequestRegistry` (the remaining two contracts), Hub wiring,
+full writeup). `funding-request-registry` and `d3rac-hub` (SRS FR-6/
+FR-8, the remaining two contracts) are now also **confirmed
+compiling**, using the fixed caller-resolution pattern from the start;
+no integration test suites for either yet, and Hub wiring — actually
+deploying all seven together and pointing the Hub at each — is still
+undone. See
+[`contracts/casper/README.md`](contracts/casper/README.md)
+for the honest, itemized status; Hub wiring,
 frontend adapter completion, testnet testing, and any deployment are
 all still pending.
 The data pipeline SRS carries its own additional, even more restrictive

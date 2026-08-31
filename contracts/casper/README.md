@@ -1,12 +1,17 @@
 # D3R·AC — Casper Contract Suite
 
-**Status: early, in progress — five of seven contracts have source
-written; four of those are confirmed via real CI to build against
-`wasm32-unknown-unknown` and pass every one of their integration tests
-against a local Casper network (41 tests total: `risk-registry`,
-`identity-registry`, `d3rac-token`, `disbursement-controller`). The
-fifth, `multisig-admin`, is confirmed compiling but has no integration
-test suite yet.** Not yet deployed to testnet, and not audited. See
+**Status: early, in progress — all seven contracts now have source
+written and confirmed compiling via real CI. Five have integration
+test suites (55 tests total: `risk-registry` 5, `identity-registry` 9,
+`disbursement-controller` 14, `d3rac-token` 13, `multisig-admin` 14,
+the last including a genuine cross-contract `execute_transaction`
+call against a real `identity-registry`). `funding-request-registry`
+and `d3rac-hub` have no integration test suites yet. A systemic
+caller-resolution bug (`runtime::get_caller()` instead of
+`runtime::get_immediate_caller()`, meaning a contract caller like
+`multisig-admin` or the Hub couldn't be correctly recognized by an
+admin/owner check) was found and fixed across all five contracts that
+had it.** Not yet deployed to Casper testnet, and not audited. See
 "What's actually done" below for the honest, itemized breakdown, and
 [`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md)
 for the full requirements this suite is being built against.
@@ -236,47 +241,85 @@ one `casper-types` version now resolves across the whole graph.
 - [x] Unit/integration tests against a local Casper network — **all 13
       passing, CI-confirmed**
       (`d3rac-token-tests/tests/integration_tests.rs`).
-- [ ] The other three contracts (`MultiSigAdmin`, `D3RACHub`,
-- [x] `multisig-admin/` -- full source written (installer, all entry
-      points, error type, event definitions, on-chain record type),
-      targeting behavioral parity with FR-4 /
+- [x] `multisig-admin/` -- full source written and **confirmed
+      compiling and passing all 14 of its integration tests**,
+      including a genuine cross-contract `execute_transaction` call
+      against a real `identity-registry` -- see the "Systemic fix"
+      entry above for what that test surfaced and how it was fixed.
+      Behavioral parity with FR-4 /
       `contracts/tron/tronbox/contracts/MultiSigAdmin.sol`: fixed
       N-of-M owner set, `submit_transaction` (auto-confirms from the
       submitter), `confirm_transaction`/`revoke_confirmation`,
       `execute_transaction` once a transaction clears `threshold`
-      confirmations. Followed `identity-registry/src/main.rs`'s
-      already-CI-confirmed template for every hard-won pattern.
-- [ ] **NOT yet confirmed compiling.** Unlike `risk-registry` and
-      `identity-registry`, this one hasn't had a CI round yet at all --
-      see `src/main.rs`'s own module comment for specifics on what's
-      least certain about it. Two things worth flagging explicitly:
-      - It has one real behavioral difference from the TRON contract,
-        not just a translation detail: `MultiSigAdmin.sol` takes
-        `to`/`value`/`bytes data` and does a raw, dynamically-typed
-        EVM `call`; Casper contract calls are typed and
-        entry-point-addressed. `execute_transaction` bridges this by
-        having `submit_transaction` take a target *entry-point name*
-        plus bytesrepr-serialized `RuntimeArgs`, deserialized back at
-        execution time -- see `main.rs`'s `execute_transaction` doc
-        comment for the full reasoning. This specific mechanism
-        (`RuntimeArgs::from_bytes` round-tripping, then
-        `runtime::call_versioned_contract`) is the least-tested part
-        of this contract -- no test in this suite has exercised a real
-        cross-contract call yet, on either the TRON or Casper side.
-      - This session tried to get a real compile in its own sandbox
-        (further than "not possible at all" -- `apt`'s `cargo`/`rustc`
-        1.75.0 *can* resolve most of this workspace's dependency
-        graph, further than expected) but hit a hard wall: `zeroize`
-        1.9.0, already pinned in `Cargo.lock` by the earlier
-        CI-verified contracts, requires Cargo's `edition2024` feature,
-        which stabilized after 1.75. Getting a newer toolchain needs
-        `rustup` (`static.rust-lang.org`, still unreachable from this
-        sandbox) -- so this remains a sandbox-only limitation, not a
-        statement about the code. GitHub's CI runners already handle
-        this fine for the other two contracts; this is the real,
-        first test for `multisig-admin`.
-- [ ] The other two contracts (`D3RACHub`, `FundingRequestRegistry`)
-- [ ] Hub wiring (FR-8)
+      confirmations. One real behavioral difference from the TRON
+      contract, not just a translation detail: `MultiSigAdmin.sol`
+      takes `to`/`value`/`bytes data` and does a raw, dynamically-typed
+      EVM `call`; Casper contract calls are typed and
+      entry-point-addressed. `execute_transaction` bridges this by
+      having `submit_transaction` take a target *entry-point name*
+      plus bytesrepr-serialized `RuntimeArgs`, deserialized back at
+      execution time -- see `main.rs`'s `execute_transaction` doc
+      comment for the full reasoning.
+- [x] `funding-request-registry/` -- full source written (installer,
+      all entry points, error type, event definitions, on-chain record
+      type), targeting behavioral parity with
+      `contracts/tron/tronbox/contracts/FundingRequestRegistry.sol`: a
+      public funding-request board, proposer-role-gated `open_request`,
+      owner-or-requester-gated `record_pledge`/`link_to_commitment`/
+      `close_request` with the same automatic
+      Open->PartiallyFunded->Funded status transition. Two-step owner
+      transfer (`propose_new_owner`/`accept_ownership`), matching
+      `FundingRequestRegistry.sol`'s own already-two-step
+      `proposeNewOwner`/`acceptOwnership` -- copied from
+      `identity-registry`'s already-CI-confirmed
+      `propose_new_admin`/`accept_admin` implementation, not
+      re-derived.
+- [x] **Confirmed compiling** against `wasm32-unknown-unknown` in
+      CI (took two real fixes after the first CI run: `PackageHash`
+      isn't `contracts::PackageHash`, and `ContractHash` -- a
+      *different* mismatch, opposite direction, found on `d3rac-hub`
+      below, not this file -- isn't at the crate root; both confirmed
+      against `casper-types`' and `casper-contract`'s actual published
+      source, not re-guessed a third time). No integration test suite
+      yet -- deliberately scoped out of this same pass rather than
+      rushed.
+- [x] `d3rac-hub/` -- full source written (installer, all ~37 entry
+      points, error type, event definitions, aggregate-status view
+      type), targeting behavioral parity with FR-8 /
+      `contracts/tron/tronbox/contracts/D3RACHub.sol`: single admin
+      surface (two-step transfer), emergency pause, module
+      get/set for all five other contracts (`risk_registry`/
+      `funding_request_registry` as `Option<Key>` -- Casper's
+      idiomatic "may be absent" over trying to construct a fake "zero
+      address" `Key`), and a thin pass-through orchestration layer over
+      every underlying contract's own entry points via
+      `runtime::call_contract`.
+- [x] **Confirmed compiling** against `wasm32-unknown-unknown` in
+      CI, after two real fixes: `runtime::call_contract` needs a
+      `ContractHash`, not the `AddressableEntityHash` this file's
+      `key_to_contract_hash` helper originally returned (missed
+      copying `disbursement-controller`'s own call-site `.into()`);
+      and once fixed to return `ContractHash` explicitly, that type
+      turned out to live under `casper_types::contracts`, not the
+      crate root (confirmed against the real published source both
+      times, not re-guessed). No integration tests yet -- this
+      contract's own tests are the single biggest remaining item in
+      this whole suite, since they need all five other contracts
+      deployed together first, wired to the Hub, with the Hub calling
+      into each one and getting the expected result back.
+- [x] The caller-resolution dependency this entry originally flagged
+      (Hub calls depending on the callee recognizing the Hub itself as
+      caller, not the original signing account) is resolved -- see the
+      "Systemic fix" entry above. This file's own `only_admin` already
+      used the correct pattern from the start (`immediate_caller_key`,
+      written into this file before the systemic fix above was even
+      found, let alone merged), so nothing needed to change here for
+      that part specifically.
+- [ ] Hub wiring (FR-8) -- the Hub contract itself is written; actually
+      deploying all seven contracts together and wiring the Hub to
+      each via `set_token`/`set_identity_registry`/etc. is still
+      undone, and shouldn't be attempted before the caller-resolution
+      fix above merges.
 - [ ] `casperAdapter.ts` completion (FR-9) — still throws "not deployed
       yet", correctly, since nothing is deployed yet
 - [ ] Casper Testnet deployment

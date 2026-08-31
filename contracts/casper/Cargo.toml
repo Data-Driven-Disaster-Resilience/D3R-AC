@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["risk-registry", "risk-registry-tests", "identity-registry", "identity-registry-tests", "multisig-admin", "multisig-admin-tests", "d3rac-token", "d3rac-token-tests", "disbursement-controller", "disbursement-controller-tests"]
+members = ["risk-registry", "risk-registry-tests", "identity-registry", "identity-registry-tests", "multisig-admin", "multisig-admin-tests", "d3rac-token", "d3rac-token-tests", "disbursement-controller", "disbursement-controller-tests", "funding-request-registry", "d3rac-hub"]
 
 [workspace.package]
 edition = "2021"
