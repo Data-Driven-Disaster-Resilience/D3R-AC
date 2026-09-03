@@ -96,12 +96,19 @@ admin role, a central coordinator ("Hub") with full role/ownership
 control over the other five contracts, an on-chain risk registry, and
 a funding-request board (seven contracts total; see
 [`contracts/tron/README.md`](contracts/tron/README.md)) — with a
-**logic-tested suite (116 passing tests)**, but **not yet deployed to any
-network and not yet professionally audited** (see
+**logic-tested suite (116 passing tests)**, and, as of 2026-09-03,
+**deployed to TRON's Shasta testnet** (see
+[`docs/deployment-guide.md`](docs/deployment-guide.md)'s status note
+for the run and current admin topology — a deliberately minimal 1-of-1
+multisig, not a production configuration). **Still not professionally
+audited** (see
 [`docs/audit-pass-2026-07-25.md`](docs/audit-pass-2026-07-25.md) for an
-internal self-review pass — explicitly not a substitute for one).
+internal self-review pass — explicitly not a substitute for one) —
+don't treat a testnet deployment as mainnet-readiness.
 Frontend community access layer implemented (TRON live, Casper adapter
-in place pending Casper contract deployment), with offline/
+in place pending Casper contract deployment; the TRON adapter targets
+Shasta generically via `VITE_TRON_NETWORK` and hasn't yet been pointed
+at this specific deployment's contract addresses), with offline/
 low-connectivity resilience (service-worker caching of the app shell and
 last-known live data, timeout+retry on the live feed) so the app stays
 usable on a slow or intermittent connection — satellite (e.g. Starlink)
@@ -109,26 +116,32 @@ or terrestrial. Data pipeline implemented per
 [`docs/data-pipeline-srs.md`](docs/data-pipeline-srs.md) — satellite/sensor
 hazard ingestion (NASA FIRMS, USGS, NASA EONET, GDACS), Africa-prioritized,
 with a 32-test suite (see [`data-pipeline/README.md`](data-pipeline/README.md))
-— but **not yet run against a deployed Hub/RiskRegistry**, since neither
-is deployed to any network yet. Casper contracts: five of seven
-contracts have source written — `risk-registry` (chosen as the
-SRS's own standalone/no-dependency starting point, **confirmed
-compiling** against `wasm32-unknown-unknown`, **passing all 5 of its
-integration tests**), `identity-registry` (SRS FR-2, **passing all
-9 of its integration tests**), `disbursement-controller` (SRS FR-3,
-milestone-based fund release with a genuine cross-contract call into
-`identity-registry`'s `is_verified`, **passing all 14 of its
+— but **not yet run against the now-deployed Hub/RiskRegistry** on
+Shasta; the pipeline's own on-chain submission path is still untested
+against a real network, deployment having only just happened. Casper
+contracts: five of seven contracts have source written — `risk-registry`
+(chosen as the SRS's own standalone/no-dependency starting point,
+**confirmed compiling** against `wasm32-unknown-unknown`, **passing
+all 5 of its integration tests**), `identity-registry` (SRS FR-2,
+**passing all 9 of its integration tests**), `disbursement-controller`
+(SRS FR-3, milestone-based fund release with a genuine cross-contract
+call into `identity-registry`'s `is_verified`, **passing all 14 of its
 integration tests** — though the funded-success path for its actual
 fund release isn't one of them yet, see
 [`contracts/casper/README.md`](contracts/casper/README.md) for why),
 `d3rac-token` (SRS FR-1, a full CEP-18
 token — all 11 standard entry points, standard events, and the
 standard's own exact error codes, **passing all 13 of its
-integration tests**), and `multisig-admin` (SRS FR-4, **confirmed
-compiling** but with no integration test suite yet), all against a
-local Casper network —
-see
-[`contracts/casper/README.md`](contracts/casper/README.md)
+integration tests**), and `multisig-admin` (SRS FR-4, **passing all 14
+of its integration tests**, including a genuine cross-contract
+`execute_transaction` call against a real `identity-registry`) — **55
+Casper tests total**, all against a local Casper network. A systemic
+finding surfaced by that last test suite — every contract's
+admin/owner check used `runtime::get_caller()`, which can't recognize
+a *contract* (like `multisig-admin` itself) as the caller after a
+two-step admin transfer — is now fixed across all five contracts (see
+[`contracts/casper/README.md`](contracts/casper/README.md) for the
+full writeup). See that file more generally
 for the honest, itemized status; `D3RACHub` and
 `FundingRequestRegistry` (the remaining two contracts), Hub wiring,
 frontend adapter completion, testnet testing, and any deployment are
