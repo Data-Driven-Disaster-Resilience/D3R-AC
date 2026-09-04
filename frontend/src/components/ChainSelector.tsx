@@ -11,12 +11,12 @@ export default function ChainSelector() {
 
   return (
     <div
+  className="chain-selector"
   style={{
     display: "flex",
     alignItems: "center",
     gap: 10,
     flexWrap: "wrap",
-    width: "100%",
   }}
 >
       <select
