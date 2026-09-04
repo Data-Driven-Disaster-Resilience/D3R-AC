@@ -5,6 +5,7 @@ import type { DisbursementResult, TokenBalance } from "../lib/chainAdapter";
 
 export default function Disburse() {
   const { adapter, chainId, address, connect, connecting } = useWallet();
+  const currentAvailable = adapter.isWalletAvailable();
   const [tokenContract, setTokenContract] = useState("");
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
@@ -40,31 +41,90 @@ export default function Disburse() {
   }
 
   return (
-    <section className="container" style={{ padding: "48px 24px 96px", maxWidth: 640 }}>
-      <p className="eyebrow" style={{ marginBottom: 12 }}>Disbursement console</p>
-      <h1 style={{ fontSize: 30, marginBottom: 8 }}>Release a milestone payment</h1>
+    <section
+      className="container"
+      style={{ padding: "48px 24px 96px", maxWidth: 640 }}
+    >
+      <p className="eyebrow" style={{ marginBottom: 12 }}>
+        Disbursement console
+      </p>
+      <h1 style={{ fontSize: 30, marginBottom: 8 }}>
+        Release a milestone payment
+      </h1>
       <p style={{ color: "var(--text-muted)", marginBottom: 32 }}>
-        Currently targeting <strong style={{ color: "var(--text)" }}>{adapter.label}</strong>.
+        Currently targeting{" "}
+        <strong style={{ color: "var(--text)" }}>{adapter.label}</strong>.
         Switch chains from the selector in the top bar.
       </p>
 
       {!address ? (
         <div className="card" style={{ textAlign: "center" }}>
-          <p style={{ marginBottom: 16, color: "var(--text-muted)" }}>
-            Connect a {adapter.label} wallet to read balances and send funds.
+          <p className="eyebrow" style={{ marginBottom: 10 }}>
+            Wallet required
           </p>
-          {adapter.isWalletAvailable() ? (
-            <button className="btn btn-primary" onClick={connect} disabled={connecting}>
+
+          <h2 style={{ fontSize: 22, marginBottom: 8 }}>
+            Connect your {adapter.label} wallet
+          </h2>
+
+          <p
+            style={{
+              marginBottom: 20,
+              color: "var(--text-muted)",
+              lineHeight: 1.6,
+            }}
+          >
+            Connect a wallet to check your token balance and authorize milestone
+            disbursements on the selected chain.
+          </p>
+
+          <div
+            className="pill"
+            style={{
+              display: "inline-flex",
+              marginBottom: 20,
+              color: currentAvailable ? "var(--teal)" : "var(--text-muted)",
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: currentAvailable
+                  ? "var(--teal)"
+                  : "var(--text-muted)",
+              }}
+            />
+            {adapter.label} wallet{" "}
+            {currentAvailable ? "detected" : "not detected"}
+          </div>
+
+          {currentAvailable ? (
+            <button
+              className="btn btn-primary"
+              onClick={connect}
+              disabled={connecting}
+            >
               {connecting ? "Connecting…" : `Connect ${adapter.label} wallet`}
             </button>
           ) : (
-            <a href={adapter.installUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
+            <a
+              href={adapter.installUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-primary"
+            >
               Install {adapter.label} wallet
             </a>
           )}
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="card" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <form
+          onSubmit={handleSubmit}
+          className="card"
+          style={{ display: "flex", flexDirection: "column", gap: 18 }}
+        >
           <Field label="Token contract address">
             <input
               value={tokenContract}
@@ -76,32 +136,65 @@ export default function Disburse() {
           </Field>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button type="button" className="btn btn-ghost" onClick={checkBalance} disabled={!tokenContract || busy === "balance"}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={checkBalance}
+              disabled={!tokenContract || busy === "balance"}
+            >
               {busy === "balance" ? "Checking…" : "Check balance"}
             </button>
             {balance && (
-              <span className="mono" style={{ fontSize: 13, color: "var(--teal)" }}>
+              <span
+                className="mono"
+                style={{ fontSize: 13, color: "var(--teal)" }}
+              >
                 {balance.amount} {balance.symbol}
               </span>
             )}
           </div>
 
           <Field label="Recipient address">
-            <input value={to} onChange={(e) => setTo(e.target.value)} required style={inputStyle} />
+            <input
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              required
+              style={inputStyle}
+            />
           </Field>
 
           <Field label="Amount">
-            <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" step="any" min="0" required style={inputStyle} />
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              type="number"
+              step="any"
+              min="0"
+              required
+              style={inputStyle}
+            />
           </Field>
 
-          <button type="submit" className="btn btn-primary" disabled={busy === "send"}>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={busy === "send"}
+          >
             {busy === "send" ? "Broadcasting…" : "Release funds"}
           </button>
 
           {err && <p style={{ color: "var(--coral)", fontSize: 13 }}>{err}</p>}
           {result && (
             <p style={{ color: "var(--teal)", fontSize: 13 }} className="mono">
-              Sent. <a href={result.explorerUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>View on explorer →</a>
+              Sent.{" "}
+              <a
+                href={result.explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ textDecoration: "underline" }}
+              >
+                View on explorer →
+              </a>
             </p>
           )}
         </form>
@@ -110,7 +203,13 @@ export default function Disburse() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{label}</span>
