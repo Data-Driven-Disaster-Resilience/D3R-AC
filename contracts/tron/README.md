@@ -124,9 +124,13 @@ with the optimizer on:
   `RiskRegistry` community IDs only as plain values, no contract
   dependency.
 
-This is **not deployed or audited**. See Known limitations below and
-[`docs/deployment-guide.md`](../../docs/deployment-guide.md) before
-targeting even testnet with anything resembling real funds.
+This is deployed to Shasta testnet (see
+[`docs/deployment-guide.md`](../../docs/deployment-guide.md)'s status
+note) but **not audited, and the current testnet admin topology is a
+deliberately minimal 1-of-1 multisig, not production-representative**.
+See Known limitations below and that deployment guide before targeting
+even testnet with anything resembling real funds, and don't treat this
+deployment as mainnet-readiness.
 
 ### How RiskRegistry and FundingRequestRegistry connect to the rest
 
@@ -431,13 +435,19 @@ field at wherever it gets deployed.
   to mainnet with real funds without both an implementation review and a
   professional audit first — see
   [`docs/deployment-guide.md`](../../docs/deployment-guide.md).
-- **Not yet deployed to any network** (Shasta, Nile, or mainnet). No
-  deployed address exists to point the frontend at yet.
-- **Logic tests pass; TVM-specific verification hasn't happened yet** —
-  the 115-test Hardhat suite validates behavior against a standard EVM
-  (see "Test suite" above), not the actual TVM. Run a TronBox pass
-  against TronBox Quickstart (or Shasta/Nile directly) before treating
-  this as a TVM-specific gate.
+- **Deployed to Shasta testnet as of 2026-09-03** (see
+  [`docs/deployment-guide.md`](../../docs/deployment-guide.md)'s status
+  note for the run and the current, deliberately minimal 1-of-1
+  admin topology) — **still not deployed to Nile or mainnet**, and a
+  testnet deployment is not mainnet-readiness.
+- **Logic tests pass, and this deployment's own `tronbox migrate` run
+  against Shasta is the first real TVM-specific verification** — the
+  115-test Hardhat suite validates behavior against a standard EVM
+  (see "Test suite" above), not the actual TVM; the Shasta deploy
+  succeeding (every contract compiled and migrated cleanly) is real
+  evidence the two agree for this contract suite, though it's not a
+  substitute for exercising the deployed contracts' own entry points
+  on-chain, which hasn't happened yet either.
 - `admin` / `owner` / `verifiers` / `attesters` default to a single
   deployer key unless you explicitly deploy `MultiSigAdmin` and point
   the other contracts' admin/owner role at it — see "Design decisions"

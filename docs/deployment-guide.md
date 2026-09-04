@@ -7,11 +7,25 @@ section before deploying anything with real funds.**
 > **Status note:** contract source (seven contracts), a passing logic
 > test suite (116 tests, see
 > [`contracts/tron/README.md`](../contracts/tron/README.md)), and a
-> working TronBox compile config all exist now — but there is still no
-> testnet deployment and no professional audit. The steps below describe
-> the process this project will use for that next step; treat this as a
-> process reference, not confirmation of a currently-deployed contract.
-> The frontend deployment section reflects what's actually built.
+> working TronBox compile config all exist — and as of 2026-09-03, the
+> full suite is **deployed to TRON's Shasta testnet** via
+> [`deploy-tron-testnet.yml`](../.github/workflows/deploy-tron-testnet.yml)
+> (run
+> [#33703052261](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/33703052261),
+> every step green including the actual on-chain deploy). Deployed with
+> a deliberately minimal 1-of-1 `MultiSigAdmin`
+> (owner: the project's own default testnet deployer address,
+> `TVtWtzwpbstZ5kQQQQkPRB4P8BSJeoy1gd`) — a real topology choice, not a
+> placeholder, made because no second trusted keyholder was available
+> yet; add owners and raise the threshold before this represents
+> anything resembling a production configuration. The specific deployed
+> contract addresses are recorded in that run's own job summary (not
+> reproduced here — this sandbox's network access couldn't retrieve the
+> raw log to copy them in; check the run directly, or re-run
+> `tronbox migrate` locally against Shasta to get fresh ones). **Still
+> no professional audit** — do not treat a testnet deployment as
+> mainnet-readiness. The frontend deployment section reflects what's
+> actually built.
 
 ## Smart contracts (TRON)
 

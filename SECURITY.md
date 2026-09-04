@@ -34,8 +34,9 @@ private channel — see the maintainer contact in the top-level
 - A description of the issue and its potential impact
 - Steps to reproduce, or a proof of concept if you have one
 - Which component is affected (contract, chain, file/line if known)
-- Whether you believe it's exploitable on the current testnet deployment,
-  if any exists at the time of your report
+- Whether you believe it's exploitable on a current testnet deployment
+  (TRON's Shasta suite is deployed as of 2026-09-03 — see
+  `docs/deployment-guide.md`'s status note; Casper's is not yet)
 
 We'll acknowledge reports and work with you on disclosure timing. Since
 this project isn't yet on mainnet with real funds at stake, most reports
@@ -54,6 +55,6 @@ we'd still appreciate a heads-up if one materially affects D3R·AC.
 
 ## Supported versions
 
-Pre-testnet-deployment, there is exactly one supported line: `main`. There
+There is exactly one supported line: `main`. There
 are no released/tagged versions yet to maintain security support windows
 for.
