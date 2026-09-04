@@ -1,0 +1,26 @@
+[package]
+name = "d3rac-hub"
+version = "0.1.0"
+edition.workspace = true
+license-file.workspace = true
+
+[[bin]]
+name = "d3rac-hub"
+path = "src/main.rs"
+bench = false
+doctest = false
+test = false
+
+[dependencies]
+# Same wee_alloc-avoidance reasoning as risk-registry/Cargo.toml.
+casper-contract = { version = "5.1.1", default-features = false }
+casper-types = "6.1.0"
+casper-event-standard = "0.7.0"
+dlmalloc = { version = "0.2.14", features = ["global"] }
+
+# No [dev-dependencies]/tests here -- same native-vs-wasm32 collision
+# reasoning as every other contract in this suite. This package's own
+# integration tests are the biggest open item of all: they need all
+# five other contracts deployed first and the Hub wired to each (see
+# this package's own top-of-file doc comment) -- deliberately scoped
+# out of this first pass rather than rushed.
