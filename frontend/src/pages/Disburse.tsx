@@ -167,12 +167,16 @@ export default function Disburse() {
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              type="number"
-              step="any"
-              min="0"
+              type="text"
+              inputMode="decimal"
+              placeholder="0.00"
+              autoComplete="off"
               required
               style={inputStyle}
             />
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              Enter the exact token amount to release.
+            </span>
           </Field>
 
           <button
