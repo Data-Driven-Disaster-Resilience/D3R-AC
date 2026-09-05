@@ -40,7 +40,7 @@ use casper_engine_test_support::{
     ExecuteRequestBuilder, LmdbWasmTestBuilder, DEFAULT_ACCOUNT_ADDR, LOCAL_GENESIS_REQUEST,
 };
 use casper_types::bytesrepr::ToBytes;
-use casper_types::{runtime_args, AddressableEntityHash, Key, U256};
+use casper_types::{runtime_args, AddressableEntityHash, ContractHash, Key, U256};
 
 const RISK_REGISTRY_WASM: &str = "risk-registry.wasm";
 const IDENTITY_REGISTRY_WASM: &str = "identity-registry.wasm";
@@ -90,17 +90,32 @@ fn should_wire_hub_to_all_five_modules_transfer_admin_to_multisig_and_execute_a_
     .build();
     builder.exec(install_ir).expect_success().commit();
 
-    let ir_package_key: Key = *builder
+    let ir_contract_hash: AddressableEntityHash = builder
         .get_account(*DEFAULT_ACCOUNT_ADDR)
         .expect("should have account")
         .named_keys()
-        .get("identity_registry_package_hash")
-        .expect("identity registry package hash should exist after install");
+        .get(IR_CONTRACT_HASH_KEY)
+        .expect("identity registry contract hash should exist after install")
+        .into_entity_hash()
+        .expect("should resolve to an addressable entity hash");
 
     let install_dc = ExecuteRequestBuilder::standard(
         *DEFAULT_ACCOUNT_ADDR,
         DISBURSEMENT_CONTROLLER_WASM,
-        runtime_args! { "registry_hash" => ir_package_key },
+        // registry_hash needs identity-registry's CONTRACT hash, not its
+        // package hash -- confirmed against disbursement-controller-
+        // tests' own already-passing install() (its registry_hash =
+        // Key::from(ContractHash::from(registry_hash)), same
+        // conversion here). Cross-contract calls made via
+        // runtime::call_contract (what disbursement-controller's own
+        // is_verified check, and every one of the Hub's calls below,
+        // actually use) need a ContractHash specifically; the package
+        // hash is what identity-registry expects to see stored as an
+        // admin/owner value instead (see the propose_new_admin calls
+        // below, which correctly use *package* hashes for that
+        // opposite reason). Originally used the package hash here by
+        // mistake -- caught by real CI (KeyNotFound), not by review.
+        runtime_args! { "registry_hash" => Key::from(ContractHash::from(ir_contract_hash)) },
     )
     .build();
     builder.exec(install_dc).expect_success().commit();
@@ -136,12 +151,6 @@ fn should_wire_hub_to_all_five_modules_transfer_admin_to_multisig_and_execute_a_
         .expect("risk registry contract hash should exist")
         .into_entity_hash()
         .expect("should resolve to an addressable entity hash");
-    let ir_hash: AddressableEntityHash = account
-        .named_keys()
-        .get(IR_CONTRACT_HASH_KEY)
-        .expect("identity registry contract hash should exist")
-        .into_entity_hash()
-        .expect("should resolve to an addressable entity hash");
     let dc_hash: AddressableEntityHash = account
         .named_keys()
         .get(DC_CONTRACT_HASH_KEY)
@@ -160,37 +169,28 @@ fn should_wire_hub_to_all_five_modules_transfer_admin_to_multisig_and_execute_a_
         .expect("funding request registry contract hash should exist")
         .into_entity_hash()
         .expect("should resolve to an addressable entity hash");
-
-    let rr_package_key: Key = *account
-        .named_keys()
-        .get("risk_registry_package_hash")
-        .expect("risk registry package hash should exist");
-    let dc_package_key: Key = *account
-        .named_keys()
-        .get("disbursement_controller_package_hash")
-        .expect("disbursement controller package hash should exist");
-    let token_package_key: Key = *account
-        .named_keys()
-        .get("d3rac_token_package_hash")
-        .expect("token package hash should exist");
-    let frr_package_key: Key = *account
-        .named_keys()
-        .get("funding_request_registry_package_hash")
-        .expect("frr package hash should exist");
+    // ir_hash reuses ir_contract_hash read earlier (before
+    // disbursement-controller's install, which needed it first) --
+    // same value, not read twice under two different names.
+    let ir_hash = ir_contract_hash;
 
     // ---- 3. Install the Hub, pointing at all five modules up front
     //         (matching D3RACHub.sol's own constructor-takes-everything
-    //         shape -- not wired via setters after the fact).
+    //         shape -- not wired via setters after the fact). Each
+    //         module arg needs that module's CONTRACT hash (wrapped),
+    //         not its package hash -- same reasoning as install_dc's
+    //         registry_hash above, and the same mistake this line
+    //         originally made too, caught by the same CI run.
     let install_hub = ExecuteRequestBuilder::standard(
         *DEFAULT_ACCOUNT_ADDR,
         D3RAC_HUB_WASM,
         runtime_args! {
             "admin_" => Key::from(*DEFAULT_ACCOUNT_ADDR),
-            "token_" => token_package_key,
-            "identity_registry_" => ir_package_key,
-            "disbursement_controller_" => dc_package_key,
-            "risk_registry_" => Option::Some(rr_package_key),
-            "funding_request_registry_" => Option::Some(frr_package_key),
+            "token_" => Key::from(ContractHash::from(token_hash)),
+            "identity_registry_" => Key::from(ContractHash::from(ir_hash)),
+            "disbursement_controller_" => Key::from(ContractHash::from(dc_hash)),
+            "risk_registry_" => Option::Some(Key::from(ContractHash::from(rr_hash))),
+            "funding_request_registry_" => Option::Some(Key::from(ContractHash::from(frr_hash))),
         },
     )
     .build();
