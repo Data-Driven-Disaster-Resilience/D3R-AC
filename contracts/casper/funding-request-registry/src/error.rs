@@ -45,6 +45,10 @@ pub enum FundingRequestRegistryError {
     /// risk-registry/src/error.rs's `DictionaryReadFailed` for the
     /// real CI failure this is guarding against.
     DictionaryReadFailed = 12,
+    /// `runtime::get_immediate_caller()` returned a `CallerInfo` kind
+    /// `immediate_caller_key` doesn't recognize -- see that function's
+    /// own comment for which kinds are handled and why.
+    UnrecognizedCallerKind = 13,
 }
 
 impl From<FundingRequestRegistryError> for ApiError {
