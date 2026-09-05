@@ -26,10 +26,20 @@ export default function Disburse() {
     }
   }
 
+  function isValidTronAddress(value: string): boolean {
+    return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(value.trim());
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setErr(null);
     setResult(null);
+
+    if (chainId === "tron" && !isValidTronAddress(to)) {
+      setErr("Enter a valid TRON recipient address.");
+      return;
+    }
+
     setBusy("send");
     try {
       setResult(await adapter.disburse({ tokenContract, to, amount }));
