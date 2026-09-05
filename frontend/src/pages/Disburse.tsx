@@ -135,21 +135,54 @@ export default function Disburse() {
             />
           </Field>
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={checkBalance}
-              disabled={!tokenContract || busy === "balance"}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              padding: "12px 14px",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              background: "var(--bg-raised)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
             >
-              {busy === "balance" ? "Checking…" : "Check balance"}
-            </button>
-            {balance && (
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Available balance
+              </span>
+
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={checkBalance}
+                disabled={!tokenContract || busy === "balance"}
+              >
+                {busy === "balance" ? "Checking…" : "Check balance"}
+              </button>
+            </div>
+
+            {balance ? (
               <span
                 className="mono"
-                style={{ fontSize: 13, color: "var(--teal)" }}
+                style={{
+                  fontSize: 18,
+                  color: "var(--teal)",
+                  fontWeight: 600,
+                }}
               >
                 {balance.amount} {balance.symbol}
+              </span>
+            ) : (
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Enter a token contract and check the connected wallet balance.
               </span>
             )}
           </div>
