@@ -40,7 +40,9 @@ use casper_engine_test_support::{
     ExecuteRequestBuilder, LmdbWasmTestBuilder, DEFAULT_ACCOUNT_ADDR, LOCAL_GENESIS_REQUEST,
 };
 use casper_types::bytesrepr::ToBytes;
-use casper_types::{runtime_args, AddressableEntityHash, ContractHash, Key, U256};
+use casper_types::{
+    contracts::ContractHash, runtime_args, AddressableEntityHash, Key, U256,
+};
 
 const RISK_REGISTRY_WASM: &str = "risk-registry.wasm";
 const IDENTITY_REGISTRY_WASM: &str = "identity-registry.wasm";
