@@ -72,7 +72,8 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use casper_event_standard::Schemas;
 use casper_types::{
-    contracts::{EntryPoint, NamedKeys},
+    account::AccountHash,
+    contracts::{ContractPackageHash, EntryPoint, NamedKeys},
     runtime_args, CLType, CLValue, EntryPointAccess, EntryPointType, EntryPoints, Key, Parameter,
     URef, U256,
 };
@@ -110,7 +111,7 @@ pub extern "C" fn open_request() {
     }
 
     let request_id = get_request_count();
-    let requester = Key::from(runtime::get_caller());
+    let requester = immediate_caller_key();
 
     let record = FundingRequest {
         community_id: community_id.clone(),
@@ -176,7 +177,7 @@ pub extern "C" fn record_pledge() {
     // realistic scenario, but noted rather than silently changed.
     record.amount_pledged = record.amount_pledged.saturating_add(amount);
 
-    let recorded_by = Key::from(runtime::get_caller());
+    let recorded_by = immediate_caller_key();
     let previous = record.status;
     if record.amount_pledged >= record.amount_requested {
         record.status = RequestStatus::Funded;
@@ -301,7 +302,7 @@ pub extern "C" fn propose_new_owner() {
 /// semantics as `FundingRequestRegistry.sol::acceptOwnership`.
 #[no_mangle]
 pub extern "C" fn accept_ownership() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     let pending = get_pending_owner();
 
     match pending {
@@ -322,15 +323,51 @@ pub extern "C" fn accept_ownership() {
 // Internal helpers
 // ---------------------------------------------------------------
 
+/// Resolves the actual calling entity, NOT the original transaction
+/// signer -- ported verbatim (module path aside) from
+/// `d3rac-hub`/`identity-registry`/`risk-registry`/`multisig-admin`'s
+/// own `immediate_caller_key` (see `fix/get-caller-systemic-immediate-
+/// caller`). This contract's `owner` can legitimately be `d3rac-hub`
+/// (a contract) after a two-step ownership transfer -- the same
+/// production wiring `2_deploy_d3rac.js` and `d3rac-hub`'s own
+/// orchestration functions use -- and plain
+/// `Key::from(runtime::get_caller())` would misidentify `d3rac-hub`'s
+/// own calls as coming from whichever account originally signed the
+/// deploy, not from `d3rac-hub` itself.
+fn immediate_caller_key() -> Key {
+    let caller_info = runtime::get_immediate_caller().unwrap_or_revert();
+    match caller_info.kind() {
+        0 => {
+            let account_hash: Option<AccountHash> = caller_info
+                .get_field_by_index(0)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(account_hash.unwrap_or_revert())
+        }
+        4 => {
+            let contract_package_hash: Option<ContractPackageHash> = caller_info
+                .get_field_by_index(2)
+                .unwrap_or_revert()
+                .clone()
+                .into_t()
+                .unwrap_or_revert();
+            Key::from(contract_package_hash.unwrap_or_revert())
+        }
+        _ => runtime::revert(FundingRequestRegistryError::UnrecognizedCallerKind),
+    }
+}
+
 fn only_owner() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     if caller != get_owner() {
         runtime::revert(FundingRequestRegistryError::CallerIsNotOwner);
     }
 }
 
 fn only_proposer() {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     if !is_proposer_internal(&caller) {
         runtime::revert(FundingRequestRegistryError::CallerIsNotProposer);
     }
@@ -340,7 +377,7 @@ fn only_proposer() {
 /// `close_request` -- same `msg.sender == r.requester || msg.sender ==
 /// owner` check as all three of their Solidity originals.
 fn only_requester_or_owner(record: &FundingRequest) {
-    let caller = Key::from(runtime::get_caller());
+    let caller = immediate_caller_key();
     if caller != record.requester && caller != get_owner() {
         runtime::revert(FundingRequestRegistryError::NotAuthorizedForRequest);
     }

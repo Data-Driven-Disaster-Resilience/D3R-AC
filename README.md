@@ -134,19 +134,24 @@ token — all 11 standard entry points, standard events, and the
 standard's own exact error codes, **passing all 13 of its
 integration tests**), `multisig-admin` (SRS FR-4, **passing all 14
 of its integration tests**, including a genuine cross-contract
-`execute_transaction` call against a real `identity-registry`) — **55
-Casper tests total**, all against a local Casper network. A systemic
-finding surfaced by that last test suite — every contract's
+`execute_transaction` call against a real `identity-registry`), and
+`d3rac-hub` (SRS FR-8, one comprehensive integration test: installs
+all seven contracts, wires the Hub to all five modules, and proves a
+full admin handoff to a 1-of-1 multisig via a real Hub-mediated call)
+— **56 Casper tests total**, all against a local Casper network. A systemic
+finding surfaced along the way — every contract's
 admin/owner check used `runtime::get_caller()`, which can't recognize
-a *contract* (like `multisig-admin` itself) as the caller after a
-two-step admin transfer — was fixed across all five contracts (see
+a *contract* (like `multisig-admin` or the Hub itself) as the caller
+after a two-step admin transfer — was fixed across all five contracts
+that had it (see
 [`contracts/casper/README.md`](contracts/casper/README.md) for the
-full writeup). `funding-request-registry` and `d3rac-hub` (SRS FR-6/
-FR-8, the remaining two contracts) are now also **confirmed
+full writeup), and the Hub's own test now exercises that fix for real
+rather than only reasoning about it. `funding-request-registry` (SRS
+FR-6) is now also **confirmed
 compiling**, using the fixed caller-resolution pattern from the start;
-no integration test suites for either yet, and Hub wiring — actually
-deploying all seven together and pointing the Hub at each — is still
-undone. See
+no integration test suite yet. Casper testnet deployment — actually
+deploying all seven together and wiring the real, on-chain instances —
+is still undone. See
 [`contracts/casper/README.md`](contracts/casper/README.md)
 for the honest, itemized status; Hub wiring,
 frontend adapter completion, testnet testing, and any deployment are
