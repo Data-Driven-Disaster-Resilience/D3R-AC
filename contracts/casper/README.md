@@ -1,12 +1,15 @@
 # D3R·AC — Casper Contract Suite
 
 **Status: early, in progress — all seven contracts now have source
-written and confirmed compiling via real CI. Five have integration
-test suites (55 tests total: `risk-registry` 5, `identity-registry` 9,
-`disbursement-controller` 14, `d3rac-token` 13, `multisig-admin` 14,
-the last including a genuine cross-contract `execute_transaction`
-call against a real `identity-registry`). `funding-request-registry`
-and `d3rac-hub` have no integration test suites yet. A systemic
+written and confirmed compiling via real CI. Six have integration
+test suites (56 tests total: `risk-registry` 5, `identity-registry` 9,
+`disbursement-controller` 14, `d3rac-token` 13, `multisig-admin` 14 --
+including a genuine cross-contract `execute_transaction` call against
+a real `identity-registry` -- and `d3rac-hub` 1: a single
+comprehensive test installing all seven contracts, wiring the Hub to
+all five modules, and proving a full admin handoff to a 1-of-1
+multisig via a real Hub-mediated call). `funding-request-registry`
+has no integration test suite yet. A systemic
 caller-resolution bug (`runtime::get_caller()` instead of
 `runtime::get_immediate_caller()`, meaning a contract caller like
 `multisig-admin` or the Hub couldn't be correctly recognized by an
@@ -302,24 +305,42 @@ one `casper-types` version now resolves across the whole graph.
       and once fixed to return `ContractHash` explicitly, that type
       turned out to live under `casper_types::contracts`, not the
       crate root (confirmed against the real published source both
-      times, not re-guessed). No integration tests yet -- this
-      contract's own tests are the single biggest remaining item in
-      this whole suite, since they need all five other contracts
-      deployed together first, wired to the Hub, with the Hub calling
-      into each one and getting the expected result back.
+      times, not re-guessed).
+- [x] `d3rac-hub-tests/` -- one comprehensive integration test:
+      installs all seven contracts, wires all five modules to the Hub
+      (grant-role -> propose -> accept, matching
+      `2_deploy_d3rac.js`'s own sequence; `risk-registry` single-step,
+      per this file's own header), hands the Hub's admin to a 1-of-1
+      `multisig-admin` (the same topology the real Shasta deployment
+      actually uses), then proves the handoff really took effect --
+      not by reading the Hub's admin back (see the next entry), but by
+      showing the exact same `register_community` call that succeeded
+      when `DEFAULT_ACCOUNT_ADDR` submitted it directly now fails the
+      same way, and succeeds again when routed through the multisig.
+      That contrast exercises immediate-caller resolution at both hops
+      at once (multisig -> Hub, then Hub -> risk-registry) -- the exact
+      mechanism the systemic fix above provides and this Hub was
+      written to depend on from the start, now actually exercised for
+      real rather than only reasoned about.
+- [ ] **Real gap found while writing that test, not by writing it:**
+      `d3rac-hub` has no entry point that reads back its own current
+      `admin` -- `system_status()` returns the five module addresses,
+      `is_paused`, and some aggregate counts, but not `admin` itself.
+      A worthwhile small follow-up (an `admin()` view, mirroring
+      `risk-registry`'s own plain getters), not attempted in this same
+      pass.
 - [x] The caller-resolution dependency this entry originally flagged
       (Hub calls depending on the callee recognizing the Hub itself as
       caller, not the original signing account) is resolved -- see the
-      "Systemic fix" entry above. This file's own `only_admin` already
-      used the correct pattern from the start (`immediate_caller_key`,
-      written into this file before the systemic fix above was even
-      found, let alone merged), so nothing needed to change here for
-      that part specifically.
-- [ ] Hub wiring (FR-8) -- the Hub contract itself is written; actually
-      deploying all seven contracts together and wiring the Hub to
-      each via `set_token`/`set_identity_registry`/etc. is still
-      undone, and shouldn't be attempted before the caller-resolution
-      fix above merges.
+      "Systemic fix" entry above -- and now actually exercised by a
+      real test (previous entry), not just reasoned about. This file's
+      own `only_admin` used the correct pattern from the start
+      (`immediate_caller_key`, written into this file before the
+      systemic fix above was even found, let alone merged).
+- [x] Hub wiring (FR-8) -- proven to work by
+      `d3rac-hub-tests` above, against a local Casper network. Still
+      undone: actually deploying to Casper testnet and wiring the real,
+      on-chain instances together the same way.
 - [ ] `casperAdapter.ts` completion (FR-9) — still throws "not deployed
       yet", correctly, since nothing is deployed yet
 - [ ] Casper Testnet deployment
