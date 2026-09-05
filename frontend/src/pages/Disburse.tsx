@@ -285,17 +285,54 @@ export default function Disburse() {
 
           {err && <p style={{ color: "var(--coral)", fontSize: 13 }}>{err}</p>}
           {result && (
-            <p style={{ color: "var(--teal)", fontSize: 13 }} className="mono">
-              Sent.{" "}
-              <a
-                href={result.explorerUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{ textDecoration: "underline" }}
+            <div
+              style={{
+                padding: "14px",
+                border: "1px solid var(--teal)",
+                borderRadius: 8,
+                background: "var(--bg-raised)",
+              }}
+            >
+              <p
+                style={{
+                  marginBottom: 8,
+                  color: "var(--teal)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
               >
-                View on explorer →
-              </a>
-            </p>
+                ✓ Disbursement submitted successfully
+              </p>
+
+              <div style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                <span style={{ color: "var(--text-muted)" }}>
+                  Transaction hash
+                </span>
+
+                <span
+                  className="mono"
+                  style={{
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {result.txHash}
+                </span>
+
+                <a
+                  href={result.explorerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color: "var(--teal)",
+                    textDecoration: "underline",
+                    marginTop: 4,
+                  }}
+                >
+                  View transaction on explorer →
+                </a>
+              </div>
+            </div>
           )}
         </form>
       )}
