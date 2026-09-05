@@ -201,9 +201,16 @@ export default function Disburse() {
             <input
               value={to}
               onChange={(e) => setTo(e.target.value)}
+              placeholder={chainId === "tron" ? "T..." : "Recipient address"}
+              autoComplete="off"
               required
               style={inputStyle}
             />
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              {chainId === "tron"
+                ? "Enter the recipient's TRON address starting with T."
+                : "Enter the recipient wallet address."}
+            </span>
           </Field>
 
           <Field label="Amount">
