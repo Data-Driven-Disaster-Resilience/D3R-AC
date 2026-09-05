@@ -229,6 +229,52 @@ export default function Disburse() {
             </span>
           </Field>
 
+          <div
+            style={{
+              padding: "14px",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              background: "var(--bg-raised)",
+            }}
+          >
+            <p
+              style={{
+                marginBottom: 10,
+                fontSize: 12,
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Transaction review
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 8,
+                fontSize: 13,
+              }}
+            >
+              <div>
+                <span style={{ color: "var(--text-muted)" }}>Chain: </span>
+                <strong>{adapter.label}</strong>
+              </div>
+
+              <div>
+                <span style={{ color: "var(--text-muted)" }}>Recipient: </span>
+                <span className="mono">{to || "Not entered"}</span>
+              </div>
+
+              <div>
+                <span style={{ color: "var(--text-muted)" }}>Amount: </span>
+                <strong>
+                  {amount || "0.00"} {balance?.symbol || ""}
+                </strong>
+              </div>
+            </div>
+          </div>
+
           <button
             type="submit"
             className="btn btn-primary"
