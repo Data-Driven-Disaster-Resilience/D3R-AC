@@ -149,9 +149,11 @@ full writeup), and the Hub's own test now exercises that fix for real
 rather than only reasoning about it. `funding-request-registry` (SRS
 FR-6) is now also **confirmed
 compiling**, using the fixed caller-resolution pattern from the start;
-no integration test suite yet. Casper testnet deployment — actually
-deploying all seven together and wiring the real, on-chain instances —
-is still undone. See
+no integration test suite yet. As of 2026-09-07, all seven were
+deployed and wired for real against Casper testnet (see
+[`docs/deployment-guide.md`](docs/deployment-guide.md)'s status note
+for the run — the Hub's admin handoff to its multisig was proposed
+but not yet accepted, deliberately left as a manual step). See
 [`contracts/casper/README.md`](contracts/casper/README.md)
 for the honest, itemized status; Hub wiring,
 frontend adapter completion, testnet testing, and any deployment are

@@ -26,6 +26,26 @@ section before deploying anything with real funds.**
 > no professional audit** — do not treat a testnet deployment as
 > mainnet-readiness. The frontend deployment section reflects what's
 > actually built.
+>
+> **Casper contracts**, similarly: all seven now have source written
+> and CI-confirmed compiling, the full install-and-wire sequence is
+> proven against a local Casper network by
+> [`d3rac-hub-tests`](../contracts/casper/d3rac-hub-tests), and as of
+> 2026-09-07, the same sequence succeeded for real against **Casper
+> testnet** via
+> [`deploy-casper-testnet.yml`](../.github/workflows/deploy-casper-testnet.yml)
+> (run
+> [#34073617859](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/34073617859),
+> every step green, including the actual on-chain install-and-wire).
+> The Hub's admin transfer to a 1-of-1 `multisig-admin` was
+> **proposed but deliberately not completed** by that run — see
+> `deploy-testnet.sh`'s own comment for why; someone with the deployer
+> key still needs to submit/confirm/execute accepting it through the
+> multisig by hand. Until that happens, the deployer account itself
+> remains the Hub's actual admin, not the multisig. Same as the TRON
+> note above: specific deployed addresses are in that run's job
+> summary, not reproduced here for the same sandbox-network-access
+> reason. **Also still no professional audit** — same caveat applies.
 
 ## Smart contracts (TRON)
 
@@ -153,30 +173,39 @@ pattern exactly (`workflow_dispatch`-only, typed confirmation, no
 mainnet option). It runs
 [`contracts/casper/deploy/deploy-testnet.sh`](../contracts/casper/deploy/deploy-testnet.sh).
 
-**Status as of this writing: written, never run.** Unlike the TRON
+**Status as of 2026-09-07: run once, for real, successfully** (see the
+status note at the top of this guide for the run link and what's
+still pending — the admin handoff). Unlike the TRON
 workflow (which wraps an already-CI-tested migration script), this
 one's underlying *wiring sequence* is CI-proven —
 [`contracts/casper/d3rac-hub-tests`](../contracts/casper/d3rac-hub-tests)
 exercises the exact same install-and-wire sequence against a local
-Casper network — but the `casper-client` CLI commands the script uses
-to do the same thing against a real network have never been run by
-anyone. Treat its first real use as the actual test of the script, not
-as a routine deployment: run it and read the output carefully rather
-than assuming success.
+Casper network — while the `casper-client` CLI commands the script
+uses had never been run by anyone before that first real deployment.
+They worked on the first attempt, but this remains young,
+once-exercised infrastructure — read a run's output before trusting
+it, same as you would the first few times any deploy script gets used
+for real.
 
-One-time setup, before first use:
+One-time setup (already done as of the run referenced above — kept
+here for reference, e.g. if rotating the key):
 
-1. In **Settings → Environments**, create an environment named
-   `casper-testnet`. Required reviewers are recommended, same
-   reasoning as the TRON workflow's own setup.
-2. Add `CASPER_TESTNET_SECRET_KEY` as a secret on that
-   environment — the full contents of a Casper testnet account's PEM
-   secret key file, funded from
+1. A `casper-testnet` environment exists under **Settings →
+   Environments** (referencing an environment name in a workflow
+   creates it automatically if it doesn't already exist and has no
+   required protection rules — this one wasn't manually pre-created
+   before the first successful run). Required reviewers are
+   recommended going forward, same reasoning as the TRON workflow's
+   own setup.
+2. `CASPER_TESTNET_SECRET_KEY` is set as a **repository-level**
+   secret (not environment-scoped — repo-level secrets are visible to
+   any environment's jobs automatically) — the full contents of a
+   Casper testnet account's PEM secret key file, funded from
    [the testnet faucet](https://testnet.cspr.live/tools/faucet).
    Nobody associated with this repo (including any AI assistant that
    has worked on it) should ever generate, see, or be given this key.
-3. From the **Actions** tab, run **Deploy Casper contracts
-   (testnet)**, type `deploy`, and confirm.
+3. Trigger further runs from the **Actions** tab: **Deploy Casper
+   contracts (testnet)**, type `deploy`, and confirm.
 
 The workflow publishes every deployed contract's hash to the run's job
 summary and as a downloadable artifact. **The script deliberately

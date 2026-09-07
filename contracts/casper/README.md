@@ -14,7 +14,11 @@ caller-resolution bug (`runtime::get_caller()` instead of
 `runtime::get_immediate_caller()`, meaning a contract caller like
 `multisig-admin` or the Hub couldn't be correctly recognized by an
 admin/owner check) was found and fixed across all five contracts that
-had it.** Not yet deployed to Casper testnet, and not audited. See
+had it.** As of 2026-09-07, deployed and wired for real against
+Casper testnet (see [`docs/deployment-guide.md`](../../docs/deployment-guide.md)'s
+status note for the run and what's still pending — the Hub's admin
+handoff to its multisig was proposed but not yet accepted). Still not
+audited. See
 "What's actually done" below for the honest, itemized breakdown, and
 [`docs/casper-contracts-srs.md`](../../docs/casper-contracts-srs.md)
 for the full requirements this suite is being built against.
@@ -338,12 +342,19 @@ one `casper-types` version now resolves across the whole graph.
       (`immediate_caller_key`, written into this file before the
       systemic fix above was even found, let alone merged).
 - [x] Hub wiring (FR-8) -- proven to work by
-      `d3rac-hub-tests` above, against a local Casper network. Still
-      undone: actually deploying to Casper testnet and wiring the real,
-      on-chain instances together the same way.
+      `d3rac-hub-tests` against a local Casper network, and now also
+      by a real run against Casper testnet itself (see
+      `docs/deployment-guide.md`'s status note) -- the same
+      install-and-wire sequence, executed for real.
 - [ ] `casperAdapter.ts` completion (FR-9) — still throws "not deployed
-      yet", correctly, since nothing is deployed yet
-- [ ] Casper Testnet deployment
+      yet"; needs updating now that testnet addresses actually exist
+      (see `docs/deployment-guide.md`'s status note for the run, and
+      point it at the addresses in that run's job summary)
+- [x] Casper Testnet deployment -- done, 2026-09-07 (see
+      `docs/deployment-guide.md`'s status note). The Hub's admin
+      handoff to its multisig is proposed but not yet accepted --
+      that step is still manual, deliberately, per
+      `deploy-testnet.sh`'s own comment.
 - [ ] Professional security audit (matches the TRON suite's own
       status — see [`docs/audit-pass-2026-07-25.md`](../../docs/audit-pass-2026-07-25.md),
       which is explicitly a self-review, not a substitute for one)
