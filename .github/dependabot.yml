@@ -1,0 +1,59 @@
+# Automated dependency-update PRs -- real, GitHub-native, independently
+# verifiable (every PR Dependabot opens shows exactly what changed and
+# why, sourced from the ecosystem's own advisory/release data, not
+# anything this repo's own CI computes or could quietly skew).
+#
+# One entry per actual dependency manifest in this repo (found via
+# `find . -iname Cargo.toml -o -iname package.json -o -iname
+# pyproject.toml`, not assumed) plus github-actions itself, since
+# every workflow in .github/workflows/ pins external actions and those
+# need updates too -- see security-audit.yml and scorecard.yml's own
+# comments on why pinned-by-SHA action versions matter.
+#
+# Weekly cadence everywhere, matching security-audit.yml's own daily-
+# for-findings-but-weekly-for-real-review cadence reasoning: dependency
+# bumps are lower-urgency than a live CVE finding (which cargo-audit/
+# npm audit/pip-audit already catch same-day, independent of
+# Dependabot), so weekly avoids PR-volume noise while still keeping
+# every ecosystem current.
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/contracts/casper"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/agents/node"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/contracts/tron"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/contracts/tron/tronbox"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pip"
+    directory: "/agents/python"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pip"
+    directory: "/data-pipeline"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

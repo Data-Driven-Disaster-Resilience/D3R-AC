@@ -35,8 +35,8 @@ private channel — see the maintainer contact in the top-level
 - Steps to reproduce, or a proof of concept if you have one
 - Which component is affected (contract, chain, file/line if known)
 - Whether you believe it's exploitable on a current testnet deployment
-  (TRON's Shasta suite is deployed as of 2026-09-03 — see
-  `docs/deployment-guide.md`'s status note; Casper's is not yet)
+  (TRON's Shasta suite is deployed as of 2026-09-03, Casper's testnet suite
+  as of 2026-09-07 — see `docs/deployment-guide.md`'s status note for both)
 
 We'll acknowledge reports and work with you on disclosure timing. Since
 this project isn't yet on mainnet with real funds at stake, most reports
