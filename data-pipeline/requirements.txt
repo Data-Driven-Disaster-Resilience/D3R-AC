@@ -6,5 +6,5 @@ eth-hash[pycryptodome]>=0.5.2
 
 # testing
 pytest>=7.4
-pytest-mock>=3.11
+pytest-mock>=3.15.1
 responses>=0.23
