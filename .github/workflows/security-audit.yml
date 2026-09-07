@@ -76,7 +76,7 @@ jobs:
 
       - name: Set up Python
         if: steps.check.outputs.exists == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -219,7 +219,7 @@ jobs:
 
       - name: Set up Python
         if: steps.check.outputs.exists == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.10' # Mythril's own PyPI page caps supported Python at 3.7-3.10 -- not this repo's usual 3.11 (matches the Slither job above), checked against the current PyPI listing rather than assumed.
 
@@ -435,7 +435,7 @@ jobs:
 
       - name: Set up Python
         if: steps.check.outputs.exists == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
