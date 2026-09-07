@@ -2,7 +2,7 @@ requests>=2.31
 PyYAML>=6.0
 tronpy>=0.4.0
 python-dotenv>=1.0
-eth-hash[pycryptodome]>=0.5.2
+eth-hash[pycryptodome]>=0.8.0
 
 # testing
 pytest>=7.4
