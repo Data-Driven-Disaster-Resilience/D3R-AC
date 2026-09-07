@@ -145,6 +145,48 @@ action.
   address entered in the disbursement console (see below) — the frontend
   doesn't hardcode a contract address, it's supplied per-session.
 
+## Smart contracts (Casper)
+
+`.github/workflows/deploy-casper-testnet.yml` deploys and wires all
+seven contracts, mirroring the TRON deploy workflow's own safety
+pattern exactly (`workflow_dispatch`-only, typed confirmation, no
+mainnet option). It runs
+[`contracts/casper/deploy/deploy-testnet.sh`](../contracts/casper/deploy/deploy-testnet.sh).
+
+**Status as of this writing: written, never run.** Unlike the TRON
+workflow (which wraps an already-CI-tested migration script), this
+one's underlying *wiring sequence* is CI-proven —
+[`contracts/casper/d3rac-hub-tests`](../contracts/casper/d3rac-hub-tests)
+exercises the exact same install-and-wire sequence against a local
+Casper network — but the `casper-client` CLI commands the script uses
+to do the same thing against a real network have never been run by
+anyone. Treat its first real use as the actual test of the script, not
+as a routine deployment: run it and read the output carefully rather
+than assuming success.
+
+One-time setup, before first use:
+
+1. In **Settings → Environments**, create an environment named
+   `casper-testnet`. Required reviewers are recommended, same
+   reasoning as the TRON workflow's own setup.
+2. Add `CASPER_TESTNET_SECRET_KEY` as a secret on that
+   environment — the full contents of a Casper testnet account's PEM
+   secret key file, funded from
+   [the testnet faucet](https://testnet.cspr.live/tools/faucet).
+   Nobody associated with this repo (including any AI assistant that
+   has worked on it) should ever generate, see, or be given this key.
+3. From the **Actions** tab, run **Deploy Casper contracts
+   (testnet)**, type `deploy`, and confirm.
+
+The workflow publishes every deployed contract's hash to the run's job
+summary and as a downloadable artifact. **The script deliberately
+stops short of completing the Hub's admin handoff to the multisig it
+installs** — it proposes the transfer but doesn't submit/confirm/
+execute accepting it, unlike `d3rac-hub-tests`' own fully-automated
+version of the same sequence. Complete that step by hand once the
+install-and-wiring portion is confirmed working; see the script's own
+comment for why that boundary was drawn where it was.
+
 ## Frontend
 
 The frontend is a static Vite build — deployable to any static host

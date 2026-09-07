@@ -1,0 +1,122 @@
+name: Deploy Casper contracts (testnet)
+
+# Same posture as deploy-tron-testnet.yml, not re-derived here:
+# workflow_dispatch ONLY, typed confirmation required, no mainnet
+# option at all. Read that file's own top comment first if this is
+# your first time looking at either.
+#
+# UNLIKE deploy-tron-testnet.yml, the script this workflow runs
+# (deploy-testnet.sh) has never been executed anywhere, by anyone, as
+# of this writing. It was written from a sandbox with no Casper
+# network access and no local casper-client to test against -- every
+# casper-client invocation in it is sourced from
+# https://docs.casper.network's own CLI documentation (linked
+# per-command in deploy-testnet.sh's own comments), not verified by
+# running it. Casper's CLI is also mid-transition (`put-deploy` is
+# deprecated in favor of `put-transaction`/`put-txn` as of
+# casper-client 3.0.0) -- this script uses the newer, non-deprecated
+# form, sourced the same way. Treat the first real run of this
+# workflow as the actual test of this script, not as a routine
+# deployment -- read its output carefully, and don't assume a
+# same-shaped success/failure to deploy-tron-testnet.yml's own
+# first run.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm you mean to broadcast real transactions to Casper testnet'
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: casper-testnet
+    steps:
+      - name: Require explicit confirmation
+        if: inputs.confirm != 'deploy'
+        run: |
+          echo "::error::Input 'confirm' must be exactly 'deploy'. Refusing to run."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry and build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            contracts/casper/target
+          key: ${{ runner.os }}-cargo-casper-deploy-${{ hashFiles('contracts/casper/**/Cargo.lock', 'contracts/casper/.cargo/config.toml') }}
+
+      - name: Build all seven contracts (wasm32-unknown-unknown)
+        working-directory: contracts/casper
+        shell: bash
+        run: |
+          set -o pipefail
+          CONTRACT_PACKAGES=()
+          for dir in */; do
+            name="${dir%/}"
+            if [[ "$name" != *-tests && -f "$name/Cargo.toml" && -f "$name/src/main.rs" ]]; then
+              CONTRACT_PACKAGES+=("$name")
+            fi
+          done
+          echo "Building: ${CONTRACT_PACKAGES[*]}"
+          BUILD_ARGS=()
+          for pkg in "${CONTRACT_PACKAGES[@]}"; do
+            BUILD_ARGS+=(-p "$pkg")
+          done
+          cargo build --release --target wasm32-unknown-unknown "${BUILD_ARGS[@]}"
+
+      - name: Install casper-client
+        run: cargo install casper-client --locked
+
+      - name: Check required secrets are configured
+        env:
+          KEY: ${{ secrets.CASPER_TESTNET_SECRET_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Missing required secret on the 'casper-testnet' environment: CASPER_TESTNET_SECRET_KEY"
+            echo "See docs/deployment-guide.md's Casper section."
+            exit 1
+          fi
+          echo "Required secret present."
+
+      - name: Write secret key to a local file for casper-client
+        env:
+          KEY: ${{ secrets.CASPER_TESTNET_SECRET_KEY }}
+        run: |
+          umask 077
+          printf '%s' "$KEY" > "$RUNNER_TEMP/casper-secret-key.pem"
+
+      - name: Deploy and wire all seven contracts
+        working-directory: contracts/casper
+        env:
+          CASPER_SECRET_KEY_PATH: ${{ runner.temp }}/casper-secret-key.pem
+          CASPER_NODE_ADDRESS: ${{ vars.CASPER_NODE_ADDRESS || 'https://node.testnet.casper.network' }}
+          CASPER_CHAIN_NAME: casper-test
+        run: bash deploy/deploy-testnet.sh 2>&1 | tee /tmp/deploy.log
+
+      - name: Publish deployed addresses to job summary
+        if: always()
+        run: |
+          {
+            echo "## Casper testnet deployment"
+            echo '```'
+            cat /tmp/deploy.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload full deploy log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: casper-deploy-log-${{ github.run_id }}
+          path: /tmp/deploy.log
+          retention-days: 90
