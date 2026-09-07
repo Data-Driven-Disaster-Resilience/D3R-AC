@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
 
       - name: Run analysis
-        uses: ossf/scorecard-action@62b2cac7ed8198b15735ed49ab1e5cf35480ba46 # v2.4.0 -- SHA independently confirmed across multiple real dependabot bump commits (nodejs/llhttp@e045cd2, ruby/ruby@cdda284), not asserted from memory.
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4 -- bumped from v2.4.0 after that pin's actual first CI run failed at "Pull gcr.io/openssf/scorecard-action:v2.4.0" (real failure, not hypothetical -- see PR #31/run 34088909524). v2.4.0 was already 18+ months old per its own changelog; SHA independently confirmed via a real, recent urllib3 dependency-bump diff (urllib3/urllib3@546f5d2), not asserted from memory.
         with:
           results_file: results.sarif
           results_format: sarif
