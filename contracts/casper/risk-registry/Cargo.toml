@@ -31,7 +31,7 @@ casper-contract = { version = "5.1.1", default-features = false }
 # identical types from different crate versions are still different
 # types to the compiler. 6.1.0 is the newest version actually
 # compatible with casper-contract 5.1.1.
-casper-types = "6.1.0"
+casper-types = "7.0.0"
 casper-event-standard = "0.7.0"
 # Global allocator for the no_std/wasm32 build (see casper-contract note
 # above). Maintained under the rust-lang org -- it's the same allocator

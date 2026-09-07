@@ -16,7 +16,7 @@ test = false
 # below -- identical reasoning applies here (same workspace, same
 # target, same constraints), not re-derived per package.
 casper-contract = { version = "5.1.1", default-features = false }
-casper-types = "6.1.0"
+casper-types = "7.0.0"
 casper-event-standard = "0.7.0"
 dlmalloc = { version = "0.2.14", features = ["global"] }
 

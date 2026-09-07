@@ -6,7 +6,7 @@ license-file.workspace = true
 publish = false
 
 [dependencies]
-casper-types = "6.1.0"
+casper-types = "7.0.0"
 
 [dev-dependencies]
 casper-engine-test-support = "8.1.1"

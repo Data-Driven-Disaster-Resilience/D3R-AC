@@ -14,7 +14,7 @@ test = false
 [dependencies]
 # Same wee_alloc-avoidance reasoning as risk-registry/Cargo.toml.
 casper-contract = { version = "5.1.1", default-features = false }
-casper-types = "6.1.0"
+casper-types = "7.0.0"
 casper-event-standard = "0.7.0"
 dlmalloc = { version = "0.2.14", features = ["global"] }
 
