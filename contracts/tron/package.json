@@ -18,7 +18,7 @@
     "@nomicfoundation/hardhat-network-helpers": "^3.0.0",
     "chai": "^5.1.2",
     "ethers": "^6.4.0",
-    "hardhat": "^3.0.0"
+    "hardhat": "^3.15.0"
   },
   "overrides": {
     "adm-zip": "^0.6.0",
