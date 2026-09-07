@@ -10,6 +10,15 @@ name: Security Audit
 # Tools, one per language surface actually present in this repo:
 #   - Slither      -> Solidity (contracts/tron)      — the standard
 #                      free/open-source Solidity static analyzer.
+#   - Mythril      -> Solidity (contracts/tron)       — symbolic
+#                      execution, a genuinely different technique from
+#                      Slither's pattern matching: proves a flagged
+#                      path is actually reachable via a concrete
+#                      transaction sequence (Z3 SMT solver), rather
+#                      than flagging anything that merely looks risky.
+#                      See the mythril job's own comment for its
+#                      documented limitations and why depth/timeout
+#                      are bounded.
 #   - cargo-audit  -> Rust (contracts/casper)         — checks Cargo.lock
 #                      against the RustSec advisory database.
 #   - npm audit    -> TypeScript/JS (frontend, agents/node) — checks
@@ -137,6 +146,154 @@ jobs:
             echo
             if [ -s slither-report.md ]; then
               head -c 60000 slither-report.md
+            else
+              echo "No output captured — check the run log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------
+  # Solidity symbolic execution (Mythril)
+  # ---------------------------------------------------------------
+  # A genuinely different technique from Slither above, not a second
+  # pass of the same thing: Slither is pattern-matching static
+  # analysis (fast, scans source directly, flags code that *looks*
+  # dangerous). Mythril is symbolic execution (slower, works from
+  # compiled bytecode, and — critically — proves a flagged path is
+  # actually reachable by constructing a concrete transaction sequence
+  # that triggers it via the Z3 SMT solver, rather than flagging
+  # anything that merely matches a risky pattern). Maintained by
+  # ConsenSys Diligence; findings map to SWC (Smart Contract Weakness
+  # Classification) IDs. Confirmed still actively maintained and in
+  # real professional-auditor triage workflows as of this writing
+  # (not assumed from stale training knowledge — checked).
+  #
+  # Known limitations, stated up front rather than left for someone to
+  # discover the hard way: it does not understand business logic or
+  # this suite's own invariants (a MultiSigAdmin threshold, a
+  # verified-recipient gate) — it can only reason about EVM-level
+  # reachability, not "should this be reachable per the SRS." It also
+  # has documented false-positive classes (e.g. flagging any
+  # reachable `assert(false)` as a vulnerability, occasional
+  # integer-overflow false alarms even through SafeMath-style guards)
+  # — exactly the same "findings are a decision point for a human, not
+  # an auto-block" posture the Slither job above already takes, for
+  # the same reason.
+  #
+  # Per-contract execution-timeout and transaction-depth are bounded
+  # (see the loop below) because unbounded symbolic execution across
+  # 9 contracts would make this job's runtime unpredictable — this
+  # trades completeness (deeper multi-transaction vulnerability
+  # classes, e.g. flash-loan-style multi-call attack paths, need more
+  # than 2 transactions of depth to surface) for a bounded, predictable
+  # job that actually finishes and reports something on every run,
+  # consistent with running unattended on a daily cron rather than
+  # someone watching it interactively.
+  #
+  # CLI flags verified against a real `myth analyze --help` (this
+  # session installed Mythril locally and checked, rather than
+  # assuming flag names) -- one bogus flag (`--solc-json` used as if
+  # it took a file path; it actually takes a raw JSON settings string
+  # and isn't needed here) was caught and removed this way before
+  # ever reaching CI. Full end-to-end execution against this repo's
+  # actual .sol files was NOT verified in that same local check --
+  # solc's own binary download (binaries.soliditylang.org) isn't
+  # reachable from that sandbox, the same class of restriction
+  # contracts/casper/README.md already documents for a different
+  # toolchain. This job's own first CI run is the real first test of
+  # the full pipeline, same epistemic posture as every other
+  # first-CI-run note elsewhere in this repo's history.
+  mythril:
+    name: Mythril (Solidity symbolic execution)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check contracts exist
+        id: check
+        run: |
+          if [ -d "contracts/tron/tronbox/contracts" ] && [ -n "$(find contracts/tron/tronbox/contracts -name '*.sol')" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # Mythril's own PyPI page caps supported Python at 3.7-3.10 -- not this repo's usual 3.11 (matches the Slither job above), checked against the current PyPI listing rather than assumed.
+
+      - name: Install Mythril
+        if: steps.check.outputs.exists == 'true'
+        run: pip install mythril
+
+      - name: Install solc-select and target Solidity version
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          pip install solc-select
+          solc-select install 0.8.20
+          solc-select use 0.8.20
+
+      - name: Run Mythril per contract
+        if: steps.check.outputs.exists == 'true'
+        id: mythril
+        continue-on-error: true
+        run: |
+          set +e
+          mkdir -p mythril-reports
+          analyzed=0
+          {
+            echo "# Mythril (Solidity symbolic execution)"
+            echo
+            echo "Per-contract, bounded to 2 transactions / 300s each --"
+            echo "see .github/workflows/security-audit.yml's mythril job"
+            echo "comment for why. A finding here means Mythril"
+            echo "constructed a concrete, reachable transaction sequence"
+            echo "triggering it -- not just a pattern match."
+            echo
+          } > mythril-report.md
+          for f in $(find contracts/tron/tronbox/contracts -name '*.sol' | sort); do
+            name=$(basename "$f" .sol)
+            echo "## $f" >> mythril-report.md
+            echo >> mythril-report.md
+            myth analyze "$f" \
+              -t 2 \
+              --execution-timeout 300 \
+              -o markdown \
+              >> "mythril-reports/${name}.md" 2>&1
+            status=$?
+            if [ -s "mythril-reports/${name}.md" ]; then
+              cat "mythril-reports/${name}.md" >> mythril-report.md
+            else
+              echo "(no output captured, exit code ${status})" >> mythril-report.md
+            fi
+            echo >> mythril-report.md
+            analyzed=$((analyzed+1))
+          done
+          if [ "$analyzed" -eq 0 ]; then
+            echo "::error::Mythril analyzed 0 contracts — this indicates a setup failure, not a clean scan."
+            exit 1
+          fi
+          echo "ran=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Mythril report
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mythril-report
+          path: |
+            mythril-report.md
+            mythril-reports/
+          retention-days: 90
+
+      - name: Append to job summary
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          {
+            echo "## Mythril (Solidity symbolic execution)"
+            echo
+            if [ -s mythril-report.md ]; then
+              head -c 60000 mythril-report.md
             else
               echo "No output captured — check the run log."
             fi
@@ -331,7 +488,7 @@ jobs:
   # ---------------------------------------------------------------
   record-report:
     name: Record Audit Report
-    needs: [ slither, cargo-audit, npm-audit, pip-audit ]
+    needs: [ slither, mythril, cargo-audit, npm-audit, pip-audit ]
     if: always() && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
