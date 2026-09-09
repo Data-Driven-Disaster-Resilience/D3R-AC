@@ -356,8 +356,9 @@ one `casper-types` version now resolves across the whole graph.
       that step is still manual, deliberately, per
       `deploy-testnet.sh`'s own comment.
 - [ ] Professional security audit (matches the TRON suite's own
-      status — see [`docs/audit-pass-2026-07-25.md`](../../docs/audit-pass-2026-07-25.md),
-      which is explicitly a self-review, not a substitute for one)
+      status — see [`docs/audit-pass-2026-07-25.md`](../../docs/audit-pass-2026-07-25.md)
+      and [`docs/audit-pass-2026-09-09.md`](../../docs/audit-pass-2026-09-09.md),
+      two self-reviews, explicitly not a substitute for a professional one)
 - [ ] Mainnet deployment of anything in this suite — not to be
       considered until every item above is done, the same "no
       deploying real funds without a proper security review" posture

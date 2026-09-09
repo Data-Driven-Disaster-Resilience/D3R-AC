@@ -112,8 +112,10 @@ a funding-request board (seven contracts total; see
 for the run and current admin topology — a deliberately minimal 1-of-1
 multisig, not a production configuration). **Still not professionally
 audited** (see
-[`docs/audit-pass-2026-07-25.md`](docs/audit-pass-2026-07-25.md) for an
-internal self-review pass — explicitly not a substitute for one) —
+[`docs/audit-pass-2026-07-25.md`](docs/audit-pass-2026-07-25.md) and
+[`docs/audit-pass-2026-09-09.md`](docs/audit-pass-2026-09-09.md) for
+two internal self-review passes — explicitly not a substitute for a
+professional one, no matter how thorough) —
 don't treat a testnet deployment as mainnet-readiness.
 Frontend community access layer implemented (TRON live, Casper adapter
 in place pending Casper contract deployment; the TRON adapter targets
