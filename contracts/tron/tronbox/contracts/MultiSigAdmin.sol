@@ -112,13 +112,29 @@ contract MultiSigAdmin is D3RACProperties {
     /// @notice Execute a transaction once it has >= threshold confirmations.
     ///         Reverts if the underlying call reverts, so a failed
     ///         execution never silently marks the transaction as done.
+    /// @dev Slither's `reentrancy-eth` detector flags `t.executed = false`
+    ///      below as a state write after an external call. This is a
+    ///      documented false positive, not a suppressed real bug: that
+    ///      write sits in the failure branch, which unconditionally ends
+    ///      in `revert(...)` a few lines later, so the entire call frame
+    ///      -- including that write -- is rolled back by the EVM/TVM
+    ///      itself. There is no persisted state for a reentrant call to
+    ///      observe or exploit. `t.executed = true` (the state change
+    ///      that actually matters) is set *before* the external call,
+    ///      which is the correct checks-effects-interactions ordering,
+    ///      and `nonReentrant` guards the function on top of that. See
+    ///      `slither.config.json` for where this exact finding ID is
+    ///      excluded from the automated report.
     function executeTransaction(uint256 txId) external onlyOwner txExists(txId) notExecuted(txId) nonReentrant {
         Transaction storage t = _transactions[txId];
         require(t.confirmationCount >= threshold, "MultiSigAdmin: insufficient confirmations");
 
         t.executed = true;
+        // slither-disable-next-line reentrancy-eth
         (bool success, ) = t.to.call{ value: t.value }(t.data);
         if (!success) {
+            // False positive: unreachable past this point except via the
+            // revert() on the next line, which unwinds this write too.
             t.executed = false;
             emit TransactionExecutionFailed(txId);
             revert("MultiSigAdmin: underlying call reverted");

@@ -161,12 +161,17 @@ contract RiskRegistry is D3RACProperties {
     // ---------------------------------------------------------------
 
     /// @notice R(c,t) = H(t) * E(c) * V(c), all fixed-point at 1e18 scale.
-    /// @dev Two divisions by SCALE keep intermediate products from
-    ///      overflowing while preserving 1e18 fixed-point precision
-    ///      throughout — matches the formula in docs/risk-model.md exactly.
+    /// @dev Single division after the full three-way product, not two
+    ///      sequential divisions -- an earlier version computed
+    ///      `(((hazard * exposure) / SCALE) * vulnerability) / SCALE`,
+    ///      which truncates precision twice instead of once. Safe from
+    ///      overflow: `updateRisk`'s own `require` bounds each of
+    ///      hazard/exposure/vulnerability to `[0, SCALE]` (SCALE = 1e18),
+    ///      so the full product is at most `1e54`, nowhere near
+    ///      `uint256`'s ~1.16e77 ceiling.
     function riskScore(bytes32 communityId) public view returns (uint256) {
         CommunityRisk storage c = communities[communityId];
-        return (((c.hazard * c.exposure) / SCALE) * c.vulnerability) / SCALE;
+        return (c.hazard * c.exposure * c.vulnerability) / (SCALE * SCALE);
     }
 
     function isAboveThreshold(bytes32 communityId) external view returns (bool) {

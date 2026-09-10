@@ -200,16 +200,28 @@ hitting an opaque out-of-energy error.
 
 ---
 
-## Status check (automated review, 2026-08-22)
+## Status check (re-verified against real `main` @ current HEAD)
 
-Re-verified against the current `main`: **M-1, M-2, and M-3 are all
-still open** — no `extcodesize` guard on admin/owner constructor args,
-no two-step `proposeNewAdmin`/`acceptAdmin` pattern on any of the six
-contracts, and `DisbursementController.releaseMilestone` still calls
-`ITRC20(c.token).transfer(...)` directly rather than a return-data-
-tolerant low-level call. None of these are urgent given the project's
-pre-mainnet status, but they remain the top three items before a paid
-audit engagement.
+**M-2 and M-3 are fixed; M-1 remains genuinely open.** Re-read the
+live contract source directly rather than trusting the previous
+version of this note (which said all three were still open — that was
+stale relative to `main`):
+
+- **M-2 — Fixed.** `proposeNewAdmin`/`acceptAdmin` (or
+  `proposeNewOwner`/`acceptOwnership`) is present and used on
+  `D3RACToken.sol`, `IdentityRegistry.sol`, `DisbursementController.sol`,
+  `RiskRegistry.sol`, and `FundingRequestRegistry.sol` — confirmed by
+  direct grep against each file, not assumed from an earlier note.
+- **M-3 — Fixed.** `DisbursementController.sol::_safeTransfer` uses a
+  low-level `.call()` with tolerant return-data checking, not a direct
+  `ITRC20(...).transfer(...)` that would revert against non-standard
+  tokens.
+- **M-1 — Still open, by nature not by oversight.** No
+  `extcodesize`/code-length guard exists in any admin/owner constructor
+  argument on any contract. This remains fundamentally an
+  operational-discipline item (deploy `MultiSigAdmin` first, pass its
+  address everywhere) rather than a pure code fix — treat it as a
+  deployment-checklist item, and the top item before mainnet.
 
 A continuous automated layer (`.github/workflows/security-audit.yml`)
 now runs Slither, cargo-audit, npm audit, and pip-audit on every PR and
