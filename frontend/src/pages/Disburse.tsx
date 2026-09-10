@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useWallet } from "../context/useWallet";
 import type { DisbursementResult, TokenBalance } from "../lib/chainAdapter";
+import { FormField as Field, inputStyle } from "../components/FormField";
 
 export default function Disburse() {
   const { adapter, chainId, address, connect, connecting } = useWallet();
@@ -109,22 +110,3 @@ export default function Disburse() {
     </section>
   );
 }
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-const inputStyle: React.CSSProperties = {
-  background: "var(--bg-raised)",
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-  padding: "10px 12px",
-  color: "var(--text)",
-  fontFamily: "var(--font-mono)",
-  fontSize: 14,
-};

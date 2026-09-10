@@ -5,6 +5,7 @@ const LINKS = [
   { to: "/", label: "Overview", end: true },
   { to: "/dashboard", label: "Risk Dashboard", end: false },
   { to: "/disburse", label: "Disbursement", end: false },
+  { to: "/wallet", label: "Wallet", end: false },
 ];
 
 export default function NavBar() {
