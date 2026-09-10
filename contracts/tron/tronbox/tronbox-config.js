@@ -52,6 +52,12 @@ module.exports = {
       version: '0.8.20',
       settings: {
         optimizer: { enabled: true, runs: 200 },
+        // See hardhat.config.js's matching setting for the full
+        // rationale (TVM gates Shanghai/PUSH0 behind a chain
+        // parameter; this is the config that actually matters for a
+        // real deployment, hardhat.config.js is the local test
+        // harness only).
+        evmVersion: 'paris',
       },
     },
   },

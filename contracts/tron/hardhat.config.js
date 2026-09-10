@@ -45,6 +45,24 @@ export default {
     version: "0.8.20",
     settings: {
       optimizer: { enabled: true, runs: 200 },
+      // Pinned to "paris" (pre-Shanghai), not solc 0.8.20's own default
+      // (Shanghai, which emits PUSH0 for zero-constant pushes) --
+      // TRON's TVM gates Shanghai-era opcodes including PUSH0 behind a
+      // chain parameter (ALLOW_TVM_SHANGHAI, mainnet-activated via
+      // committee proposal #89), not automatically just because a
+      // network is EVM-compatible in general. The real Shasta
+      // deployment already succeeded under the unpinned default, which
+      // is reassuring but not conclusive on its own: a PUSH0
+      // instruction only fails at the moment a code path containing one
+      // actually executes, not necessarily at deploy time, so a
+      // rarely-hit branch could still surprise someone later even
+      // though a given deployment worked. This pin guarantees TVM
+      // compatibility regardless of which specific chain parameters are
+      // active on whichever network gets deployed to next, rather than
+      // depending on inference from one successful deployment. See
+      // docs/audit-pass-2026-09-09.md's "No explicit evmVersion pin"
+      // finding for the full writeup this fix responds to.
+      evmVersion: "paris",
     },
   },
 };

@@ -113,18 +113,29 @@ contract MultiSigAdmin is D3RACProperties {
     ///         Reverts if the underlying call reverts, so a failed
     ///         execution never silently marks the transaction as done.
     /// @dev Slither's `reentrancy-eth` detector flags `t.executed = false`
-    ///      below as a state write after an external call. This is a
-    ///      documented false positive, not a suppressed real bug: that
-    ///      write sits in the failure branch, which unconditionally ends
-    ///      in `revert(...)` a few lines later, so the entire call frame
-    ///      -- including that write -- is rolled back by the EVM/TVM
-    ///      itself. There is no persisted state for a reentrant call to
-    ///      observe or exploit. `t.executed = true` (the state change
-    ///      that actually matters) is set *before* the external call,
-    ///      which is the correct checks-effects-interactions ordering,
-    ///      and `nonReentrant` guards the function on top of that. See
-    ///      `slither.config.json` for where this exact finding ID is
-    ///      excluded from the automated report.
+    ///      below as a state write after an external call. Very likely a
+    ///      false positive, not a confirmed one -- the flagged write sits
+    ///      in the failure branch, which unconditionally ends in
+    ///      `revert(...)` a few lines later, so the entire call frame,
+    ///      including that write, is rolled back by the EVM/TVM itself,
+    ///      leaving nothing for a reentrant call to observe. `t.executed
+    ///      = true` (the state change that actually matters) is set
+    ///      *before* the external call -- correct checks-effects-
+    ///      interactions ordering -- and `nonReentrant` (a real
+    ///      status-flag guard, not just a modifier name; see
+    ///      `D3RACProperties.sol`) guards the function on top of that.
+    ///      Deliberately NOT filed as fully resolved: this reasoning is
+    ///      the same conclusion two independent reviews reached
+    ///      (`docs/audit-pass-2026-07-25.md` and
+    ///      `docs/audit-pass-2026-09-09.md`), but Slither's reentrancy
+    ///      heuristics are known to sometimes not fully credit custom
+    ///      guards, and a professional auditor should form their own
+    ///      view rather than take either review's word for it. Suppressed
+    ///      here only so CI's automated Slither pass doesn't re-flag an
+    ///      already-triaged finding on every run -- the
+    ///      `slither-disable-next-line` comment is a precise,
+    ///      single-line suppression, not a project-wide detector
+    ///      exclusion.
     function executeTransaction(uint256 txId) external onlyOwner txExists(txId) notExecuted(txId) nonReentrant {
         Transaction storage t = _transactions[txId];
         require(t.confirmationCount >= threshold, "MultiSigAdmin: insufficient confirmations");
