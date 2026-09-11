@@ -47,6 +47,12 @@ pub enum D3racTokenError {
     /// a future API change fails loudly instead of silently
     /// misresolving a caller identity.
     UnrecognizedCallerKind = 9,
+    /// docs/casper-audit-pass-2026-09-05.md M-1: `checked_add` guard on
+    /// `mint`'s total_supply/balance updates and `move_balance`'s
+    /// recipient-balance update, so an overflow reverts with this
+    /// contract's own typed error instead of relying solely on
+    /// `overflow-checks = true`'s generic Wasm trap.
+    ArithmeticOverflow = 10,
 }
 
 impl From<D3racTokenError> for ApiError {

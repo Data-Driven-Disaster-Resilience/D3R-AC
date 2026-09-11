@@ -344,8 +344,16 @@ one `casper-types` version now resolves across the whole graph.
 - [ ] `casperAdapter.ts` completion (FR-9) — still throws "not deployed
       yet", correctly, since nothing is deployed yet
 - [ ] Casper Testnet deployment
-- [ ] Professional security audit (matches the TRON suite's own
-      status — see [`docs/audit-pass-2026-07-25.md`](../../docs/audit-pass-2026-07-25.md),
+- [x] Internal security self-review — see
+      [`docs/casper-audit-pass-2026-09-05.md`](../../docs/casper-audit-pass-2026-09-05.md):
+      0 High, 2 Medium (one fixed in the same pass —
+      `overflow-checks` wasn't enabled in the release profile, a real
+      Rust-specific gap with no Solidity ≥0.8 equivalent to reason
+      about by analogy), 4 Low, 4 Informational.
+- [ ] **Professional, independent security audit** — still needed
+      regardless of the self-review above (matches the TRON suite's
+      own status — see
+      [`docs/audit-pass-2026-07-25.md`](../../docs/audit-pass-2026-07-25.md),
       which is explicitly a self-review, not a substitute for one)
 - [ ] Mainnet deployment of anything in this suite — not to be
       considered until every item above is done, the same "no

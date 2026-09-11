@@ -236,9 +236,13 @@ pub extern "C" fn mint() {
     let to: Key = runtime::get_named_arg(ARG_RECIPIENT);
     let amount: U256 = runtime::get_named_arg(ARG_AMOUNT);
 
-    let new_total = read_uref_value::<U256>(KEY_TOTAL_SUPPLY) + amount;
+    let new_total = read_uref_value::<U256>(KEY_TOTAL_SUPPLY)
+        .checked_add(amount)
+        .unwrap_or_revert_with(D3racTokenError::ArithmeticOverflow);
     write_uref_value(KEY_TOTAL_SUPPLY, new_total);
-    let new_balance = get_balance(to) + amount;
+    let new_balance = get_balance(to)
+        .checked_add(amount)
+        .unwrap_or_revert_with(D3racTokenError::ArithmeticOverflow);
     set_balance(to, new_balance);
 
     casper_event_standard::emit(Mint {
@@ -456,7 +460,10 @@ fn move_balance(from: Key, to: Key, amount: U256) {
     }
     set_balance(from, from_balance - amount);
     let to_balance = get_balance(to);
-    set_balance(to, to_balance + amount);
+    let new_to_balance = to_balance
+        .checked_add(amount)
+        .unwrap_or_revert_with(D3racTokenError::ArithmeticOverflow);
+    set_balance(to, new_to_balance);
 }
 
 fn get_allowance(owner: Key, spender: Key) -> U256 {

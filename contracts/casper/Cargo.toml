@@ -17,3 +17,20 @@ panic = "abort"        # No unwind support needed (or meaningfully usable)
                         # in a no_std wasm contract; also removes any need
                         # for an eh_personality lang item, which used to
                         # come from casper-contract's no-std-helpers.
+overflow-checks = true # M-1, docs/casper-audit-pass-2026-09-05.md: Rust's
+                        # arithmetic operators only panic on overflow in
+                        # the dev profile by default -- release (what
+                        # actually compiles to the deployed .wasm) wraps
+                        # silently otherwise. Solidity >=0.8 makes this
+                        # check-free and automatic on the TRON side of
+                        # this project; Casper/Rust does not, so it has
+                        # to be turned on explicitly here. This is a
+                        # suite-wide, one-line fix for every contract's
+                        # unchecked arithmetic at once; the audit's
+                        # specific call-site findings (mint/burn/
+                        # move_balance in d3rac-token, the milestone-sum
+                        # and released_amount accumulation in
+                        # disbursement-controller) get a clearer,
+                        # typed-error revert via checked_add on top of
+                        # this as a separate, defense-in-depth follow-up
+                        # -- this line is the floor, not the whole fix.
