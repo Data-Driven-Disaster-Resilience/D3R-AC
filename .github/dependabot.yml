@@ -22,6 +22,24 @@ updates:
     directory: "/contracts/casper"
     schedule:
       interval: "weekly"
+    ignore:
+      # casper-contract 5.1.1 requires casper-types "6.0.1" (Cargo caret
+      # semantics: >=6.0.1, <7.0.0) -- confirmed against its own
+      # published Cargo.toml, not assumed. Checked crates.io's
+      # reverse-dependency listing for casper-types directly: as of
+      # 2026-09, casper-contract, casper-engine-test-support (what
+      # every *-tests package in this workspace uses), casper-node,
+      # and casper-event-standard are ALL still capped at casper-types
+      # ^6.x -- only casper-execution-engine and casper-client have
+      # moved to ^7.0.0. A PR bumping just casper-types to 7.0.0 (#35)
+      # confirmed this fails Contract Logic Build for exactly this
+      # reason, not an import-path issue this repo could fix on its
+      # own. Remove this ignore rule once casper-contract/
+      # casper-engine-test-support/casper-event-standard themselves
+      # support casper-types 7.x -- check manually periodically, since
+      # Dependabot won't propose it again while this rule exists.
+      - dependency-name: "casper-types"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/agents/node"

@@ -16,6 +16,20 @@ see `.github/workflows/security-audit.yml`). Nothing in this repo should be
 deployed with real funds behind it before a professional audit — see
 `docs/deployment-guide.md`'s Security checklist.
 
+## Known accepted risks
+
+- **`adm-zip` (npm, `contracts/tron/package-lock.json`)** — Dependabot
+  alert for a symlink-following arbitrary-file-overwrite issue in the
+  `>= 0.5.9, <= 0.6.0` range. No patched version exists yet upstream
+  as of this writing (`0.6.0`, already the pinned version, is the
+  latest release on npm, still inside the vulnerable range) — there is
+  currently nothing to bump to. Checked `package-lock.json` directly:
+  it's a transitive dependency of Hardhat's own core package (likely
+  used internally for extracting downloaded compiler archives, not
+  something this project's own code calls to process untrusted input),
+  so practical exploitability here is low. Monitored, not silently
+  ignored — re-check when a patched release becomes available.
+
 ## Reporting a vulnerability
 
 **Do not open a public GitHub issue** for a security vulnerability,
