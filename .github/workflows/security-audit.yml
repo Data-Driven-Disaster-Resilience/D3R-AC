@@ -358,10 +358,17 @@ jobs:
   # ---------------------------------------------------------------
   # JS/TS dependency advisory scan (npm audit) — frontend, agents/node,
   # and contracts/tron (hardhat's own dependency tree -- e.g. the
-  # adm-zip transitive advisory documented in
-  # docs/audit-pass-2026-09-09.md was never being scanned here at all
-  # before this project was added to the matrix, since only
-  # frontend/agents-node were covered)
+  # adm-zip transitive advisory documented in SECURITY.md's "Known
+  # accepted risks" section was never being scanned here at all before
+  # this project was added to the matrix, since only frontend/
+  # agents-node were covered). Complementary to, not redundant with,
+  # Dependabot's own coverage in .github/dependabot.yml: Dependabot
+  # proposes upgrade PRs on a weekly schedule when newer versions
+  # exist; this job is the same-day, every-PR signal for whether
+  # what's CURRENTLY installed has a known CVE, which is what actually
+  # caught adm-zip (Dependabot alone wouldn't have, since there is no
+  # newer version to propose yet -- see SECURITY.md for why that
+  # specific finding is accepted rather than blocked on).
   # ---------------------------------------------------------------
   npm-audit:
     name: npm audit (frontend + agents/node + contracts/tron)
