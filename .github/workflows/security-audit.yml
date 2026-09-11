@@ -356,14 +356,19 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------
-  # JS/TS dependency advisory scan (npm audit) — frontend + agents/node
+  # JS/TS dependency advisory scan (npm audit) — frontend, agents/node,
+  # and contracts/tron (hardhat's own dependency tree -- e.g. the
+  # adm-zip transitive advisory documented in
+  # docs/audit-pass-2026-09-09.md was never being scanned here at all
+  # before this project was added to the matrix, since only
+  # frontend/agents-node were covered)
   # ---------------------------------------------------------------
   npm-audit:
-    name: npm audit (frontend + agents/node)
+    name: npm audit (frontend + agents/node + contracts/tron)
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        project: [ frontend, agents/node ]
+        project: [ frontend, agents/node, contracts/tron ]
     steps:
       - uses: actions/checkout@v4
 
@@ -395,7 +400,7 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: npm-audit-report-${{ matrix.project == 'frontend' && 'frontend' || 'agents-node' }}
+          name: npm-audit-report-${{ matrix.project == 'frontend' && 'frontend' || matrix.project == 'agents/node' && 'agents-node' || 'contracts-tron' }}
           path: |
             ${{ matrix.project }}/npm-audit-report.json
             ${{ matrix.project }}/npm-audit-report.txt
