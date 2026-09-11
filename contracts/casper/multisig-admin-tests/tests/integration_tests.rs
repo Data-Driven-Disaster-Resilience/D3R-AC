@@ -221,7 +221,7 @@ fn should_reject_submit_transaction_from_non_owner() {
         runtime_args! {
             ARG_TARGET_PACKAGE_HASH => Key::from(*DEFAULT_ACCOUNT_ADDR),
             ARG_TARGET_ENTRY_POINT => "noop".to_string(),
-            ARG_TARGET_ARGS_BYTES => Vec::<u8>::new(),
+            ARG_TARGET_ARGS_BYTES => casper_types::bytesrepr::Bytes::from(Vec::<u8>::new()),
         },
     )
     .build();
@@ -243,7 +243,7 @@ fn should_reject_submit_transaction_with_an_unparseable_target() {
         runtime_args! {
             ARG_TARGET_PACKAGE_HASH => Key::from(AccountHash::new([3u8; 32])),
             ARG_TARGET_ENTRY_POINT => "noop".to_string(),
-            ARG_TARGET_ARGS_BYTES => Vec::<u8>::new(),
+            ARG_TARGET_ARGS_BYTES => casper_types::bytesrepr::Bytes::from(Vec::<u8>::new()),
         },
     )
     .build();
@@ -261,7 +261,7 @@ fn should_submit_and_auto_confirm_then_reject_double_confirm() {
         runtime_args! {
             ARG_TARGET_PACKAGE_HASH => registry_key,
             ARG_TARGET_ENTRY_POINT => "noop".to_string(),
-            ARG_TARGET_ARGS_BYTES => Vec::<u8>::new(),
+            ARG_TARGET_ARGS_BYTES => casper_types::bytesrepr::Bytes::from(Vec::<u8>::new()),
         },
     )
     .build();
@@ -349,7 +349,7 @@ fn should_reject_execute_below_threshold_and_report_correct_confirmation_count()
         runtime_args! {
             ARG_TARGET_PACKAGE_HASH => registry_key,
             ARG_TARGET_ENTRY_POINT => "noop".to_string(),
-            ARG_TARGET_ARGS_BYTES => Vec::<u8>::new(),
+            ARG_TARGET_ARGS_BYTES => casper_types::bytesrepr::Bytes::from(Vec::<u8>::new()),
         },
     )
     .build();
@@ -379,7 +379,7 @@ fn should_confirm_then_revoke_then_reject_double_revoke() {
         runtime_args! {
             ARG_TARGET_PACKAGE_HASH => registry_key,
             ARG_TARGET_ENTRY_POINT => "noop".to_string(),
-            ARG_TARGET_ARGS_BYTES => Vec::<u8>::new(),
+            ARG_TARGET_ARGS_BYTES => casper_types::bytesrepr::Bytes::from(Vec::<u8>::new()),
         },
     )
     .build();
@@ -497,9 +497,11 @@ fn should_execute_a_confirmed_transaction_against_a_real_contract() {
     // submit_transaction/execute_transaction -- exactly the real
     // workflow this multisig is for.
     let accept_args = runtime_args! {};
-    let accept_args_bytes = accept_args
-        .to_bytes()
-        .expect("empty RuntimeArgs should always serialize");
+    let accept_args_bytes = casper_types::bytesrepr::Bytes::from(
+        accept_args
+            .to_bytes()
+            .expect("empty RuntimeArgs should always serialize"),
+    );
 
     let submit_accept_request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
@@ -530,9 +532,11 @@ fn should_execute_a_confirmed_transaction_against_a_real_contract() {
         "account" => target_account,
         "is_verifier" => true,
     };
-    let set_verifier_args_bytes = set_verifier_args
-        .to_bytes()
-        .expect("RuntimeArgs should serialize");
+    let set_verifier_args_bytes = casper_types::bytesrepr::Bytes::from(
+        set_verifier_args
+            .to_bytes()
+            .expect("RuntimeArgs should serialize"),
+    );
 
     let submit_request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,

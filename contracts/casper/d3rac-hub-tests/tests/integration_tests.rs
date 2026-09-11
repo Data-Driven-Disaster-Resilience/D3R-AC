@@ -423,9 +423,11 @@ fn should_wire_hub_to_all_five_modules_transfer_admin_to_multisig_and_execute_a_
     // multisig's own code can make it the immediate caller of the
     // Hub's accept_admin, same reasoning as every other *-tests file's
     // own accept-via-multisig step.
-    let accept_args_bytes = runtime_args! {}
-        .to_bytes()
-        .expect("empty RuntimeArgs should always serialize");
+    let accept_args_bytes = casper_types::bytesrepr::Bytes::from(
+        runtime_args! {}
+            .to_bytes()
+            .expect("empty RuntimeArgs should always serialize"),
+    );
     let submit_accept_req = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
         multisig_hash,
@@ -479,9 +481,11 @@ fn should_wire_hub_to_all_five_modules_transfer_admin_to_multisig_and_execute_a_
         "name" => "Routed Through Multisig".to_string(),
         "region" => "Test Region".to_string(),
     };
-    let register_args_bytes = register_args
-        .to_bytes()
-        .expect("RuntimeArgs should serialize");
+    let register_args_bytes = casper_types::bytesrepr::Bytes::from(
+        register_args
+            .to_bytes()
+            .expect("RuntimeArgs should serialize"),
+    );
     let submit_register_req = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
         multisig_hash,

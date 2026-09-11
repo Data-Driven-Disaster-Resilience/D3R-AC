@@ -19,6 +19,10 @@ contracts/tron/cache/
 # Cargo build output for contracts/casper (see contracts/casper/README.md)
 # — regenerate with `cargo build --release --target wasm32-unknown-unknown`.
 contracts/casper/target/
+# Staged .wasm build artifacts inside each *-tests package -- CI's own
+# wasm-staging step (d3rac-ci.yml) populates these fresh from
+# target/wasm32-unknown-unknown/ on every run; regenerate, don't commit.
+contracts/casper/*-tests/wasm/
 contracts/casper/**/target/
 Cargo.lock.bak
 
