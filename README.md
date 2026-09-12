@@ -106,7 +106,7 @@ admin role, a central coordinator ("Hub") with full role/ownership
 control over the other five contracts, an on-chain risk registry, and
 a funding-request board (seven contracts total; see
 [`contracts/tron/README.md`](contracts/tron/README.md)) — with a
-**logic-tested suite (116 passing tests)**, and, as of 2026-09-03,
+**logic-tested suite (123 passing tests)**, and, as of 2026-09-03,
 **deployed to TRON's Shasta testnet** (see
 [`docs/deployment-guide.md`](docs/deployment-guide.md)'s status note
 for the run and current admin topology — a deliberately minimal 1-of-1
@@ -150,7 +150,10 @@ of its integration tests**, including a genuine cross-contract
 `d3rac-hub` (SRS FR-8, one comprehensive integration test: installs
 all seven contracts, wires the Hub to all five modules, and proves a
 full admin handoff to a 1-of-1 multisig via a real Hub-mediated call)
-— **56 Casper tests total**, all against a local Casper network. A systemic
+— **67 Casper tests total** (`funding-request-registry`'s own
+11-test suite, written and passing since this count was last
+updated, brought the total up from 56), all against a local Casper
+network. A systemic
 finding surfaced along the way — every contract's
 admin/owner check used `runtime::get_caller()`, which can't recognize
 a *contract* (like `multisig-admin` or the Hub itself) as the caller
@@ -160,8 +163,7 @@ that had it (see
 full writeup), and the Hub's own test now exercises that fix for real
 rather than only reasoning about it. `funding-request-registry` (SRS
 FR-6) is now also **confirmed
-compiling**, using the fixed caller-resolution pattern from the start;
-no integration test suite yet. As of 2026-09-07, all seven were
+compiling and passing all 11 of its integration tests**, using the fixed caller-resolution pattern from the start. As of 2026-09-07, all seven were
 deployed and wired for real against Casper testnet (see
 [`docs/deployment-guide.md`](docs/deployment-guide.md)'s status note
 for the run — the Hub's admin handoff to its multisig was proposed
@@ -185,9 +187,52 @@ communities on the platform. See [`docs/donations.md`](docs/donations.md)
 for addresses (USDT-TRC20, TRX, BTC, USDT-ERC20). Always double-check the
 network matches the asset before sending.
 
-## Security
+## Security & Audit Status
 
-This contract has **not** been professionally audited. Do not deploy to mainnet with real funds without a proper security review. See [`contracts/tron/README.md`](contracts/tron/README.md) for known limitations.
+**This project has not been professionally audited. Do not deploy to
+mainnet, or accept real funds on any deployment, without a proper
+third-party security review first.**
+
+What exists in its place, as of this writing:
+
+- **Two internal self-review passes** on the TRON contracts
+  ([`docs/audit-pass-2026-07-25.md`](docs/audit-pass-2026-07-25.md),
+  [`docs/audit-pass-2026-09-09.md`](docs/audit-pass-2026-09-09.md)) —
+  explicitly not a substitute for a professional audit, no matter how
+  thorough, and both say so themselves.
+- **Continuous automated scanning** on every PR and weekly on a
+  schedule ([`.github/workflows/security-audit.yml`](.github/workflows/security-audit.yml)):
+  Slither (Solidity), Mythril (symbolic execution), cargo-audit (Rust),
+  npm audit (frontend, `agents/node`, and `contracts/tron`'s own
+  dependency tree), and pip-audit (`agents/python`, `data-pipeline`).
+  Dated reports land in [`docs/audit-reports/`](docs/audit-reports/).
+  Known accepted risks (findings with no available fix yet) are
+  tracked explicitly in [`SECURITY.md`](SECURITY.md), not silently
+  ignored.
+- **Real, executed test coverage on both chains** — 123 tests for the
+  TRON contracts, 67 for the Casper contracts, all genuinely run
+  against real compiled code (Hardhat's local EVM for TRON;
+  `casper-engine-test-support`'s local execution engine, against real
+  `wasm32-unknown-unknown` binaries, for Casper) — not just written or
+  compile-checked.
+- **Both chains have a real, successful testnet deployment**: TRON to
+  Shasta (2026-09-03,
+  [run #33703052261](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/33703052261)),
+  Casper to its own public testnet (2026-09-07,
+  [run #34073617859](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/34073617859)).
+  See [`docs/deployment-guide.md`](docs/deployment-guide.md)'s status
+  note for exact current topology (both deployed with a deliberately
+  minimal 1-of-1 multisig — a real, intentional starting configuration,
+  not something to mistake for production-ready).
+
+**A full audit engagement package is maintained at
+[`docs/audit-engagement-package.md`](docs/audit-engagement-package.md)**
+— codebase inventory, a findings register formatted for direct import
+into an auditor's own tracker, current 2026 market pricing across
+audit tiers, and a section showing exactly how to independently verify
+every claim in it against this repository. That document is the
+starting point for engaging a real auditor; this section is a summary
+of it.
 
 ## License
 
