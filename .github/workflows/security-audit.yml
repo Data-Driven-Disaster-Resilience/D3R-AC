@@ -63,7 +63,7 @@ jobs:
     name: Slither (Solidity)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check contracts exist
         id: check
@@ -206,7 +206,7 @@ jobs:
     name: Mythril (Solidity symbolic execution)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check contracts exist
         id: check
@@ -306,7 +306,7 @@ jobs:
     name: cargo-audit (Casper / Rust)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check Casper contracts exist
         id: check
@@ -377,7 +377,7 @@ jobs:
       matrix:
         project: [ frontend, agents/node, contracts/tron ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check project exists
         id: check
@@ -434,7 +434,7 @@ jobs:
       matrix:
         project: [ data-pipeline, agents/python ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check project exists
         id: check
@@ -504,7 +504,7 @@ jobs:
     if: always() && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download all reports
         uses: actions/download-artifact@v4

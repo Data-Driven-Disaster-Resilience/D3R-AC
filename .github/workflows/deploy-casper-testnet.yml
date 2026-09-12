@@ -39,7 +39,7 @@ jobs:
           echo "::error::Input 'confirm' must be exactly 'deploy'. Refusing to run."
           exit 1
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
