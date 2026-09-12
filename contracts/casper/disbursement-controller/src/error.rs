@@ -53,6 +53,13 @@ pub enum DisbursementControllerError {
     /// `immediate_caller_key` doesn't recognize -- see that function's
     /// own comment for which kinds are handled and why.
     UnrecognizedCallerKind = 20,
+    /// docs/casper-audit-pass-2026-09-05.md M-1: `checked_add` guard on
+    /// milestone-sum accumulation (`create_commitment`) and
+    /// `released_amount` accumulation (`release_milestone`), so an
+    /// overflow reverts with this contract's own typed error instead
+    /// of relying solely on `overflow-checks = true`'s generic Wasm
+    /// trap.
+    ArithmeticOverflow = 21,
 }
 
 impl From<DisbursementControllerError> for ApiError {

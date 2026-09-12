@@ -169,7 +169,9 @@ pub extern "C" fn create_commitment() {
             attested_at: 0,
             released_at: 0,
         });
-        total_amount += amount;
+        total_amount = total_amount
+            .checked_add(amount)
+            .unwrap_or_revert_with(DisbursementControllerError::ArithmeticOverflow);
     }
     let milestone_count = milestones.len() as u64;
 
@@ -276,7 +278,10 @@ pub extern "C" fn release_milestone() {
     // Effects before interaction.
     milestone.released = true;
     milestone.released_at = runtime::get_blocktime().into();
-    commitment.released_amount += amount;
+    commitment.released_amount = commitment
+        .released_amount
+        .checked_add(amount)
+        .unwrap_or_revert_with(DisbursementControllerError::ArithmeticOverflow);
     storage::dictionary_put(commitments_dict(), &commitment_id.to_string(), commitment);
 
     casper_event_standard::emit(MilestoneReleased {
