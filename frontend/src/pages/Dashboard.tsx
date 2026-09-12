@@ -72,12 +72,9 @@ const rows = communities
       pre-positioning.
     </p>
 
+
     <KpiCards />
     <RiskOverview />
-    <FundingProgress />
-
-      <KpiCards />
-     <RiskOverview />
     <FundingProgress />
 
       <div
