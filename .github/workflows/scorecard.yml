@@ -86,6 +86,6 @@ jobs:
           retention-days: 5
 
       - name: Upload to code-scanning
-        uses: github/codeql-action/upload-sarif@2d92b76c45b91eb80fc44c74ce3fce0ee94e8f9d # v3.30.0 -- SHA independently confirmed via a real dependabot bump commit (fluent/fluentd@308b336), not asserted from memory.
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v3.30.0 -- SHA independently confirmed via a real dependabot bump commit (fluent/fluentd@308b336), not asserted from memory.
         with:
           sarif_file: results.sarif
