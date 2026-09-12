@@ -374,10 +374,18 @@ one `casper-types` version now resolves across the whole graph.
       handoff to its multisig is proposed but not yet accepted --
       that step is still manual, deliberately, per
       `deploy-testnet.sh`'s own comment.
+- [x] Internal security self-review -- see
+      [`docs/casper-audit-pass-2026-09-05.md`](../../docs/casper-audit-pass-2026-09-05.md):
+      0 High, 2 Medium (one fixed in the same pass --
+      `overflow-checks` wasn't enabled in the release profile, a real
+      Rust-specific gap with no Solidity >=0.8 equivalent to reason
+      about by analogy), 4 Low, 4 Informational.
 - [ ] Professional security audit (matches the TRON suite's own
-      status — see [`docs/audit-pass-2026-07-25.md`](../../docs/audit-pass-2026-07-25.md)
+      status -- see [`docs/audit-pass-2026-07-25.md`](../../docs/audit-pass-2026-07-25.md)
       and [`docs/audit-pass-2026-09-09.md`](../../docs/audit-pass-2026-09-09.md),
-      two self-reviews, explicitly not a substitute for a professional one)
+      two self-reviews, explicitly not a substitute for a professional one) --
+      see [`docs/audit-engagement-package.md`](../../docs/audit-engagement-package.md)
+      for the full engagement-ready package covering both chains
 - [ ] Mainnet deployment of anything in this suite — not to be
       considered until every item above is done, the same "no
       deploying real funds without a proper security review" posture
