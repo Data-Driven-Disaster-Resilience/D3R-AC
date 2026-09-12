@@ -6,6 +6,7 @@ import { FormField as Field, inputStyle } from "../components/FormField";
 
 export default function Disburse() {
   const { adapter, chainId, address, connect, connecting } = useWallet();
+  const currentAvailable = adapter.isWalletAvailable();
   const [tokenContract, setTokenContract] = useState("");
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
@@ -26,10 +27,20 @@ export default function Disburse() {
     }
   }
 
+  function isValidTronAddress(value: string): boolean {
+    return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(value.trim());
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setErr(null);
     setResult(null);
+
+    if (chainId === "tron" && !isValidTronAddress(to)) {
+      setErr("Enter a valid TRON recipient address.");
+      return;
+    }
+
     setBusy("send");
     try {
       setResult(await adapter.disburse({ tokenContract, to, amount }));
@@ -41,31 +52,90 @@ export default function Disburse() {
   }
 
   return (
-    <section className="container" style={{ padding: "48px 24px 96px", maxWidth: 640 }}>
-      <p className="eyebrow" style={{ marginBottom: 12 }}>Disbursement console</p>
-      <h1 style={{ fontSize: 30, marginBottom: 8 }}>Release a milestone payment</h1>
+    <section
+      className="container"
+      style={{ padding: "48px 24px 96px", maxWidth: 640 }}
+    >
+      <p className="eyebrow" style={{ marginBottom: 12 }}>
+        Disbursement console
+      </p>
+      <h1 style={{ fontSize: 30, marginBottom: 8 }}>
+        Release a milestone payment
+      </h1>
       <p style={{ color: "var(--text-muted)", marginBottom: 32 }}>
-        Currently targeting <strong style={{ color: "var(--text)" }}>{adapter.label}</strong>.
+        Currently targeting{" "}
+        <strong style={{ color: "var(--text)" }}>{adapter.label}</strong>.
         Switch chains from the selector in the top bar.
       </p>
 
       {!address ? (
         <div className="card" style={{ textAlign: "center" }}>
-          <p style={{ marginBottom: 16, color: "var(--text-muted)" }}>
-            Connect a {adapter.label} wallet to read balances and send funds.
+          <p className="eyebrow" style={{ marginBottom: 10 }}>
+            Wallet required
           </p>
-          {adapter.isWalletAvailable() ? (
-            <button className="btn btn-primary" onClick={connect} disabled={connecting}>
+
+          <h2 style={{ fontSize: 22, marginBottom: 8 }}>
+            Connect your {adapter.label} wallet
+          </h2>
+
+          <p
+            style={{
+              marginBottom: 20,
+              color: "var(--text-muted)",
+              lineHeight: 1.6,
+            }}
+          >
+            Connect a wallet to check your token balance and authorize milestone
+            disbursements on the selected chain.
+          </p>
+
+          <div
+            className="pill"
+            style={{
+              display: "inline-flex",
+              marginBottom: 20,
+              color: currentAvailable ? "var(--teal)" : "var(--text-muted)",
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: currentAvailable
+                  ? "var(--teal)"
+                  : "var(--text-muted)",
+              }}
+            />
+            {adapter.label} wallet{" "}
+            {currentAvailable ? "detected" : "not detected"}
+          </div>
+
+          {currentAvailable ? (
+            <button
+              className="btn btn-primary"
+              onClick={connect}
+              disabled={connecting}
+            >
               {connecting ? "Connecting…" : `Connect ${adapter.label} wallet`}
             </button>
           ) : (
-            <a href={adapter.installUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
+            <a
+              href={adapter.installUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-primary"
+            >
               Install {adapter.label} wallet
             </a>
           )}
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="card" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <form
+          onSubmit={handleSubmit}
+          className="card"
+          style={{ display: "flex", flexDirection: "column", gap: 18 }}
+        >
           <Field label="Token contract address">
             <input
               value={tokenContract}
@@ -76,34 +146,194 @@ export default function Disburse() {
             />
           </Field>
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button type="button" className="btn btn-ghost" onClick={checkBalance} disabled={!tokenContract || busy === "balance"}>
-              {busy === "balance" ? "Checking…" : "Check balance"}
-            </button>
-            {balance && (
-              <span className="mono" style={{ fontSize: 13, color: "var(--teal)" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              padding: "12px 14px",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              background: "var(--bg-raised)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Available balance
+              </span>
+
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={checkBalance}
+                disabled={!tokenContract || busy === "balance"}
+              >
+                {busy === "balance" ? "Checking…" : "Check balance"}
+              </button>
+            </div>
+
+            {balance ? (
+              <span
+                className="mono"
+                style={{
+                  fontSize: 18,
+                  color: "var(--teal)",
+                  fontWeight: 600,
+                }}
+              >
                 {balance.amount} {balance.symbol}
+              </span>
+            ) : (
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Enter a token contract and check the connected wallet balance.
               </span>
             )}
           </div>
 
           <Field label="Recipient address">
-            <input value={to} onChange={(e) => setTo(e.target.value)} required style={inputStyle} />
+            <input
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              placeholder={chainId === "tron" ? "T..." : "Recipient address"}
+              autoComplete="off"
+              required
+              style={inputStyle}
+            />
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              {chainId === "tron"
+                ? "Enter the recipient's TRON address starting with T."
+                : "Enter the recipient wallet address."}
+            </span>
           </Field>
 
           <Field label="Amount">
-            <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" step="any" min="0" required style={inputStyle} />
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              type="text"
+              inputMode="decimal"
+              placeholder="0.00"
+              autoComplete="off"
+              required
+              style={inputStyle}
+            />
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              Enter the exact token amount to release.
+            </span>
           </Field>
 
-          <button type="submit" className="btn btn-primary" disabled={busy === "send"}>
+          <div
+            style={{
+              padding: "14px",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              background: "var(--bg-raised)",
+            }}
+          >
+            <p
+              style={{
+                marginBottom: 10,
+                fontSize: 12,
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Transaction review
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 8,
+                fontSize: 13,
+              }}
+            >
+              <div>
+                <span style={{ color: "var(--text-muted)" }}>Chain: </span>
+                <strong>{adapter.label}</strong>
+              </div>
+
+              <div>
+                <span style={{ color: "var(--text-muted)" }}>Recipient: </span>
+                <span className="mono">{to || "Not entered"}</span>
+              </div>
+
+              <div>
+                <span style={{ color: "var(--text-muted)" }}>Amount: </span>
+                <strong>
+                  {amount || "0.00"} {balance?.symbol || ""}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={busy === "send"}
+          >
             {busy === "send" ? "Broadcasting…" : "Release funds"}
           </button>
 
           {err && <p style={{ color: "var(--coral)", fontSize: 13 }}>{err}</p>}
           {result && (
-            <p style={{ color: "var(--teal)", fontSize: 13 }} className="mono">
-              Sent. <a href={result.explorerUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>View on explorer →</a>
-            </p>
+            <div
+              style={{
+                padding: "14px",
+                border: "1px solid var(--teal)",
+                borderRadius: 8,
+                background: "var(--bg-raised)",
+              }}
+            >
+              <p
+                style={{
+                  marginBottom: 8,
+                  color: "var(--teal)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                ✓ Disbursement submitted successfully
+              </p>
+
+              <div style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                <span style={{ color: "var(--text-muted)" }}>
+                  Transaction hash
+                </span>
+
+                <span
+                  className="mono"
+                  style={{
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {result.txHash}
+                </span>
+
+                <a
+                  href={result.explorerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color: "var(--teal)",
+                    textDecoration: "underline",
+                    marginTop: 4,
+                  }}
+                >
+                  View transaction on explorer →
+                </a>
+              </div>
+            </div>
           )}
         </form>
       )}
