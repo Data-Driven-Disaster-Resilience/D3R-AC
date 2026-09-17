@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload Slither report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: slither-report
           path: |
@@ -278,7 +278,7 @@ jobs:
 
       - name: Upload Mythril report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mythril-report
           path: |
@@ -336,7 +336,7 @@ jobs:
 
       - name: Upload cargo-audit report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cargo-audit-report
           path: |
@@ -405,7 +405,7 @@ jobs:
 
       - name: Upload npm audit report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm-audit-report-${{ matrix.project == 'frontend' && 'frontend' || matrix.project == 'agents/node' && 'agents-node' || 'contracts-tron' }}
           path: |
@@ -473,7 +473,7 @@ jobs:
 
       - name: Upload pip-audit report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pip-audit-report-${{ matrix.project == 'data-pipeline' && 'data-pipeline' || 'agents-python' }}
           path: |
