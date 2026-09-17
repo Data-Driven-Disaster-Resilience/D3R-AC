@@ -41,7 +41,7 @@ jobs:
 
       - name: Filter changed paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           # On the very first commit to a repo there's no prior commit
           # to diff against; paths-filter falls back sensibly, but we
