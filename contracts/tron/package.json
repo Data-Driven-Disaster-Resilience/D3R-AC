@@ -21,7 +21,7 @@
     "chai": "^5.1.2",
     "ethers": "^6.4.0",
     "hardhat": "^3.0.0",
-    "tronweb": "^6.5.0"
+    "tronweb": "^6.5.1"
   },
   "overrides": {
     "adm-zip": "^0.6.0",
