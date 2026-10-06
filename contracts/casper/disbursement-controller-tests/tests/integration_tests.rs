@@ -10,12 +10,9 @@
 //! `should_reject_release_when_disbursement_controller_holds_no_tokens`
 //! additionally installs a real `d3rac-token` and confirms
 //! `release_milestone` rejects when this contract holds none of the
-//! configured token. A funded-success-path assertion was attempted
-//! here too and removed -- see that test's own extensive comment for
-//! why (real, confirmed plumbing across two layers: Casper's
-//! `get_caller()` semantics, since fixed elsewhere in this codebase,
-//! and a `Key` variant mismatch between a package identity and an
-//! entity/contract-hash identity, not yet confirmed).
+//! configured token. `should_release_a_funded_milestone_and_debit_the_controller`
+//! covers the funded-success path, funding the controller at its
+//! *package* Key (see that test's comment for the Key-variant detail).
 
 use casper_engine_test_support::{
     ExecuteRequestBuilder, LmdbWasmTestBuilder, DEFAULT_ACCOUNT_ADDR, LOCAL_GENESIS_REQUEST,

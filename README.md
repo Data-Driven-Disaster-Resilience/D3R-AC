@@ -105,7 +105,7 @@ Don't treat a testnet deployment as mainnet-readiness.
 | Layer | Implementation | Tests | Testnet |
 |---|---|---|---|
 | TRON contracts (token, identity, disbursement, multisig admin, Hub, risk registry, funding-request registry, token factory) | Solidity 0.8.20, `evmVersion: paris` | 123 passing (Hardhat) | Shasta, deployed 2026-09-03 (1-of-1 multisig admin) |
-| Casper contracts (same seven modules) | Rust/WASM | 67 passing (local Casper network) | Casper testnet, deployed 2026-09-07 (Hub admin handoff proposed, not yet accepted) |
+| Casper contracts (same seven modules) | Rust/WASM | 68 passing (local Casper network) | Casper testnet, deployed 2026-09-07 (Hub admin handoff proposed, not yet accepted) |
 | Data pipeline | NASA FIRMS, USGS, EONET, GDACS; Africa-prioritized | 32 passing | On-chain submission path not yet run against a live network |
 | Agents | Python + Node manifest-driven fleet; Claude-backed `brainbox` | Unit tests | `contractTriggerAgent` is read-only (dry-run, never broadcasts); TRON readiness check unverified against a live node |
 | Frontend | React + Vite + TS, offline-capable (service worker) | 16 passing | Casper adapter in place; TRON adapter targets Shasta via `VITE_TRON_NETWORK` |
