@@ -50,7 +50,7 @@ Set `ANTHROPIC_API_KEY` in the environment to get real Claude reasoning. Without
 |---|---|
 | **Data layer** (hazard, exposure, vulnerability signals) | `python/` data agents: `hazard_agent.py`, `exposure_agent.py`, `vulnerability_agent.py` |
 | **Risk model** `R(c,t) = H(t)·E(c)·V(c)` | `python/src/d3rac_agents/risk_model.py` — subscribes to the three signals, publishes `risk.score`, fires when it crosses `θ` |
-| **Smart contract layer** (TRON / Casper milestone release) | `node/src/agents/contractTriggerAgent.ts` — subscribes to `response.plan`, calls into `contracts/tron` and `contracts/casper` interfaces (stubbed — wire in your deployed contract addresses/ABIs) |
+| **Smart contract layer** (TRON / Casper milestone release) | `node/src/agents/contractTriggerAgent.ts` — subscribes to `response.plan`, prepares milestone-release requests. Read-only: it checks the mapped commitment exists on the deployed TRON `DisbursementController` and publishes a `dry-run` (or `blocked`) event — it never signs or broadcasts, refuses TRON mainnet, and Casper is not implemented yet. Configure via `D3RAC_TRON_FULL_NODE`, `D3RAC_TRON_DISBURSEMENT_CONTROLLER`, `D3RAC_COMMITMENT_MAP` |
 | **Community access layer** (NGOs, coordinators) | `node/src/agents/coordinationAgent.ts` (drafts a response plan) + `alertAgent.ts` (notifies community/NGO channels) |
 
 > **Note on CI:** GitHub only reads workflows from the repo root's `.github/workflows/`.
