@@ -11,7 +11,8 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useWallet } from "../context/useWallet";
 import type { TokenBalance } from "../lib/chainAdapter";
-import { FormField, inputStyle } from "../components/FormField";
+import { FormField } from "../components/FormField";
+import { inputStyle } from "../components/formStyles";
 
 export default function Wallet() {
   const { adapter, chainId, address, connect, connecting, availableChains, setChain } = useWallet();

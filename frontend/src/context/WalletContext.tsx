@@ -1,26 +1,15 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { ChainAdapter, ChainId } from "../lib/chainAdapter";
 import { tronAdapter } from "../lib/tronAdapter";
 import { casperAdapter } from "../lib/casperAdapter";
+import { WalletContext } from "./walletContextValue";
+import type { WalletState } from "./walletContextValue";
 
 const ADAPTERS: Record<ChainId, ChainAdapter> = {
   tron: tronAdapter,
   casper: casperAdapter,
 };
-
-export interface WalletState {
-  chainId: ChainId;
-  adapter: ChainAdapter;
-  address: string | null;
-  connecting: boolean;
-  error: string | null;
-  setChain: (id: ChainId) => void;
-  connect: () => Promise<void>;
-  availableChains: { id: ChainId; label: string; available: boolean }[];
-}
-
-export const WalletContext = createContext<WalletState | null>(null);
 
 function pickAvailableChain(): ChainId | null {
   if (tronAdapter.isWalletAvailable()) return "tron";

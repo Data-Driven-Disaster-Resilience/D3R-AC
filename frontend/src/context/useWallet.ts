@@ -1,6 +1,6 @@
 import { useContext } from "react";
-import { WalletContext } from "./WalletContext";
-import type { WalletState } from "./WalletContext";
+import { WalletContext } from "./walletContextValue";
+import type { WalletState } from "./walletContextValue";
 
 export function useWallet(): WalletState {
   const ctx = useContext(WalletContext);
