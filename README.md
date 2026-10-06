@@ -53,8 +53,7 @@ d3rac/
 ├── data-pipeline/         # Risk-scoring pipeline (R(c,t) implementation)
 ├── agents/               # Manifest-driven AI agent fleet (data, risk-model, brainbox,
 │                          # coordination, contract-trigger) — see agents/README.md
-├── docs/                 # Architecture, risk model, deployment guides
-└── scripts/deploy/        # Deployment scripts
+└── docs/                 # Architecture, risk model, audits, deployment guides
 ```
 
 ## Tech Stack
@@ -68,7 +67,7 @@ d3rac/
 ## Getting Started
 
 ```bash
-git clone https://github.com/D3RAC/D3R-AC.git
+git clone https://github.com/Data-Driven-Disaster-Resilience/D3R-AC.git
 cd D3R-AC
 ```
 
@@ -100,78 +99,28 @@ See [`agents/README.md`](agents/README.md) for the full agent list, the manifest
 
 ## Status
 
-🚧 **Active development.** TRON smart contract suite implemented — token,
-identity registry, milestone-based disbursement controller, a multisig
-admin role, a central coordinator ("Hub") with full role/ownership
-control over the other five contracts, an on-chain risk registry, and
-a funding-request board (seven contracts total; see
-[`contracts/tron/README.md`](contracts/tron/README.md)) — with a
-**logic-tested suite (123 passing tests)**, and, as of 2026-09-03,
-**deployed to TRON's Shasta testnet** (see
-[`docs/deployment-guide.md`](docs/deployment-guide.md)'s status note
-for the run and current admin topology — a deliberately minimal 1-of-1
-multisig, not a production configuration). **Still not professionally
-audited** (see
-[`docs/audit-pass-2026-07-25.md`](docs/audit-pass-2026-07-25.md) and
-[`docs/audit-pass-2026-09-09.md`](docs/audit-pass-2026-09-09.md) for
-two internal self-review passes — explicitly not a substitute for a
-professional one, no matter how thorough) —
-don't treat a testnet deployment as mainnet-readiness.
-Frontend community access layer implemented (TRON live, Casper adapter
-in place pending Casper contract deployment; the TRON adapter targets
-Shasta generically via `VITE_TRON_NETWORK` and hasn't yet been pointed
-at this specific deployment's contract addresses), with offline/
-low-connectivity resilience (service-worker caching of the app shell and
-last-known live data, timeout+retry on the live feed) so the app stays
-usable on a slow or intermittent connection — satellite (e.g. Starlink)
-or terrestrial. Data pipeline implemented per
-[`docs/data-pipeline-srs.md`](docs/data-pipeline-srs.md) — satellite/sensor
-hazard ingestion (NASA FIRMS, USGS, NASA EONET, GDACS), Africa-prioritized,
-with a 32-test suite (see [`data-pipeline/README.md`](data-pipeline/README.md))
-— but **not yet run against the now-deployed Hub/RiskRegistry** on
-Shasta; the pipeline's own on-chain submission path is still untested
-against a real network, deployment having only just happened. Casper
-contracts: all seven now have source written — `risk-registry`
-(chosen as the SRS's own standalone/no-dependency starting point,
-**confirmed compiling** against `wasm32-unknown-unknown`, **passing
-all 5 of its integration tests**), `identity-registry` (SRS FR-2,
-**passing all 9 of its integration tests**), `disbursement-controller`
-(SRS FR-3, milestone-based fund release with a genuine cross-contract
-call into `identity-registry`'s `is_verified`, **passing all 14 of its
-integration tests** — though the funded-success path for its actual
-fund release isn't one of them yet, see
-[`contracts/casper/README.md`](contracts/casper/README.md) for why),
-`d3rac-token` (SRS FR-1, a full CEP-18
-token — all 11 standard entry points, standard events, and the
-standard's own exact error codes, **passing all 13 of its
-integration tests**), `multisig-admin` (SRS FR-4, **passing all 14
-of its integration tests**, including a genuine cross-contract
-`execute_transaction` call against a real `identity-registry`), and
-`d3rac-hub` (SRS FR-8, one comprehensive integration test: installs
-all seven contracts, wires the Hub to all five modules, and proves a
-full admin handoff to a 1-of-1 multisig via a real Hub-mediated call)
-— **67 Casper tests total** (`funding-request-registry`'s own
-11-test suite, written and passing since this count was last
-updated, brought the total up from 56), all against a local Casper
-network. A systemic
-finding surfaced along the way — every contract's
-admin/owner check used `runtime::get_caller()`, which can't recognize
-a *contract* (like `multisig-admin` or the Hub itself) as the caller
-after a two-step admin transfer — was fixed across all five contracts
-that had it (see
-[`contracts/casper/README.md`](contracts/casper/README.md) for the
-full writeup), and the Hub's own test now exercises that fix for real
-rather than only reasoning about it. `funding-request-registry` (SRS
-FR-6) is now also **confirmed
-compiling and passing all 11 of its integration tests**, using the fixed caller-resolution pattern from the start. As of 2026-09-07, all seven were
-deployed and wired for real against Casper testnet (see
-[`docs/deployment-guide.md`](docs/deployment-guide.md)'s status note
-for the run — the Hub's admin handoff to its multisig was proposed
-but not yet accepted, deliberately left as a manual step). See
-[`contracts/casper/README.md`](contracts/casper/README.md)
-for the honest, itemized status; Hub wiring,
-frontend adapter completion, testnet testing, and any deployment are
-all still pending.
+🚧 **Active development — testnet only, not professionally audited.**
+Don't treat a testnet deployment as mainnet-readiness.
+
+| Layer | Implementation | Tests | Testnet |
+|---|---|---|---|
+| TRON contracts (token, identity, disbursement, multisig admin, Hub, risk registry, funding-request registry, token factory) | Solidity 0.8.20, `evmVersion: paris` | 123 passing (Hardhat) | Shasta, deployed 2026-09-03 (1-of-1 multisig admin) |
+| Casper contracts (same seven modules) | Rust/WASM | 67 passing (local Casper network) | Casper testnet, deployed 2026-09-07 (Hub admin handoff proposed, not yet accepted) |
+| Data pipeline | NASA FIRMS, USGS, EONET, GDACS; Africa-prioritized | 32 passing | On-chain submission path not yet run against a live network |
+| Agents | Python + Node manifest-driven fleet; Claude-backed `brainbox` | Unit tests | `contractTriggerAgent` is still a stub |
+| Frontend | React + Vite + TS, offline-capable (service worker) | 16 passing | Casper adapter in place; TRON adapter targets Shasta via `VITE_TRON_NETWORK` |
+
+Details live next to the code: [`contracts/tron/README.md`](contracts/tron/README.md),
+[`contracts/casper/README.md`](contracts/casper/README.md) (itemized per-contract
+status and the caller-resolution fix writeup), [`data-pipeline/README.md`](data-pipeline/README.md),
+[`agents/README.md`](agents/README.md), and [`docs/deployment-guide.md`](docs/deployment-guide.md)
+(deployment runs and current admin topology).
+
+Audit status: two internal self-review passes on the TRON contracts
+([2026-07-25](docs/audit-pass-2026-07-25.md), [2026-09-09](docs/audit-pass-2026-09-09.md))
+and one on Casper ([2026-09-05](docs/casper-audit-pass-2026-09-05.md)) — explicitly
+not a substitute for a professional audit.
+
 The data pipeline SRS carries its own additional, even more restrictive
 notice on top of the proprietary [`LICENSE`](LICENSE) that already
 governs this entire repository.
