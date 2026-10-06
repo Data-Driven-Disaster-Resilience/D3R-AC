@@ -625,7 +625,7 @@ fn should_release_a_funded_milestone_and_debit_the_controller() {
         .build();
         builder.exec(request).expect_success().commit();
     };
-    let release = |builder: &mut LmdbWasmTestBuilder, index: u64| {
+    let release = |index: u64| {
         ExecuteRequestBuilder::contract_call_by_hash(
             *DEFAULT_ACCOUNT_ADDR,
             dc_hash,
@@ -637,16 +637,16 @@ fn should_release_a_funded_milestone_and_debit_the_controller() {
 
     // Fund exactly milestone 0's amount, then release it: must succeed.
     mint(&mut builder, 1_000);
-    builder.exec(release(&mut builder, 0)).expect_success().commit();
+    builder.exec(release(0)).expect_success().commit();
 
     // Re-releasing the same milestone must fail (already released).
-    builder.exec(release(&mut builder, 0)).expect_failure();
+    builder.exec(release(0)).expect_failure();
 
     // The controller's balance was actually debited: milestone 1 (500) now
     // fails for lack of funds even though it is attested...
-    builder.exec(release(&mut builder, 1)).expect_failure();
+    builder.exec(release(1)).expect_failure();
 
     // ...and succeeds once the controller is funded again.
     mint(&mut builder, 500);
-    builder.exec(release(&mut builder, 1)).expect_success().commit();
+    builder.exec(release(1)).expect_success().commit();
 }
