@@ -188,24 +188,18 @@ one `casper-types` version now resolves across the whole graph.
       pre-check" design decision relies on CEP-18's own revert for.
       **The funded-success path is not yet covered** — see the ⚠️
       below.
-- [ ] **⚠️ Funded-success path for `release_milestone` still not
-      tested, though its root cause is now fixed** — an earlier
-      attempt to fund `disbursement-controller` and release surfaced
-      two real, separate issues. First: Casper's
-      `runtime::get_caller()` always resolves to the originating
-      deploy-signing account, never the immediate calling contract —
-      this is now fixed suite-wide (see the "Systemic fix" bullet
-      below), including in `d3rac-token`'s own `transfer`. Second, once
-      that fix was in place: the fix resolves a calling contract's
-      identity to `Key::from(ContractPackageHash)` (the contract's
-      *package* identity), but the original test attempt minted to
-      `Key::from(ContractHash::from(dc_hash))` (the contract's
-      specific-*version*/entity identity) — two different identifiers
-      in Casper's model that don't compare equal as dictionary keys.
-      That second, narrower `Key`-encoding question is the only thing
-      still blocking this specific test from being rewritten to assert
-      the real success path — real, worthwhile follow-up, not
-      abandoned.
+- [x] **Funded-success path for `release_milestone` now tested** —
+      `should_release_a_funded_milestone_and_debit_the_controller`
+      (disbursement-controller-tests, CI-confirmed). The earlier blocker
+      was a `Key`-variant mismatch: `d3rac-token`'s `transfer` resolves a
+      calling contract to `Key::from(ContractPackageHash)`, so the
+      controller must be funded at its **package** Key — the
+      `disbursement_controller_package_hash` named key read back
+      unchanged (the same pattern `d3rac-hub-tests` already uses for
+      handing admin to a contract), not `Key::from(ContractHash)`. The
+      test releases a funded milestone, then proves the debit by showing
+      the next attested milestone fails until the controller is funded
+      again.
 - [x] **Systemic fix: `runtime::get_caller()` → immediate-caller
       resolution, across all five contracts with source**. Building
       `multisig-admin-tests`' own cross-contract test

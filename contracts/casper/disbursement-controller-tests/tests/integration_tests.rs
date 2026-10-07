@@ -10,12 +10,9 @@
 //! `should_reject_release_when_disbursement_controller_holds_no_tokens`
 //! additionally installs a real `d3rac-token` and confirms
 //! `release_milestone` rejects when this contract holds none of the
-//! configured token. A funded-success-path assertion was attempted
-//! here too and removed -- see that test's own extensive comment for
-//! why (real, confirmed plumbing across two layers: Casper's
-//! `get_caller()` semantics, since fixed elsewhere in this codebase,
-//! and a `Key` variant mismatch between a package identity and an
-//! entity/contract-hash identity, not yet confirmed).
+//! configured token. `should_release_a_funded_milestone_and_debit_the_controller`
+//! covers the funded-success path, funding the controller at its
+//! *package* Key (see that test's comment for the Key-variant detail).
 
 use casper_engine_test_support::{
     ExecuteRequestBuilder, LmdbWasmTestBuilder, DEFAULT_ACCOUNT_ADDR, LOCAL_GENESIS_REQUEST,
@@ -540,4 +537,113 @@ fn should_reject_accept_admin_when_no_transfer_has_been_proposed() {
     )
     .build();
     builder.exec(request).expect_failure();
+}
+
+/// Installs a real d3rac-token (zero initial supply, DEFAULT_ACCOUNT as
+/// owner/minter) and returns its entity hash.
+fn install_token(builder: &mut LmdbWasmTestBuilder) -> AddressableEntityHash {
+    let install_token = ExecuteRequestBuilder::standard(
+        *DEFAULT_ACCOUNT_ADDR,
+        "d3rac-token.wasm",
+        runtime_args! {
+            "initial_supply" => U256::zero(),
+            "owner_" => Key::from(*DEFAULT_ACCOUNT_ADDR),
+        },
+    )
+    .build();
+    builder.exec(install_token).expect_success().commit();
+    builder
+        .get_account(*DEFAULT_ACCOUNT_ADDR)
+        .expect("should have account")
+        .named_keys()
+        .get("d3rac_token_contract_hash")
+        .expect("token contract hash named key should exist after install")
+        .into_entity_hash()
+        .expect("should resolve to an addressable entity hash")
+}
+
+#[test]
+fn should_release_a_funded_milestone_and_debit_the_controller() {
+    // The funded-success path that the test above could not assert. The
+    // earlier blocker was identifying disbursement-controller by the wrong
+    // Key variant. d3rac-token's `transfer` resolves a calling contract to
+    // Key::from(ContractPackageHash), so funding must go to the contract's
+    // *package* Key -- exactly the `<name>_package_hash` named key, read
+    // back unchanged, which d3rac-hub-tests already relies on for admin
+    // handoff to a contract.
+    let (mut builder, dc_hash, registry_hash) = install();
+    let recipient = Key::from(AccountHash::new([20u8; 32]));
+    verify_recipient(&mut builder, registry_hash, recipient);
+
+    let token_hash = install_token(&mut builder);
+    let token_key = Key::from(ContractHash::from(token_hash));
+
+    let dc_package_key: Key = *builder
+        .get_account(*DEFAULT_ACCOUNT_ADDR)
+        .expect("should have account")
+        .named_keys()
+        .get("disbursement_controller_package_hash")
+        .expect("disbursement controller package hash named key should exist");
+
+    // Two milestones: 1_000 and 500.
+    let create_request = ExecuteRequestBuilder::contract_call_by_hash(
+        *DEFAULT_ACCOUNT_ADDR,
+        dc_hash,
+        "create_commitment",
+        runtime_args! {
+            ARG_RECIPIENT => recipient,
+            ARG_TOKEN => token_key,
+            ARG_COMMUNITY => "Test Community".to_string(),
+            ARG_DESCRIPTIONS => vec!["Phase 1".to_string(), "Phase 2".to_string()],
+            ARG_AMOUNTS => vec![U256::from(1_000u64), U256::from(500u64)],
+        },
+    )
+    .build();
+    builder.exec(create_request).expect_success().commit();
+
+    for index in 0u64..2 {
+        let attest = ExecuteRequestBuilder::contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            dc_hash,
+            "attest_milestone",
+            runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => index },
+        )
+        .build();
+        builder.exec(attest).expect_success().commit();
+    }
+
+    let mint = |builder: &mut LmdbWasmTestBuilder, amount: u64| {
+        let request = ExecuteRequestBuilder::contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            token_hash,
+            "mint",
+            runtime_args! { "recipient" => dc_package_key, "amount" => U256::from(amount) },
+        )
+        .build();
+        builder.exec(request).expect_success().commit();
+    };
+    let release = |index: u64| {
+        ExecuteRequestBuilder::contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            dc_hash,
+            "release_milestone",
+            runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => index },
+        )
+        .build()
+    };
+
+    // Fund exactly milestone 0's amount, then release it: must succeed.
+    mint(&mut builder, 1_000);
+    builder.exec(release(0)).expect_success().commit();
+
+    // Re-releasing the same milestone must fail (already released).
+    builder.exec(release(0)).expect_failure();
+
+    // The controller's balance was actually debited: milestone 1 (500) now
+    // fails for lack of funds even though it is attested...
+    builder.exec(release(1)).expect_failure();
+
+    // ...and succeeds once the controller is funded again.
+    mint(&mut builder, 500);
+    builder.exec(release(1)).expect_success().commit();
 }

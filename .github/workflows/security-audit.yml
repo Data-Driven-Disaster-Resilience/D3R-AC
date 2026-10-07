@@ -63,7 +63,7 @@ jobs:
     name: Slither (Solidity)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Check contracts exist
         id: check
@@ -76,7 +76,7 @@ jobs:
 
       - name: Set up Python
         if: steps.check.outputs.exists == 'true'
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.11'
 
@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload Slither report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: slither-report
           path: |
@@ -206,7 +206,7 @@ jobs:
     name: Mythril (Solidity symbolic execution)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Check contracts exist
         id: check
@@ -219,7 +219,7 @@ jobs:
 
       - name: Set up Python
         if: steps.check.outputs.exists == 'true'
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.10' # Mythril's own PyPI page caps supported Python at 3.7-3.10 -- not this repo's usual 3.11 (matches the Slither job above), checked against the current PyPI listing rather than assumed.
 
@@ -278,7 +278,7 @@ jobs:
 
       - name: Upload Mythril report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: mythril-report
           path: |
@@ -306,7 +306,7 @@ jobs:
     name: cargo-audit (Casper / Rust)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Check Casper contracts exist
         id: check
@@ -319,7 +319,9 @@ jobs:
 
       - name: Install Rust toolchain
         if: steps.check.outputs.exists == 'true'
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          toolchain: stable
 
       - name: Install cargo-audit
         if: steps.check.outputs.exists == 'true'
@@ -336,7 +338,7 @@ jobs:
 
       - name: Upload cargo-audit report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cargo-audit-report
           path: |
@@ -377,7 +379,7 @@ jobs:
       matrix:
         project: [ frontend, agents/node, contracts/tron ]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Check project exists
         id: check
@@ -390,7 +392,7 @@ jobs:
 
       - name: Set up Node.js
         if: steps.check.outputs.exists == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
 
@@ -405,7 +407,7 @@ jobs:
 
       - name: Upload npm audit report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: npm-audit-report-${{ matrix.project == 'frontend' && 'frontend' || matrix.project == 'agents/node' && 'agents-node' || 'contracts-tron' }}
           path: |
@@ -434,7 +436,7 @@ jobs:
       matrix:
         project: [ data-pipeline, agents/python ]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Check project exists
         id: check
@@ -447,7 +449,7 @@ jobs:
 
       - name: Set up Python
         if: steps.check.outputs.exists == 'true'
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.11'
 
@@ -473,7 +475,7 @@ jobs:
 
       - name: Upload pip-audit report
         if: steps.check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pip-audit-report-${{ matrix.project == 'data-pipeline' && 'data-pipeline' || 'agents-python' }}
           path: |
@@ -504,10 +506,10 @@ jobs:
     if: always() && (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Download all reports
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           path: audit-artifacts
 
