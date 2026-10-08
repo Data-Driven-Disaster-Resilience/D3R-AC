@@ -11,6 +11,8 @@ reason about and to re-derive by hand when auditing a submitted value
 against its source float (NFR-3).
 """
 
+import math
+import math
 from decimal import Decimal, ROUND_HALF_UP
 
 SCALE = 10**18  # matches RiskRegistry.SCALE exactly
@@ -24,7 +26,15 @@ def to_fixed_point(value: float) -> int:
     the contract itself is the final gate (`RiskRegistry: value out of
     [0,1] range`), and clamping here means the pipeline never sends a
     value that predictably reverts just from floating point drift.
+
+    Non-finite input (NaN, +/-inf) is rejected with ValueError instead of
+    clamped: ``min(1.0, nan)`` evaluates to 1.0 in Python, so a NaN reading
+    would otherwise be submitted on-chain as MAXIMUM risk. The pipeline
+    isolates failures per community (FR-6), so raising here skips that
+    community for the cycle and logs it rather than submitting garbage.
     """
+    if not math.isfinite(float(value)):
+        raise ValueError(f"refusing to convert non-finite value {value!r} to fixed point")
     clamped = max(0.0, min(1.0, float(value)))
     scaled = Decimal(str(clamped)) * Decimal(SCALE)
     return int(scaled.to_integral_value(rounding=ROUND_HALF_UP))

@@ -77,7 +77,7 @@ See [`docs/deployment-guide.md`](docs/deployment-guide.md) for full deployment s
 
 ### Smart contracts (Casper)
 
-See [`contracts/casper/README.md`](contracts/casper/README.md) for current status — four contracts (`risk-registry`, `identity-registry`, `disbursement-controller`, `d3rac-token`) written, compiling, and passing their local-network tests in CI; the other three (`multisig-admin`, `funding-request-registry`, `d3rac-hub`) now have source written too but are not yet confirmed compiling. Requires a `wasm32-unknown-unknown`-capable Rust toolchain to build.
+See [`contracts/casper/README.md`](contracts/casper/README.md) for current status — all seven contracts (`risk-registry`, `identity-registry`, `disbursement-controller`, `d3rac-token`, `multisig-admin`, `funding-request-registry`, `d3rac-hub`) are written, compiling, and passing their local-network tests in CI, and are deployed to Casper testnet. Requires a `wasm32-unknown-unknown`-capable Rust toolchain to build.
 
 ### Frontend
 
@@ -106,7 +106,7 @@ Don't treat a testnet deployment as mainnet-readiness.
 |---|---|---|---|
 | TRON contracts (token, identity, disbursement, multisig admin, Hub, risk registry, funding-request registry, token factory) | Solidity 0.8.20, `evmVersion: paris` | 123 passing (Hardhat) | Shasta, deployed 2026-09-03 (1-of-1 multisig admin) |
 | Casper contracts (same seven modules) | Rust/WASM | 68 passing (local Casper network) | Casper testnet, deployed 2026-09-07 (Hub admin handoff proposed, not yet accepted) |
-| Data pipeline | NASA FIRMS, USGS, EONET, GDACS; Africa-prioritized | 32 passing | On-chain submission path not yet run against a live network |
+| Data pipeline | NASA FIRMS, USGS, EONET, GDACS; Africa-prioritized | 42 passing (incl. Hypothesis property tests) | On-chain submission path not yet run against a live network |
 | Agents | Python + Node manifest-driven fleet; Claude-backed `brainbox` | Unit tests | `contractTriggerAgent` is read-only (dry-run, never broadcasts); TRON readiness check unverified against a live node |
 | Frontend | React + Vite + TS, offline-capable (service worker) | 16 passing | Casper adapter in place; TRON adapter targets Shasta via `VITE_TRON_NETWORK` |
 
