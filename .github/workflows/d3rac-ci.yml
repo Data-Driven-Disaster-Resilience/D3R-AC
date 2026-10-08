@@ -157,7 +157,15 @@ jobs:
       - name: Run Hardhat test suite
         if: steps.check.outputs.exists == 'true'
         working-directory: contracts/tron
-        run: npx hardhat test
+        run: |
+          set +e
+          npx hardhat test > /tmp/hh.out 2>&1
+          rc=$?
+          # TEMPORARY DIAGNOSTIC (experiment branch only): surface the failure as annotations
+          if [ $rc -ne 0 ]; then
+            tail -n 40 /tmp/hh.out | cut -c1-240 | while IFS= read -r line; do echo "::error::${line//%/%25}"; done
+          fi
+          exit $rc
 
   # ---------------------------------------------------------------
   # 2. Solidity static analysis / linting (security hygiene)

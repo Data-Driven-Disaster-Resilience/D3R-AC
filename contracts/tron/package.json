@@ -14,13 +14,13 @@
     "vanity:wallet": "node scripts/find-vanity-tron-wallet.js"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^4.0.0",
+    "@nomicfoundation/hardhat-ethers": "^4.2.0",
     "@nomicfoundation/hardhat-ethers-chai-matchers": "^3.0.0",
     "@nomicfoundation/hardhat-mocha": "^3.0.0",
     "@nomicfoundation/hardhat-network-helpers": "^3.0.0",
     "chai": "^6.3.0",
     "ethers": "^6.4.0",
-    "hardhat": "^3.0.0",
+    "hardhat": "^3.18.1",
     "tronweb": "^6.5.1"
   },
   "overrides": {
