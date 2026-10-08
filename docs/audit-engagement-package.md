@@ -173,8 +173,11 @@ expert" remain different bars.
 ### 3.5 What has explicitly NOT been done
 
 - No professional third-party audit, of any kind, at any tier.
-- No fuzzing, property-based testing, or formal verification on either
-  side.
+- No contract-level fuzzing, invariant testing, or formal verification on
+  either side. (Property-based tests now exist only for the off-chain
+  pipeline's fixed-point layer and a Python model of `riskScore` --
+  `data-pipeline/tests/test_fixed_point_properties.py`; they do not
+  exercise the deployed contracts.)
 - No mainnet deployment, and no deployment on either chain has ever
   held real funds.
 - Neither testnet deployment's multisig admin handoff is fully
@@ -300,7 +303,7 @@ for pkg in risk-registry identity-registry multisig-admin d3rac-token \
 done
 # stage the resulting .wasm per each *-tests package's own doc comment, then:
 cargo test --workspace
-# Expect: 67 passing
+# Expect: 68 passing
 ```
 
 Line/test counts in §2 can be reproduced directly:
