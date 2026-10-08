@@ -20,7 +20,7 @@
     "@nomicfoundation/hardhat-network-helpers": "^3.0.0",
     "chai": "^6.3.0",
     "ethers": "^6.4.0",
-    "hardhat": "^3.0.0",
+    "hardhat": "^3.18.1",
     "tronweb": "^6.5.1"
   },
   "overrides": {
