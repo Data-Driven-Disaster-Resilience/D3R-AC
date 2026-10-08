@@ -10,7 +10,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "yaml": "^2.4.0"
+    "yaml": "^2.9.1"
   },
   "optionalDependencies": {
     "redis": "^6.3.0"
