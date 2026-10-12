@@ -44,6 +44,25 @@ Set `ANTHROPIC_API_KEY` in the environment to get real Claude reasoning. Without
 `brainbox` still runs and publishes a deterministic fallback directive (clearly tagged
 `"source": "fallback-deterministic"` on every event) so CI and offline dev keep working.
 
+## Feeding the agents from the data pipeline
+
+The agents' built-in hazard/exposure/vulnerability data is sample data. To drive them from the
+real data pipeline instead (NASA FIRMS / USGS / EONET / GDACS -> `data-pipeline/`), point them at
+the feed the pipeline already writes:
+
+```bash
+export D3RAC_PIPELINE_FEED=/path/to/data-pipeline/output/communities.json
+make dev
+```
+
+`hazard-ingestor`, `exposure-scorer` and `vulnerability-scorer` then read H, E and V from that
+file (`python/src/d3rac_agents/pipeline_feed.py`). It **fails closed**, since a triggered community
+can lead to a fund-release request: an unreadable or malformed feed publishes nothing (it never
+falls back to sample data), a feed older than `D3RAC_PIPELINE_FEED_MAX_AGE_HOURS` (default 6)
+or a row the pipeline marked `stale` produces no hazard signal, and non-finite or out-of-range
+values skip the row. With the variable unset, behaviour is unchanged. Community ids must match
+between the pipeline's `config/communities.yaml` and anything else you join against.
+
 ## How it maps onto D3R·AC's three layers
 
 | D3R·AC layer | This repo |
