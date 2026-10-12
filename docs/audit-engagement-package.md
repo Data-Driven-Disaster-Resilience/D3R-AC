@@ -75,7 +75,7 @@ mainnet.**
 | `D3RACTokenFactory.sol` | CREATE2 vanity-address token deployment (optional, additive) |
 | `Migrations.sol` | TronBox scaffolding |
 
-**~2,050 lines total** across these 9 contract files (plus `base/D3RACProperties.sol`, a test-support property harness). **128 tests**, real
+**~2,050 lines total** across these 9 contract files (plus `base/D3RACProperties.sol`, a test-support property harness). **135 tests**, real
 Hardhat suite (`contracts/tron/test/`), executed against solc 0.8.20
 with `evmVersion: "paris"` pinned (see Finding TRON-L3 below for why
 that pin matters). Reproduce:
@@ -155,7 +155,7 @@ expert" remain different bars.
 
 ### 3.4 Real, executed verification (both chains)
 
-- **128 TRON tests, 68 Casper tests, all genuinely run** — not
+- **135 TRON tests, 68 Casper tests, all genuinely run** — not
   written-and-assumed, not compile-checked-only. The Casper side in
   particular required documenting a real, working `rustup`-free
   toolchain path (`contracts/casper/README.md`) since it needed to be
@@ -291,7 +291,7 @@ git checkout 20cfd92aa653445da7a9e1331a381c88ebc379e1
 
 # TRON: real test suite
 cd contracts/tron && npm install && npm test
-# Expect: 128 passing
+# Expect: 135 passing
 
 # Casper: see contracts/casper/README.md's "Building wasm32-unknown-unknown
 # without rustup" section for exact steps if rustup isn't available;

@@ -18,6 +18,7 @@ interface IDisbursementControllerHub {
 
     function attestMilestone(uint256 commitmentId, uint256 milestoneIndex) external;
     function cancelCommitment(uint256 commitmentId) external;
+    function sweep(address token, address to, uint256 amount) external;
     function commitmentCount() external view returns (uint256);
     function setAttester(address account, bool isAttester) external;
     function proposeNewAdmin(address newAdmin) external;
@@ -308,6 +309,15 @@ contract D3RACHub is D3RACProperties {
     ///         kind of defensive action a pause shouldn't block.
     function cancelCommitment(uint256 commitmentId) external onlyAdmin {
         disbursementController.cancelCommitment(commitmentId);
+    }
+
+    /// @notice Sweep tokens that are not backing any open commitment out of
+    ///         DisbursementController (DC-3). Needed so funds freed by a
+    ///         cancellation stay recoverable once the Hub is the
+    ///         controller's admin. Not gated by whenNotPaused, same
+    ///         reasoning as cancelCommitment.
+    function sweepDisbursementFunds(address sweepToken, address to, uint256 amount) external onlyAdmin {
+        disbursementController.sweep(sweepToken, to, amount);
     }
 
     /// @notice Mint tokens via D3RACToken. Requires the Hub to hold

@@ -8,13 +8,22 @@
 
 | ID | Severity | Finding | Suggested fix |
 |---|---|---|---|
-| DC-1 | Low | `_safeTransfer` uses a low-level `call`; if `token` has no code (typo, undeployed address), the call "succeeds" with empty return data and the milestone is marked released with nothing transferred. `createCommitment` only rejects the zero address. Admin-controlled, so low severity. | Require `token.code.length > 0` in `createCommitment` and in `_safeTransfer` (OpenZeppelin `Address.functionCall` pattern). |
-| DC-2 | Medium (design) | No accounting of balance against open commitments. `releaseMilestone` checks only the contract's total token balance, so one commitment's release can consume funds intended for another; later releases then revert. | Track `totalCommitted − totalReleased` per token and check solvency in `createCommitment`, or document that over-commitment is an accepted operational risk. |
-| DC-3 | Low / Info | `cancelCommitment` leaves unreleased funds in the contract and there is no withdraw/sweep function, so those funds are only reusable via a new commitment to a verified recipient. | Add an admin (multisig-gated) `sweep` with an event, or document the limitation. |
-| DC-4 | Info | Admin is the initial attester, so a single key can create, attest and (via anyone) release. Mitigated only if admin is the multisig before mainnet. | Enforce multisig admin and a separate attester before mainnet. |
+| DC-1 | Low (FIXED) | `_safeTransfer` uses a low-level `call`; if `token` has no code (typo, undeployed address), the call "succeeds" with empty return data and the milestone is marked released with nothing transferred. `createCommitment` only rejects the zero address. Admin-controlled, so low severity. | Require `token.code.length > 0` in `createCommitment` and in `_safeTransfer` (OpenZeppelin `Address.functionCall` pattern). |
+| DC-2 | Medium (FIXED) | No accounting of balance against open commitments. `releaseMilestone` checks only the contract's total token balance, so one commitment's release can consume funds intended for another; later releases then revert. | Track `totalCommitted − totalReleased` per token and check solvency in `createCommitment`, or document that over-commitment is an accepted operational risk. |
+| DC-3 | Low (FIXED) | `cancelCommitment` leaves unreleased funds in the contract and there is no withdraw/sweep function, so those funds are only reusable via a new commitment to a verified recipient. | Add an admin (multisig-gated) `sweep` with an event, or document the limitation. |
+| DC-4 | Info (operational, open) | Admin is the initial attester, so a single key can create, attest and (via anyone) release. Mitigated only if admin is the multisig before mainnet. | Enforce multisig admin and a separate attester before mainnet. |
 | DEP-1 | Info | `bincode 1.3.3` unmaintained (RUSTSEC-2025-0141), warning only. | Track upstream; replace if a patched alternative lands in the casper dependency tree. |
 
 Positive observations: checks-effects-interactions plus a reentrancy guard on release; two-step admin transfer (M-2) and tolerant token transfer (M-3) present; no `tx.origin`, no `delegatecall`, Solidity 0.8 checked arithmetic.
 
 ## Not covered
 Casper contracts (manual), the other TRON contracts (manual), fuzzing/invariant testing, formal verification. These remain scope for the professional audit in `docs/audit-engagement-package.md`.
+
+## Remediation (same day)
+
+- **DC-1:** `createCommitment` and `_safeTransfer` now require the token to have code.
+- **DC-2:** new `outstandingCommitted[token]` ledger; `createCommitment` reverts ("commitment not fully funded") unless the contract's balance already covers every open commitment plus the new one. Release and cancel decrease the ledger. Behaviour change: commitments must be funded before creation.
+- **DC-3:** new admin-only `sweep(token, to, amount)`, capped at balance minus `outstandingCommitted`, so it can never touch funds backing an open commitment; `D3RACHub.sweepDisbursementFunds` proxies it for when the Hub is the controller's admin.
+- **DC-4** is a deployment practice (multisig admin, separate attester), not a code change.
+- Tests: 128 -> 135 (new DC-1/2/3 unit tests, a Hub sweep test, invariant harness updated to fund before commit).
+- **The Shasta and Casper testnet deployments predate these changes.** Redeploy TRON to pick them up. The Casper `disbursement-controller` has not been reviewed for the equivalent issues.

@@ -94,6 +94,18 @@ describe("DisbursementController -- randomized invariants", function () {
           const n = int(1, 4);
           const amounts = Array.from({ length: n }, () => BigInt(int(1, 500)));
           const descriptions = amounts.map((_, i) => `milestone ${i}`);
+          // DC-2: the contract only accepts fully-funded commitments, so top
+          // up any shortfall first (model: outstanding = unreleased milestones
+          // of active commitments).
+          const outstanding = model
+            .filter((c) => c.active)
+            .reduce((s, c) => s + c.milestones.filter((x) => !x.released).reduce((t, x) => t + x.amount, 0n), 0n);
+          const need = outstanding + amounts.reduce((a, b) => a + b, 0n);
+          if (funded - released < need) {
+            const top = need - (funded - released);
+            expect(await attempt(() => token.transfer(controllerAddr, top)), "top-up").to.equal(true);
+            funded += top;
+          }
           const ok = await attempt(() =>
             controller.createCommitment(recipient.address, tokenAddr, "Invariant Test Community", descriptions, amounts)
           );

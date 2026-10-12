@@ -175,30 +175,16 @@ describe("DisbursementController", function () {
       );
     });
 
-    it("rejects releasing when the contract's token balance is insufficient", async function () {
-      // Drain the controller's balance so it can't cover the milestone.
-      const controllerAddr = await controller.getAddress();
-      const bal = await token.balanceOf(controllerAddr);
-      // Move the tokens out via a fresh commitment+release cycle is circular;
-      // instead deploy a controller with zero funding for this case.
+    it("refuses to create a commitment the contract cannot fully fund (DC-2)", async function () {
       const poorController = await deploy(
         "DisbursementController",
         admin,
         await registry.getAddress(),
         admin.address
       );
-      await poorController.createCommitment(
-        recipient.address,
-        await token.getAddress(),
-        "Ohafia Relief Coalition",
-        ["Milestone"],
-        [1000]
-      );
-      await poorController.attestMilestone(0, 0);
-      await expect(poorController.releaseMilestone(0, 0)).to.be.revertedWith(
-        "DisbursementController: insufficient contract balance for milestone"
-      );
-      expect(bal).to.be.gt(0); // sanity: original controller was funded
+      await expect(
+        poorController.createCommitment(recipient.address, await token.getAddress(), "Ohafia Relief Coalition", ["Phase 1"], [1000])
+      ).to.be.revertedWith("DisbursementController: commitment not fully funded");
     });
   });
 
@@ -229,6 +215,76 @@ describe("DisbursementController", function () {
       await controller.cancelCommitment(0);
       const m = await controller.getMilestone(0, 0);
       expect(m.released).to.equal(true); // untouched by cancellation
+    });
+  });
+  describe("DC-1: token must be a contract", function () {
+    it("rejects an EOA / undeployed token address at commitment creation", async function () {
+      await expect(
+        controller.createCommitment(recipient.address, stranger.address, "Ohafia Relief Coalition", ["M"], [1000])
+      ).to.be.revertedWith("DisbursementController: token is not a contract");
+    });
+  });
+
+  describe("DC-2: shared-balance accounting", function () {
+    it("tracks outstanding obligations and blocks over-commitment across commitments", async function () {
+      const tokenAddr = await token.getAddress();
+      // Balance is 100_000. Commit 60_000 twice: the second must be refused.
+      await controller.createCommitment(recipient.address, tokenAddr, "A", ["M"], [60_000]);
+      expect(await controller.outstandingCommitted(tokenAddr)).to.equal(60_000);
+      await expect(
+        controller.createCommitment(recipient.address, tokenAddr, "B", ["M"], [60_000])
+      ).to.be.revertedWith("DisbursementController: commitment not fully funded");
+      // the failed attempt must leave accounting untouched
+      expect(await controller.outstandingCommitted(tokenAddr)).to.equal(60_000);
+      expect(await controller.commitmentCount()).to.equal(1);
+    });
+
+    it("decreases outstanding on release", async function () {
+      const tokenAddr = await token.getAddress();
+      await controller.createCommitment(recipient.address, tokenAddr, "A", ["M1", "M2"], [1000, 2000]);
+      await controller.attestMilestone(0, 0);
+      await controller.releaseMilestone(0, 0);
+      expect(await controller.outstandingCommitted(tokenAddr)).to.equal(2000);
+    });
+  });
+
+  describe("DC-3: sweep", function () {
+    let tokenAddr;
+    beforeEach(async function () {
+      tokenAddr = await token.getAddress();
+    });
+
+    it("lets the admin recover funds freed by a cancellation, and only those", async function () {
+      await controller.createCommitment(recipient.address, tokenAddr, "A", ["M1", "M2"], [1000, 2000]);
+      await controller.attestMilestone(0, 0);
+      await controller.releaseMilestone(0, 0);
+      // 99_000 held; 2000 backs the open milestone, 97_000 is uncommitted
+      await expect(controller.sweep(tokenAddr, stranger.address, 97_001)).to.be.revertedWith(
+        "DisbursementController: amount exceeds uncommitted balance"
+      );
+      await controller.cancelCommitment(0);
+      expect(await controller.outstandingCommitted(tokenAddr)).to.equal(0);
+      await expect(controller.sweep(tokenAddr, stranger.address, 99_000)).to.emit(controller, "FundsSwept");
+      expect(await token.balanceOf(stranger.address)).to.equal(99_000);
+    });
+
+    it("can never touch funds backing an open commitment", async function () {
+      await controller.createCommitment(recipient.address, tokenAddr, "A", ["M"], [100_000]);
+      await expect(controller.sweep(tokenAddr, stranger.address, 1)).to.be.revertedWith(
+        "DisbursementController: amount exceeds uncommitted balance"
+      );
+    });
+
+    it("is admin-only and rejects zero address / zero amount", async function () {
+      await expect(controller.connect(stranger).sweep(tokenAddr, stranger.address, 1)).to.be.revertedWith(
+        "DisbursementController: caller is not admin"
+      );
+      await expect(controller.sweep(tokenAddr, ethers.ZeroAddress, 1)).to.be.revertedWith(
+        "DisbursementController: zero address"
+      );
+      await expect(controller.sweep(tokenAddr, stranger.address, 0)).to.be.revertedWith(
+        "DisbursementController: amount must be > 0"
+      );
     });
   });
 });

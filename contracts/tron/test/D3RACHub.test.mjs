@@ -53,6 +53,8 @@ describe("D3RACHub", function () {
     await controller.setAttester(await hub.getAddress(), true);
     await controller.proposeNewAdmin(await hub.getAddress());
     await hub.acceptDisbursementControllerAdmin();
+    // DC-2: DisbursementController only accepts fully-funded commitments.
+    await token.transfer(await controller.getAddress(), 1_000_000);
     await token.setMinter(await hub.getAddress(), true);
     await token.proposeNewOwner(await hub.getAddress());
     await hub.acceptTokenOwnership();
@@ -219,6 +221,21 @@ describe("D3RACHub", function () {
           recipient.address, await token.getAddress(), "X", ["M"], [1000]
         )
       ).to.be.revertedWith("DisbursementController: caller is not admin");
+    });
+
+    it("sweepDisbursementFunds forwards to DisbursementController.sweep and only moves uncommitted funds", async function () {
+      const tokenAddr = await token.getAddress();
+      await hub.verifyRecipient(recipient.address, "Ohafia Relief Coalition");
+      await hub.createCommitment(recipient.address, tokenAddr, "Ohafia Relief Coalition", ["M"], [1000]);
+      const before = await token.balanceOf(someone.address);
+      await hub.sweepDisbursementFunds(tokenAddr, someone.address, 5000);
+      expect(await token.balanceOf(someone.address)).to.equal(before + 5000n);
+      await expect(hub.sweepDisbursementFunds(tokenAddr, someone.address, 1_000_000)).to.be.revertedWith(
+        "DisbursementController: amount exceeds uncommitted balance"
+      );
+      await expect(hub.connect(stranger).sweepDisbursementFunds(tokenAddr, someone.address, 1)).to.be.revertedWith(
+        "D3RACHub: caller is not admin"
+      );
     });
 
     it("mintTokens forwards to D3RACToken and actually mints", async function () {
