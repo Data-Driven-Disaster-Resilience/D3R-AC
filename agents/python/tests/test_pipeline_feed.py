@@ -91,3 +91,17 @@ def test_end_to_end_feed_drives_risk_scores(tmp_path, monkeypatch):
     assert set(scores) == {"hot", "quiet"}           # stale community produces no risk event
     assert scores["hot"]["risk_score"] == round(0.9 * 0.8 * 0.7, 4)
     assert scores["hot"]["triggered"] is (scores["hot"]["risk_score"] >= risk.theta)
+
+
+def test_risk_model_warns_about_communities_missing_a_signal(tmp_path, caplog):
+    bus = FileBus(str(tmp_path / "bus"))
+    bus.publish("hazard.signal", {"community_id": "a", "probability": 0.5, "hazard_type": "x", "source": "t"})
+    bus.publish("hazard.signal", {"community_id": "orphan", "probability": 0.9, "hazard_type": "x", "source": "t"})
+    bus.publish("exposure.score", {"community_id": "a", "exposure_factor": 0.5})
+    bus.publish("vulnerability.index", {"community_id": "a", "vulnerability_index": 0.5})
+    risk = RiskModelAgent()
+    risk.bus = bus
+    with caplog.at_level("WARNING"):
+        scores = risk.run_once()
+    assert [s["community_id"] for s in scores] == ["a"]
+    assert any("orphan" in m and "exposure" in m and "vulnerability" in m for m in caplog.messages)

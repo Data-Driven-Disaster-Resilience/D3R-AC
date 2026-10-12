@@ -8,10 +8,14 @@ event is flagged so downstream Node coordination agents know to act.
 """
 from __future__ import annotations
 
+import logging
 from typing import TypedDict
 
 from . import _generated_manifest as manifest
 from .bus import get_bus
+
+
+logger = logging.getLogger(__name__)
 
 
 class RiskScore(TypedDict):
@@ -49,8 +53,15 @@ class RiskModelAgent:
         exposures = self._latest_by_community("exposure.score", "exposure_factor")
         vulnerabilities = self._latest_by_community("vulnerability.index", "vulnerability_index")
 
+        # The join is an intersection, so a community missing any of H/E/V is dropped. Say so
+        # loudly -- mismatched community ids between data sources otherwise fail silently.
+        every = hazards.keys() | exposures.keys() | vulnerabilities.keys()
+        for community_id in sorted(every - (hazards.keys() & exposures.keys() & vulnerabilities.keys())):
+            missing = [n for n, d in (("hazard", hazards), ("exposure", exposures), ("vulnerability", vulnerabilities)) if community_id not in d]
+            logger.warning("community %r has no risk score this run: missing %s signal(s)", community_id, ", ".join(missing))
+
         results: list[RiskScore] = []
-        for community_id in hazards.keys() & exposures.keys() & vulnerabilities.keys():
+        for community_id in sorted(hazards.keys() & exposures.keys() & vulnerabilities.keys()):
             h, e, v = hazards[community_id], exposures[community_id], vulnerabilities[community_id]
             r = compute_risk(h, e, v)
             score: RiskScore = {
