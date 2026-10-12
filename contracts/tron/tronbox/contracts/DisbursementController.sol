@@ -60,6 +60,13 @@ contract DisbursementController is D3RACProperties {
 
     Commitment[] private _commitments;
 
+    /// @notice DC-2: per-token sum of milestone amounts that are committed
+    ///         but not yet released or cancelled. A new commitment is only
+    ///         accepted if the contract's balance already covers this plus
+    ///         the new total, so one commitment's release can never consume
+    ///         funds backing another.
+    mapping(address => uint256) public outstandingCommitted;
+
     event CommitmentCreated(
         uint256 indexed commitmentId,
         address indexed recipient,
@@ -74,6 +81,7 @@ contract DisbursementController is D3RACProperties {
     event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
     event AdminTransferProposed(address indexed currentAdmin, address indexed proposedAdmin);
     event AttesterUpdated(address indexed account, bool isAttester);
+    event FundsSwept(address indexed token, address indexed to, uint256 amount);
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "DisbursementController: caller is not admin");
@@ -187,6 +195,16 @@ contract DisbursementController is D3RACProperties {
         }
         c.totalAmount = total;
 
+        // DC-1 + DC-2: the token must be a deployed contract, and the
+        // contract must already hold enough of it to back every open
+        // commitment in that token, including this one.
+        require(token.code.length > 0, "DisbursementController: token is not a contract");
+        outstandingCommitted[token] += total;
+        require(
+            ITRC20(token).balanceOf(address(this)) >= outstandingCommitted[token],
+            "DisbursementController: commitment not fully funded"
+        );
+
         emit CommitmentCreated(commitmentId, recipient, token, community, total, amounts.length);
     }
 
@@ -226,6 +244,7 @@ contract DisbursementController is D3RACProperties {
         m.released = true;
         m.releasedAt = block.timestamp;
         c.releasedAmount += m.amount;
+        outstandingCommitted[c.token] -= m.amount;
 
         emit MilestoneReleased(commitmentId, milestoneIndex, c.recipient, m.amount);
 
@@ -242,6 +261,9 @@ contract DisbursementController is D3RACProperties {
     ///      missing return value, but still requires the call itself to
     ///      succeed and any actual returned bool to be true.
     function _safeTransfer(address token, address to, uint256 value) private {
+        // DC-1: a low-level call to an address with no code "succeeds" with
+        // empty return data, which would record a payout that never happened.
+        require(token.code.length > 0, "DisbursementController: token is not a contract");
         (bool success, bytes memory returnData) = token.call(
             abi.encodeWithSelector(ITRC20.transfer.selector, to, value)
         );
@@ -265,7 +287,25 @@ contract DisbursementController is D3RACProperties {
         c.active = false;
         c.cancelled = true;
         uint256 unreleased = c.totalAmount - c.releasedAmount;
+        outstandingCommitted[c.token] -= unreleased;
         emit CommitmentCancelled(commitmentId, msg.sender, unreleased);
+    }
+
+    /// @notice DC-3: move tokens that are NOT backing any open commitment
+    ///         (e.g. funds freed by cancelCommitment, or surplus donations)
+    ///         to `to`. Can never touch funds backing an open commitment:
+    ///         `amount` is capped at balance minus outstandingCommitted.
+    ///         Admin-only; admin should be the multisig before mainnet.
+    function sweep(address token, address to, uint256 amount) external onlyAdmin nonReentrant {
+        require(to != address(0), "DisbursementController: zero address");
+        require(amount > 0, "DisbursementController: amount must be > 0");
+        uint256 balance = ITRC20(token).balanceOf(address(this));
+        require(
+            balance >= outstandingCommitted[token] && amount <= balance - outstandingCommitted[token],
+            "DisbursementController: amount exceeds uncommitted balance"
+        );
+        emit FundsSwept(token, to, amount);
+        _safeTransfer(token, to, amount);
     }
 
     // ── Views ────────────────────────────────────────────────────────────
