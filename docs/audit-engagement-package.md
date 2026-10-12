@@ -1,8 +1,8 @@
 # D3R·AC — Security Audit Engagement Package
 
-**Prepared:** September 2026
+**Prepared:** September 2026 · **Refreshed:** 2026-10-12
 **Repository:** `Data-Driven-Disaster-Resilience/D3R-AC`
-**HEAD at time of writing:** `ae8a81f217d6eba2c72162de7545a7e9e2cf1101`
+**HEAD at time of writing:** `20cfd92aa653445da7a9e1331a381c88ebc379e1`
 (already on the real `main` branch — every reference below resolves
 directly, no push required first, unlike an earlier version of this
 document).
@@ -59,7 +59,7 @@ mainnet.**
 
 ---
 
-## 2. Codebase inventory (exact, as of `ae8a81f`)
+## 2. Codebase inventory (exact, as of `20cfd92`)
 
 ### 2.1 TRON / Solidity — `contracts/tron/tronbox/contracts/`
 
@@ -75,7 +75,7 @@ mainnet.**
 | `D3RACTokenFactory.sol` | CREATE2 vanity-address token deployment (optional, additive) |
 | `Migrations.sol` | TronBox scaffolding |
 
-**~1,960 lines total** across these 9 files. **123 tests**, real
+**~2,050 lines total** across these 9 contract files (plus `base/D3RACProperties.sol`, a test-support property harness). **128 tests**, real
 Hardhat suite (`contracts/tron/test/`), executed against solc 0.8.20
 with `evmVersion: "paris"` pinned (see Finding TRON-L3 below for why
 that pin matters). Reproduce:
@@ -95,7 +95,7 @@ cd contracts/tron && npm install && npm test
 | `funding-request-registry` | Funding-request lifecycle |
 | `identity-registry` | Recipient verification |
 
-**~5,350 lines total.** **67 tests** across 7 `-tests` packages, all
+**~5,360 lines total** (contract `src/main.rs` only). **68 tests** across 7 `-tests` packages, all
 genuinely executed — built to real `wasm32-unknown-unknown` binaries
 and run against `casper-engine-test-support`'s local execution engine,
 not just compile-checked. Reproduce: see
@@ -155,7 +155,7 @@ expert" remain different bars.
 
 ### 3.4 Real, executed verification (both chains)
 
-- **123 TRON tests, 67 Casper tests, all genuinely run** — not
+- **128 TRON tests, 68 Casper tests, all genuinely run** — not
   written-and-assumed, not compile-checked-only. The Casper side in
   particular required documenting a real, working `rustup`-free
   toolchain path (`contracts/casper/README.md`) since it needed to be
@@ -173,6 +173,7 @@ expert" remain different bars.
 ### 3.5 What has explicitly NOT been done
 
 - No professional third-party audit, of any kind, at any tier.
+  (Security findings M-2 two-step admin transfer and M-3 SafeERC20-style transfer are closed on `main`; M-1, the extcodesize guard, is deliberately not implemented because it would break the EOA-deployer-then-transfer pattern.)
 - No contract-level fuzzing, invariant testing, or formal verification on
   either side. (Property-based tests now exist only for the off-chain
   pipeline's fixed-point layer and a Python model of `riskScore` --
@@ -286,11 +287,11 @@ than silently ignored or force-suppressed.
 ```bash
 git clone https://github.com/Data-Driven-Disaster-Resilience/D3R-AC.git
 cd D3R-AC
-git checkout ae8a81f217d6eba2c72162de7545a7e9e2cf1101
+git checkout 20cfd92aa653445da7a9e1331a381c88ebc379e1
 
 # TRON: real test suite
 cd contracts/tron && npm install && npm test
-# Expect: 123 passing
+# Expect: 128 passing
 
 # Casper: see contracts/casper/README.md's "Building wasm32-unknown-unknown
 # without rustup" section for exact steps if rustup isn't available;
