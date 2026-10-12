@@ -1,0 +1,94 @@
+name: Early-warning dry run
+
+# Scheduled end-to-end rehearsal of D3R·AC's data -> response flow:
+#   data-pipeline (live hazard feeds, DRY-RUN) -> communities.json
+#     -> agent fleet (risk model -> brainbox -> coordination -> alerts -> contract-trigger)
+#
+# Deliberately incapable of moving funds: the pipeline runs WITHOUT --submit (no chain
+# client, no feeder key) and the contract-trigger agent only ever reports dry-run/blocked.
+# The only secrets used are optional read-only API keys.
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch: {}
+  pull_request:            # validates edits to this workflow itself
+    paths:
+      - ".github/workflows/early-warning-dryrun.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: early-warning-dryrun
+  cancel-in-progress: true
+
+jobs:
+  rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Pipeline cycle (dry-run, live hazard feeds)
+        working-directory: data-pipeline
+        env:
+          NASA_FIRMS_MAP_KEY: ${{ secrets.NASA_FIRMS_MAP_KEY }}   # optional; fire adapter skips itself if empty
+        run: |
+          pip install -r requirements.txt
+          python scripts/run_cycle.py   # no --submit: never touches a chain
+          test -s output/communities.json
+
+      - name: Agent fleet on the fresh feed
+        working-directory: agents
+        env:
+          D3RAC_PIPELINE_FEED: ${{ github.workspace }}/data-pipeline/output/communities.json
+          # Without a key brainbox uses its deterministic fallback; no secret is required.
+        run: |
+          pip install pyyaml jsonschema
+          python3 scripts/build_manifest.py
+          pip install -e ./python
+          python3 -m d3rac_agents.cli run-all
+          cd node && npm ci && npm run build && npm run start -- run-all
+
+      - name: Summarize
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          feed = json.loads(pathlib.Path("data-pipeline/output/communities.json").read_text())
+          print("## Early-warning dry run\n")
+          print(f"Feed generated at `{feed['generatedAt']}`\n")
+          print("| community | hazard | source | stale |\n|---|---|---|---|")
+          for c in feed["communities"]:
+              print(f"| {c['id']} | {c['hazard']} | {c['hazardSource']} | {c['stale']} |")
+          bus = pathlib.Path("agents/data/bus")
+          def events(topic):
+              p = bus / f"{topic}.jsonl"
+              return [json.loads(l)["payload"] for l in p.read_text().splitlines() if l.strip()] if p.exists() else []
+          risk = events("risk.score")
+          trig = [r for r in risk if r["triggered"]]
+          print(f"\n**{len(risk)} risk scores, {len(trig)} above threshold.**\n")
+          for r in trig:
+              print(f"- `{r['community_id']}` score {r['risk_score']} (theta {r['theta']})")
+          for t in ("brainbox.directive", "fund.release.requested"):
+              print(f"\n`{t}`: {len(events(t))} event(s)")
+          PY
+
+      - name: Upload feed and bus for inspection
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: early-warning-dryrun
+          path: |
+            data-pipeline/output/communities.json
+            agents/data/bus/
+          retention-days: 7
