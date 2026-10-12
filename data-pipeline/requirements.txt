@@ -1,11 +1,11 @@
 requests>=2.34.2
-PyYAML>=6.0
-tronpy>=0.4.0
+PyYAML>=6.0.3
+tronpy>=0.6.2
 python-dotenv>=1.2.4
 eth-hash[pycryptodome]>=0.8.0
 
 # testing
 pytest>=9.1.1
 pytest-mock>=3.16.0
-hypothesis>=6.100
-responses>=0.23
+hypothesis>=6.168.4
+responses>=0.26.3
