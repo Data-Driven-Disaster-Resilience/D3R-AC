@@ -10,12 +10,16 @@ from __future__ import annotations
 from typing import TypedDict
 
 from .bus import get_bus
+from . import pipeline_feed
 
 
-class ExposureScore(TypedDict):
+class _ExposureRequired(TypedDict):
     community_id: str
     exposure_factor: float  # 0..1
-    population: int
+
+
+class ExposureScore(_ExposureRequired, total=False):
+    population: int  # absent when exposure comes from the pipeline feed
 
 
 def community_registry() -> list[dict]:
@@ -39,6 +43,12 @@ class ExposureAgent:
 
     def run_once(self) -> list[ExposureScore]:
         out: list[ExposureScore] = []
+        if pipeline_feed.feed_path() is not None:
+            for r in pipeline_feed.load_rows():
+                score: ExposureScore = {"community_id": r["community_id"], "exposure_factor": r["exposure"]}
+                self.bus.publish("exposure.score", score)
+                out.append(score)
+            return out
         for c in community_registry():
             score: ExposureScore = {
                 "community_id": c["community_id"],
