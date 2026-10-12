@@ -543,13 +543,36 @@ jobs:
           echo "REPORT_PATH=$OUT" >> "$GITHUB_ENV"
 
       - name: Commit report
+        env:
+          BRANCH: ${{ github.ref_name }}   # via env, never interpolated into the script body
         run: |
           git config user.name "d3rac-audit-bot"
           git config user.email "audit-bot@users.noreply.github.com"
-          git add "$REPORT_PATH"
-          if ! git diff --cached --quiet; then
+
+          # The scanners above (Mythril especially) run long enough that the branch
+          # routinely advances underneath this job -- e.g. several PRs merging
+          # back-to-back. A bare `git push` is then rejected as non-fast-forward and
+          # fails the whole workflow even though every scanner passed. So: on rejection,
+          # fetch the new tip, reset onto it, re-apply THIS run's freshly generated
+          # report (a same-day report file can't conflict that way) and push again.
+          # Reset+copy rather than rebase because checkout is a shallow clone.
+          cp "$REPORT_PATH" "$RUNNER_TEMP/report.md"
+          for attempt in 1 2 3 4 5; do
+            git add "$REPORT_PATH"
+            if git diff --cached --quiet; then
+              echo "No changes to commit."
+              exit 0
+            fi
             git commit -m "chore(audit): automated security report ${REPORT_PATH##*/}"
-            git push
-          else
-            echo "No changes to commit."
-          fi
+            if git push origin "HEAD:refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt/5): $BRANCH advanced while the audit ran; re-applying the report on the new tip."
+            git fetch --depth=1 origin "$BRANCH"
+            git reset --hard FETCH_HEAD
+            mkdir -p "$(dirname "$REPORT_PATH")"
+            cp "$RUNNER_TEMP/report.md" "$REPORT_PATH"
+            sleep $((attempt * 3))
+          done
+          echo "::error::Could not push the audit report after 5 attempts."
+          exit 1
