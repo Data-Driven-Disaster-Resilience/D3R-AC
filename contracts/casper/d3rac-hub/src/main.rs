@@ -316,6 +316,23 @@ pub extern "C" fn cancel_commitment() {
     );
 }
 
+/// DC-3 (Casper port): proxies `DisbursementController::sweep` so funds
+/// freed by a cancellation stay recoverable once the Hub is the
+/// controller's admin. Like `cancel_commitment`, deliberately NOT
+/// `when_not_paused`-gated; mirrors `D3RACHub.sol::sweepDisbursementFunds`.
+#[no_mangle]
+pub extern "C" fn sweep_disbursement_funds() {
+    only_admin();
+    let token: Key = runtime::get_named_arg(ARG_SWEEP_TOKEN);
+    let to: Key = runtime::get_named_arg(ARG_TO);
+    let amount: U256 = runtime::get_named_arg(ARG_AMOUNT);
+    runtime::call_contract::<()>(
+        key_to_contract_hash(get_disbursement_controller()),
+        DISBURSEMENT_CONTROLLER_ENTRY_POINT_SWEEP,
+        runtime_args! { "token" => token, "recipient" => to, "amount" => amount },
+    );
+}
+
 #[no_mangle]
 pub extern "C" fn mint_tokens() {
     only_admin();
@@ -982,6 +999,7 @@ fn build_entry_points() -> EntryPoints {
     ], CLType::Unit);
     ep!(ENTRY_POINT_ATTEST_MILESTONE, vec![Parameter::new(ARG_COMMITMENT_ID, CLType::U64), Parameter::new(ARG_MILESTONE_INDEX, CLType::U64)], CLType::Unit);
     ep!(ENTRY_POINT_CANCEL_COMMITMENT, vec![Parameter::new(ARG_COMMITMENT_ID, CLType::U64)], CLType::Unit);
+    ep!(ENTRY_POINT_SWEEP_DISBURSEMENT_FUNDS, vec![Parameter::new(ARG_SWEEP_TOKEN, CLType::Key), Parameter::new(ARG_TO, CLType::Key), Parameter::new(ARG_AMOUNT, CLType::U256)], CLType::Unit);
     ep!(ENTRY_POINT_MINT_TOKENS, vec![Parameter::new(ARG_TO, CLType::Key), Parameter::new(ARG_VALUE, CLType::U256)], CLType::Unit);
     ep!(ENTRY_POINT_REGISTER_COMMUNITY, vec![Parameter::new(ARG_COMMUNITY_ID, CLType::String), Parameter::new(ARG_NAME, CLType::String), Parameter::new(ARG_REGION, CLType::String)], CLType::Unit);
     ep!(ENTRY_POINT_UPDATE_RISK, vec![

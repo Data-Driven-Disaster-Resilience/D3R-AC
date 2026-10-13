@@ -60,6 +60,15 @@ pub enum DisbursementControllerError {
     /// of relying solely on `overflow-checks = true`'s generic Wasm
     /// trap.
     ArithmeticOverflow = 21,
+    /// DC-2: `create_commitment` refused because the contract's token
+    /// balance does not already cover every open commitment plus this one.
+    CommitmentNotFullyFunded = 22,
+    /// DC-3: `sweep` amount exceeds balance minus outstanding commitments.
+    AmountExceedsUncommitted = 23,
+    /// DC-3: `sweep` with a zero amount.
+    ZeroAmount = 24,
+    /// DC-3: `init` called again after `self_key` was already set.
+    AlreadyInitialized = 25,
 }
 
 impl From<DisbursementControllerError> for ApiError {

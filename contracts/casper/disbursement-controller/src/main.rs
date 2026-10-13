@@ -74,7 +74,7 @@ use constants::*;
 use error::DisbursementControllerError;
 use events::{
     AdminTransferProposed, AdminTransferred, AttesterUpdated, CommitmentCancelled,
-    CommitmentCreated, MilestoneAttested, MilestoneReleased,
+    CommitmentCreated, FundsSwept, MilestoneAttested, MilestoneReleased,
 };
 use model::{Commitment, CommitmentView, Milestone};
 
@@ -174,6 +174,21 @@ pub extern "C" fn create_commitment() {
             .unwrap_or_revert_with(DisbursementControllerError::ArithmeticOverflow);
     }
     let milestone_count = milestones.len() as u64;
+
+    // DC-1 (Casper port): the token must be a contract hash Key. An
+    // account/other Key would make every later release revert on
+    // `key_to_contract_hash`, leaving an unpayable commitment.
+    let token_hash = key_to_contract_hash(token);
+
+    // DC-2: the contract must already hold enough of the token to back
+    // every open commitment in it, including this one.
+    let new_outstanding = get_outstanding(&token)
+        .checked_add(total_amount)
+        .unwrap_or_revert_with(DisbursementControllerError::ArithmeticOverflow);
+    if token_balance(token_hash, get_self_key()) < new_outstanding {
+        runtime::revert(DisbursementControllerError::CommitmentNotFullyFunded);
+    }
+    set_outstanding(&token, new_outstanding);
 
     let commitment_id = get_commitment_count();
     let commitment = Commitment {
@@ -283,6 +298,12 @@ pub extern "C" fn release_milestone() {
         .checked_add(amount)
         .unwrap_or_revert_with(DisbursementControllerError::ArithmeticOverflow);
     storage::dictionary_put(commitments_dict(), &commitment_id.to_string(), commitment);
+    set_outstanding(
+        &token,
+        get_outstanding(&token)
+            .checked_sub(amount)
+            .unwrap_or_revert_with(DisbursementControllerError::ArithmeticOverflow),
+    );
 
     casper_event_standard::emit(MilestoneReleased {
         commitment_id,
@@ -318,8 +339,15 @@ pub extern "C" fn cancel_commitment() {
     commitment.active = false;
     commitment.cancelled = true;
     let unreleased_amount = commitment.total_amount - commitment.released_amount;
+    let token = commitment.token;
 
     storage::dictionary_put(commitments_dict(), &commitment_id.to_string(), commitment);
+    set_outstanding(
+        &token,
+        get_outstanding(&token)
+            .checked_sub(unreleased_amount)
+            .unwrap_or_revert_with(DisbursementControllerError::ArithmeticOverflow),
+    );
 
     let caller = immediate_caller_key();
     casper_event_standard::emit(CommitmentCancelled {
@@ -327,6 +355,49 @@ pub extern "C" fn cancel_commitment() {
         cancelled_by: caller,
         unreleased_amount,
     });
+}
+
+/// DC-3 (Casper port): admin-only recovery of tokens that are NOT backing
+/// any open commitment (funds freed by a cancellation, surplus, or tokens
+/// sent here by mistake). Capped at balance minus outstanding, so it can
+/// never touch funds backing an open commitment. Same reentrancy guard as
+/// `release_milestone`.
+#[no_mangle]
+pub extern "C" fn sweep() {
+    only_admin();
+    if get_reentrancy_guard() {
+        runtime::revert(DisbursementControllerError::ReentrantCall);
+    }
+    set_reentrancy_guard(true);
+
+    let token: Key = runtime::get_named_arg(ARG_TOKEN);
+    let to: Key = runtime::get_named_arg(ARG_RECIPIENT);
+    let amount: U256 = runtime::get_named_arg(ARG_AMOUNT);
+    if amount.is_zero() {
+        runtime::revert(DisbursementControllerError::ZeroAmount);
+    }
+
+    let token_hash = key_to_contract_hash(token);
+    let balance = token_balance(token_hash, get_self_key());
+    let uncommitted = balance
+        .checked_sub(get_outstanding(&token))
+        .unwrap_or_revert_with(DisbursementControllerError::AmountExceedsUncommitted);
+    if amount > uncommitted {
+        runtime::revert(DisbursementControllerError::AmountExceedsUncommitted);
+    }
+
+    casper_event_standard::emit(FundsSwept { token, to, amount });
+
+    let _: () = runtime::call_contract(
+        token_hash.into(),
+        CEP18_ENTRY_POINT_TRANSFER,
+        runtime_args! {
+            CEP18_ARG_RECIPIENT => to,
+            CEP18_ARG_AMOUNT => amount,
+        },
+    );
+
+    set_reentrancy_guard(false);
 }
 
 #[no_mangle]
@@ -449,6 +520,32 @@ fn key_to_contract_hash(key: Key) -> AddressableEntityHash {
         .unwrap_or_revert_with(DisbursementControllerError::UnexpectedKeyType)
 }
 
+fn token_balance(token_hash: AddressableEntityHash, account: Key) -> U256 {
+    runtime::call_contract(
+        token_hash.into(),
+        CEP18_ENTRY_POINT_BALANCE_OF,
+        runtime_args! { CEP18_ARG_ACCOUNT => account },
+    )
+}
+
+fn outstanding_dict() -> URef {
+    get_uref(KEY_OUTSTANDING_DICT)
+}
+
+fn get_outstanding(token: &Key) -> U256 {
+    storage::dictionary_get(outstanding_dict(), &key_to_dict_key(token))
+        .unwrap_or_revert_with(DisbursementControllerError::DictionaryReadFailed)
+        .unwrap_or_default()
+}
+
+fn set_outstanding(token: &Key, value: U256) {
+    storage::dictionary_put(outstanding_dict(), &key_to_dict_key(token), value);
+}
+
+fn get_self_key() -> Key {
+    runtime::get_key(KEY_SELF_KEY).unwrap_or_revert_with(DisbursementControllerError::MissingKey)
+}
+
 fn get_admin() -> Key {
     read_uref_value(KEY_ADMIN)
 }
@@ -563,6 +660,9 @@ pub extern "C" fn call() {
     let attesters_dict_uref = storage::new_dictionary(KEY_ATTESTERS_DICT).unwrap_or_revert();
     named_keys.insert(KEY_ATTESTERS_DICT.to_string(), attesters_dict_uref.into());
 
+    let outstanding_dict_uref = storage::new_dictionary(KEY_OUTSTANDING_DICT).unwrap_or_revert();
+    named_keys.insert(KEY_OUTSTANDING_DICT.to_string(), outstanding_dict_uref.into());
+
     let commitments_dict_uref = storage::new_dictionary(KEY_COMMITMENTS_DICT).unwrap_or_revert();
     named_keys.insert(
         KEY_COMMITMENTS_DICT.to_string(),
@@ -587,7 +687,14 @@ pub extern "C" fn call() {
     runtime::call_contract::<()>(
         contract_hash,
         ENTRY_POINT_INIT,
-        runtime_args! { ARG_ACCOUNT => admin_key },
+        runtime_args! {
+            ARG_ACCOUNT => admin_key,
+            // new_locked_contract just wrote the package hash into the
+            // installer's named keys; hand it to init as this contract's
+            // own Key (the one d3rac-token credits on transfer-in).
+            ARG_SELF_KEY => runtime::get_key(PACKAGE_HASH_KEY_NAME)
+                .unwrap_or_revert_with(DisbursementControllerError::MissingKey),
+        },
     );
 
     runtime::put_key(CONTRACT_HASH_KEY_NAME, contract_hash.into());
@@ -602,8 +709,18 @@ pub extern "C" fn init() {
         .with::<CommitmentCreated>()
         .with::<MilestoneAttested>()
         .with::<MilestoneReleased>()
-        .with::<CommitmentCancelled>();
+        .with::<CommitmentCancelled>()
+        .with::<FundsSwept>();
     casper_event_standard::init(schemas);
+
+    // `init` is a public entry point, so the self key may be written only
+    // once (install runs `call` -> `init` atomically, so the installer
+    // always wins); otherwise anyone could repoint balance accounting.
+    if runtime::get_key(KEY_SELF_KEY).is_some() {
+        runtime::revert(DisbursementControllerError::AlreadyInitialized);
+    }
+    let self_key: Key = runtime::get_named_arg(ARG_SELF_KEY);
+    runtime::put_key(KEY_SELF_KEY, self_key);
 
     let admin_key: Key = runtime::get_named_arg(ARG_ACCOUNT);
     casper_event_standard::emit(AttesterUpdated {
@@ -704,6 +821,21 @@ fn build_entry_points() -> EntryPoints {
 
     entry_points.add_entry_point(
         EntryPoint::new(
+            ENTRY_POINT_SWEEP,
+            vec![
+                Parameter::new(ARG_TOKEN, CLType::Key),
+                Parameter::new(ARG_RECIPIENT, CLType::Key),
+                Parameter::new(ARG_AMOUNT, CLType::U256),
+            ],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Called,
+        )
+        .into(),
+    );
+
+    entry_points.add_entry_point(
+        EntryPoint::new(
             ENTRY_POINT_CANCEL_COMMITMENT,
             vec![Parameter::new(ARG_COMMITMENT_ID, CLType::U64)],
             CLType::Unit,
@@ -763,7 +895,10 @@ fn build_entry_points() -> EntryPoints {
     entry_points.add_entry_point(
         EntryPoint::new(
             ENTRY_POINT_INIT,
-            vec![Parameter::new(ARG_ACCOUNT, CLType::Key)],
+            vec![
+                Parameter::new(ARG_ACCOUNT, CLType::Key),
+                Parameter::new(ARG_SELF_KEY, CLType::Key),
+            ],
             CLType::Unit,
             EntryPointAccess::Public,
             EntryPointType::Called,

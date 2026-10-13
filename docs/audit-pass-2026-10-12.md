@@ -27,3 +27,13 @@ Casper contracts (manual), the other TRON contracts (manual), fuzzing/invariant 
 - **DC-4** is a deployment practice (multisig admin, separate attester), not a code change.
 - Tests: 128 -> 135 (new DC-1/2/3 unit tests, a Hub sweep test, invariant harness updated to fund before commit).
 - **The Shasta and Casper testnet deployments predate these changes.** Redeploy TRON to pick them up. The Casper `disbursement-controller` has not been reviewed for the equivalent issues.
+
+## Casper review and port (same day)
+
+`contracts/casper/disbursement-controller` had the same three gaps, and DC-3 was worse: it had no way to move tokens out at all except `release_milestone`. Ported:
+- **Token must be a contract hash** (`create_commitment` reverts otherwise).
+- **Funded-at-creation ledger** (`outstanding` dictionary per token; `create_commitment` calls the token's `balance_of` on the controller's own package Key and reverts with `CommitmentNotFullyFunded`). Release and cancel decrement it.
+- **`sweep(token, recipient, amount)`**: admin-only, reentrancy-guarded, capped at balance minus outstanding, emits `FundsSwept`; `d3rac-hub` gained `sweep_disbursement_funds`.
+- `init` now records the controller's own package Key (one-time, `AlreadyInitialized` thereafter).
+- Tests 68 -> 72: the unfunded-release test became "refuses unfunded commitment", plus non-contract token, over-commit, bounded sweep, and non-admin sweep tests.
+- Verification: type-checked natively here; the wasm build and the 72 tests are verified by CI only (no wasm32 sysroot in the review sandbox).

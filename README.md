@@ -105,7 +105,7 @@ Don't treat a testnet deployment as mainnet-readiness.
 | Layer | Implementation | Tests | Testnet |
 |---|---|---|---|
 | TRON contracts (token, identity, disbursement, multisig admin, Hub, risk registry, funding-request registry, token factory) | Solidity 0.8.20, `evmVersion: paris` | 135 passing (Hardhat) | Shasta, deployed 2026-09-03 (1-of-1 multisig admin) |
-| Casper contracts (same seven modules) | Rust/WASM | 68 passing (local Casper network) | Casper testnet, deployed 2026-09-07 (Hub admin handoff proposed, not yet accepted) |
+| Casper contracts (same seven modules) | Rust/WASM | 72 passing (local Casper network) | Casper testnet, deployed 2026-09-07 (Hub admin handoff proposed, not yet accepted) |
 | Data pipeline | NASA FIRMS, USGS, EONET, GDACS; Africa-prioritized | 42 passing (incl. Hypothesis property tests) | On-chain submission path not yet run against a live network |
 | Agents | Python + Node manifest-driven fleet; Claude-backed `brainbox`; can read the pipeline's feed (`D3RAC_PIPELINE_FEED`, fail-closed) | Unit + feed tests | `contractTriggerAgent` is read-only (dry-run, never broadcasts); TRON readiness check unverified against a live node |
 | Frontend | React + Vite + TS, offline-capable (service worker) | 16 passing | Casper adapter in place; TRON adapter targets Shasta via `VITE_TRON_NETWORK` |
@@ -159,7 +159,7 @@ What exists in its place, as of this writing:
   tracked explicitly in [`SECURITY.md`](SECURITY.md), not silently
   ignored.
 - **Real, executed test coverage on both chains** — 135 tests for the
-  TRON contracts, 68 for the Casper contracts, all genuinely run
+  TRON contracts, 72 for the Casper contracts, all genuinely run
   against real compiled code (Hardhat's local EVM for TRON;
   `casper-engine-test-support`'s local execution engine, against real
   `wasm32-unknown-unknown` binaries, for Casper) — not just written or

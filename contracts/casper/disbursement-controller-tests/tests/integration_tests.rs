@@ -112,6 +112,7 @@ fn should_install() {
 #[test]
 fn should_create_commitment_for_a_verified_recipient() {
     let (mut builder, dc_hash, registry_hash) = install();
+    let token_key = setup_token(&mut builder, 1_000_000);
     let recipient = Key::from(AccountHash::new([1u8; 32]));
     verify_recipient(&mut builder, registry_hash, recipient);
 
@@ -121,7 +122,7 @@ fn should_create_commitment_for_a_verified_recipient() {
         "create_commitment",
         runtime_args! {
             ARG_RECIPIENT => recipient,
-            ARG_TOKEN => placeholder_token(),
+            ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
             ARG_DESCRIPTIONS => vec!["Phase 1".to_string()],
             ARG_AMOUNTS => vec![U256::from(1_000u64)],
@@ -143,6 +144,7 @@ fn should_create_commitment_for_a_verified_recipient() {
 #[test]
 fn should_reject_commitment_for_an_unverified_recipient() {
     let (mut builder, dc_hash, _registry_hash) = install();
+    let token_key = setup_token(&mut builder, 1_000_000);
     // Never verified in the registry -- matches
     // DisbursementController.sol's "recipient not verified" guard
     // (DisbursementControllerError::RecipientNotVerified), exercising
@@ -155,7 +157,7 @@ fn should_reject_commitment_for_an_unverified_recipient() {
         "create_commitment",
         runtime_args! {
             ARG_RECIPIENT => recipient,
-            ARG_TOKEN => placeholder_token(),
+            ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
             ARG_DESCRIPTIONS => vec!["Phase 1".to_string()],
             ARG_AMOUNTS => vec![U256::from(1_000u64)],
@@ -168,6 +170,7 @@ fn should_reject_commitment_for_an_unverified_recipient() {
 #[test]
 fn should_reject_commitment_from_non_admin() {
     let (mut builder, dc_hash, registry_hash) = install();
+    let token_key = setup_token(&mut builder, 1_000_000);
     let recipient = Key::from(AccountHash::new([3u8; 32]));
     verify_recipient(&mut builder, registry_hash, recipient);
 
@@ -178,7 +181,7 @@ fn should_reject_commitment_from_non_admin() {
         "create_commitment",
         runtime_args! {
             ARG_RECIPIENT => recipient,
-            ARG_TOKEN => placeholder_token(),
+            ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
             ARG_DESCRIPTIONS => vec!["Phase 1".to_string()],
             ARG_AMOUNTS => vec![U256::from(1_000u64)],
@@ -191,6 +194,7 @@ fn should_reject_commitment_from_non_admin() {
 #[test]
 fn should_reject_commitment_with_mismatched_description_and_amount_lengths() {
     let (mut builder, dc_hash, registry_hash) = install();
+    let token_key = setup_token(&mut builder, 1_000_000);
     let recipient = Key::from(AccountHash::new([5u8; 32]));
     verify_recipient(&mut builder, registry_hash, recipient);
 
@@ -200,7 +204,7 @@ fn should_reject_commitment_with_mismatched_description_and_amount_lengths() {
         "create_commitment",
         runtime_args! {
             ARG_RECIPIENT => recipient,
-            ARG_TOKEN => placeholder_token(),
+            ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
             ARG_DESCRIPTIONS => vec!["Phase 1".to_string(), "Phase 2".to_string()],
             ARG_AMOUNTS => vec![U256::from(1_000u64)],
@@ -213,6 +217,7 @@ fn should_reject_commitment_with_mismatched_description_and_amount_lengths() {
 #[test]
 fn should_reject_commitment_with_zero_amount_milestone() {
     let (mut builder, dc_hash, registry_hash) = install();
+    let token_key = setup_token(&mut builder, 1_000_000);
     let recipient = Key::from(AccountHash::new([6u8; 32]));
     verify_recipient(&mut builder, registry_hash, recipient);
 
@@ -222,7 +227,7 @@ fn should_reject_commitment_with_zero_amount_milestone() {
         "create_commitment",
         runtime_args! {
             ARG_RECIPIENT => recipient,
-            ARG_TOKEN => placeholder_token(),
+            ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
             ARG_DESCRIPTIONS => vec!["Phase 1".to_string()],
             ARG_AMOUNTS => vec![U256::zero()],
@@ -235,6 +240,7 @@ fn should_reject_commitment_with_zero_amount_milestone() {
 #[test]
 fn should_attest_a_milestone_then_reject_double_attestation() {
     let (mut builder, dc_hash, registry_hash) = install();
+    let token_key = setup_token(&mut builder, 1_000_000);
     let recipient = Key::from(AccountHash::new([7u8; 32]));
     verify_recipient(&mut builder, registry_hash, recipient);
 
@@ -244,7 +250,7 @@ fn should_attest_a_milestone_then_reject_double_attestation() {
         "create_commitment",
         runtime_args! {
             ARG_RECIPIENT => recipient,
-            ARG_TOKEN => placeholder_token(),
+            ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
             ARG_DESCRIPTIONS => vec!["Phase 1".to_string()],
             ARG_AMOUNTS => vec![U256::from(1_000u64)],
@@ -277,6 +283,7 @@ fn should_attest_a_milestone_then_reject_double_attestation() {
 #[test]
 fn should_reject_attest_from_non_attester() {
     let (mut builder, dc_hash, registry_hash) = install();
+    let token_key = setup_token(&mut builder, 1_000_000);
     let recipient = Key::from(AccountHash::new([8u8; 32]));
     verify_recipient(&mut builder, registry_hash, recipient);
 
@@ -286,7 +293,7 @@ fn should_reject_attest_from_non_attester() {
         "create_commitment",
         runtime_args! {
             ARG_RECIPIENT => recipient,
-            ARG_TOKEN => placeholder_token(),
+            ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
             ARG_DESCRIPTIONS => vec!["Phase 1".to_string()],
             ARG_AMOUNTS => vec![U256::from(1_000u64)],
@@ -309,6 +316,7 @@ fn should_reject_attest_from_non_attester() {
 #[test]
 fn should_reject_release_of_an_unattested_milestone() {
     let (mut builder, dc_hash, registry_hash) = install();
+    let token_key = setup_token(&mut builder, 1_000_000);
     let recipient = Key::from(AccountHash::new([10u8; 32]));
     verify_recipient(&mut builder, registry_hash, recipient);
 
@@ -318,7 +326,7 @@ fn should_reject_release_of_an_unattested_milestone() {
         "create_commitment",
         runtime_args! {
             ARG_RECIPIENT => recipient,
-            ARG_TOKEN => placeholder_token(),
+            ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
             ARG_DESCRIPTIONS => vec!["Phase 1".to_string()],
             ARG_AMOUNTS => vec![U256::from(1_000u64)],
@@ -344,6 +352,7 @@ fn should_reject_release_of_an_unattested_milestone() {
 #[test]
 fn should_cancel_a_commitment_and_reject_further_attestation() {
     let (mut builder, dc_hash, registry_hash) = install();
+    let token_key = setup_token(&mut builder, 1_000_000);
     let recipient = Key::from(AccountHash::new([11u8; 32]));
     verify_recipient(&mut builder, registry_hash, recipient);
 
@@ -353,7 +362,7 @@ fn should_cancel_a_commitment_and_reject_further_attestation() {
         "create_commitment",
         runtime_args! {
             ARG_RECIPIENT => recipient,
-            ARG_TOKEN => placeholder_token(),
+            ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
             ARG_DESCRIPTIONS => vec!["Phase 1".to_string()],
             ARG_AMOUNTS => vec![U256::from(1_000u64)],
@@ -384,102 +393,28 @@ fn should_cancel_a_commitment_and_reject_further_attestation() {
 }
 
 #[test]
-fn should_reject_release_when_disbursement_controller_holds_no_tokens() {
-    // Installs a real d3rac-token alongside identity-registry and
-    // disbursement-controller (three real contracts, not stubs) and
-    // exercises the guard that's confirmed robust:
-    // release_milestone rejects when disbursement-controller holds
-    // none of the configured token, relying on CEP-18's own
-    // InsufficientBalance revert (per disbursement-controller's "no
-    // explicit balance_of pre-check" design decision).
-    //
-    // NOTE on scope: an earlier version of this test also tried to
-    // verify the funded SUCCESS path, by minting tokens to
-    // disbursement-controller's own contract address first. That
-    // exposed real, genuine plumbing this suite got wrong across two
-    // different layers in sequence:
-    //   1. Casper's runtime::get_caller() always resolves to the
-    //      originating deploy-signing account, never the immediate
-    //      calling contract (confirmed against Casper's own "Call
-    //      Stacks" docs) -- d3rac-token's transfer() has since been
-    //      fixed elsewhere in this codebase to resolve the acting
-    //      party via runtime::get_call_stack()'s immediate caller
-    //      instead (see d3rac-token/src/main.rs's
-    //      immediate_caller_key).
-    //   2. That fix resolves a calling contract's identity to
-    //      Key::from(ContractPackageHash) (the contract's PACKAGE
-    //      identity), but this test was mint-funding
-    //      Key::from(ContractHash::from(dc_hash)) (the contract's
-    //      specific-version ENTITY identity) -- two different
-    //      identifiers in Casper's model that don't compare equal,
-    //      so the funding never reached the balance bucket transfer()
-    //      actually checks.
-    // Getting the second mismatch right needs confirming exactly how
-    // a *_package_hash named key (as read back through
-    // casper-engine-test-support) relates to ContractPackageHash's own
-    // Key encoding -- not confirmed with enough certainty to guess a
-    // third time in this same problem area this session. The success
-    // path is a real, worthwhile follow-up, not abandoned -- just not
-    // asserted here until that's pinned down with real evidence rather
-    // than another guess.
+fn should_reject_commitment_that_is_not_fully_funded() {
+    // DC-2: the controller holds no tokens, so any commitment is refused.
     let (mut builder, dc_hash, registry_hash) = install();
     let recipient = Key::from(AccountHash::new([20u8; 32]));
     verify_recipient(&mut builder, registry_hash, recipient);
-
-    let install_token = ExecuteRequestBuilder::standard(
-        *DEFAULT_ACCOUNT_ADDR,
-        "d3rac-token.wasm",
-        runtime_args! {
-            "initial_supply" => U256::zero(),
-            "owner_" => Key::from(*DEFAULT_ACCOUNT_ADDR),
-        },
-    )
-    .build();
-    builder.exec(install_token).expect_success().commit();
-
-    let token_hash: AddressableEntityHash = builder
-        .get_account(*DEFAULT_ACCOUNT_ADDR)
-        .expect("should have account")
-        .named_keys()
-        .get("d3rac_token_contract_hash")
-        .expect("token contract hash named key should exist after install")
-        .into_entity_hash()
-        .expect("should resolve to an addressable entity hash");
-    let token_key = Key::from(ContractHash::from(token_hash));
-
-    let create_request = ExecuteRequestBuilder::contract_call_by_hash(
-        *DEFAULT_ACCOUNT_ADDR,
-        dc_hash,
-        "create_commitment",
-        runtime_args! {
-            ARG_RECIPIENT => recipient,
-            ARG_TOKEN => token_key,
-            ARG_COMMUNITY => "Test Community".to_string(),
-            ARG_DESCRIPTIONS => vec!["Phase 1".to_string()],
-            ARG_AMOUNTS => vec![U256::from(1_000u64)],
-        },
-    )
-    .build();
-    builder.exec(create_request).expect_success().commit();
-
-    let attest_request = ExecuteRequestBuilder::contract_call_by_hash(
-        *DEFAULT_ACCOUNT_ADDR,
-        dc_hash,
-        "attest_milestone",
-        runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => 0u64 },
-    )
-    .build();
-    builder.exec(attest_request).expect_success().commit();
-
-    let unfunded_release_request = ExecuteRequestBuilder::contract_call_by_hash(
-        *DEFAULT_ACCOUNT_ADDR,
-        dc_hash,
-        "release_milestone",
-        runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => 0u64 },
-    )
-    .build();
-    builder.exec(unfunded_release_request).expect_failure();
+    let token_key = setup_token(&mut builder, 0);
+    builder
+        .exec(create_request(dc_hash, recipient, token_key, vec![1_000]))
+        .expect_failure();
 }
+
+#[test]
+fn should_reject_commitment_with_a_non_contract_token_key() {
+    // DC-1: an account Key can never pay out, so it is refused up front.
+    let (mut builder, dc_hash, registry_hash) = install();
+    let recipient = Key::from(AccountHash::new([21u8; 32]));
+    verify_recipient(&mut builder, registry_hash, recipient);
+    builder
+        .exec(create_request(dc_hash, recipient, placeholder_token(), vec![1_000]))
+        .expect_failure();
+}
+
 
 #[test]
 fn should_reject_get_commitment_for_a_nonexistent_id() {
@@ -562,31 +497,49 @@ fn install_token(builder: &mut LmdbWasmTestBuilder) -> AddressableEntityHash {
         .expect("should resolve to an addressable entity hash")
 }
 
-#[test]
-fn should_release_a_funded_milestone_and_debit_the_controller() {
-    // The funded-success path that the test above could not assert. The
-    // earlier blocker was identifying disbursement-controller by the wrong
-    // Key variant. d3rac-token's `transfer` resolves a calling contract to
-    // Key::from(ContractPackageHash), so funding must go to the contract's
-    // *package* Key -- exactly the `<name>_package_hash` named key, read
-    // back unchanged, which d3rac-hub-tests already relies on for admin
-    // handoff to a contract.
-    let (mut builder, dc_hash, registry_hash) = install();
-    let recipient = Key::from(AccountHash::new([20u8; 32]));
-    verify_recipient(&mut builder, registry_hash, recipient);
-
-    let token_hash = install_token(&mut builder);
-    let token_key = Key::from(ContractHash::from(token_hash));
-
-    let dc_package_key: Key = *builder
+/// disbursement-controller's *package* Key -- what d3rac-token credits
+/// when tokens are sent to the controller (see the funded-release test).
+fn dc_package_key(builder: &LmdbWasmTestBuilder) -> Key {
+    *builder
         .get_account(*DEFAULT_ACCOUNT_ADDR)
         .expect("should have account")
         .named_keys()
         .get("disbursement_controller_package_hash")
-        .expect("disbursement controller package hash named key should exist");
+        .expect("disbursement controller package hash named key should exist")
+}
 
-    // Two milestones: 1_000 and 500.
-    let create_request = ExecuteRequestBuilder::contract_call_by_hash(
+fn mint_to_controller(builder: &mut LmdbWasmTestBuilder, token_key: Key, amount: u64) {
+    let token_hash = AddressableEntityHash::new(token_key.into_hash_addr().expect("hash key"));
+    let request = ExecuteRequestBuilder::contract_call_by_hash(
+        *DEFAULT_ACCOUNT_ADDR,
+        token_hash,
+        "mint",
+        runtime_args! { "recipient" => dc_package_key(builder), "amount" => U256::from(amount) },
+    )
+    .build();
+    builder.exec(request).expect_success().commit();
+}
+
+/// Installs a real token and mints `funding` of it to the controller.
+/// Commitments are only accepted when fully funded (DC-2), so every test
+/// that creates one funds first.
+fn setup_token(builder: &mut LmdbWasmTestBuilder, funding: u64) -> Key {
+    let token_hash = install_token(builder);
+    let token_key = Key::from(ContractHash::from(token_hash));
+    if funding > 0 {
+        mint_to_controller(builder, token_key, funding);
+    }
+    token_key
+}
+
+fn create_request(
+    dc_hash: AddressableEntityHash,
+    recipient: Key,
+    token_key: Key,
+    amounts: Vec<u64>,
+) -> casper_engine_test_support::ExecuteRequest {
+    let descriptions: Vec<String> = (0..amounts.len()).map(|i| format!("Phase {i}")).collect();
+    ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
         dc_hash,
         "create_commitment",
@@ -594,56 +547,95 @@ fn should_release_a_funded_milestone_and_debit_the_controller() {
             ARG_RECIPIENT => recipient,
             ARG_TOKEN => token_key,
             ARG_COMMUNITY => "Test Community".to_string(),
-            ARG_DESCRIPTIONS => vec!["Phase 1".to_string(), "Phase 2".to_string()],
-            ARG_AMOUNTS => vec![U256::from(1_000u64), U256::from(500u64)],
+            ARG_DESCRIPTIONS => descriptions,
+            ARG_AMOUNTS => amounts.into_iter().map(U256::from).collect::<Vec<_>>(),
         },
     )
-    .build();
-    builder.exec(create_request).expect_success().commit();
+    .build()
+}
 
+fn call(dc_hash: AddressableEntityHash, entry_point: &str, args: casper_types::RuntimeArgs) -> casper_engine_test_support::ExecuteRequest {
+    ExecuteRequestBuilder::contract_call_by_hash(*DEFAULT_ACCOUNT_ADDR, dc_hash, entry_point, args).build()
+}
+
+#[test]
+fn should_release_funded_milestones_and_debit_the_controller() {
+    // Funded BEFORE creation (DC-2). Exactly covers both milestones.
+    let (mut builder, dc_hash, registry_hash) = install();
+    let recipient = Key::from(AccountHash::new([20u8; 32]));
+    verify_recipient(&mut builder, registry_hash, recipient);
+    let token_key = setup_token(&mut builder, 1_500);
+
+    builder
+        .exec(create_request(dc_hash, recipient, token_key, vec![1_000, 500]))
+        .expect_success()
+        .commit();
     for index in 0u64..2 {
-        let attest = ExecuteRequestBuilder::contract_call_by_hash(
-            *DEFAULT_ACCOUNT_ADDR,
-            dc_hash,
-            "attest_milestone",
-            runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => index },
-        )
-        .build();
-        builder.exec(attest).expect_success().commit();
+        builder
+            .exec(call(dc_hash, "attest_milestone", runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => index }))
+            .expect_success()
+            .commit();
     }
+    let release = |i: u64| call(dc_hash, "release_milestone", runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => i });
 
-    let mint = |builder: &mut LmdbWasmTestBuilder, amount: u64| {
-        let request = ExecuteRequestBuilder::contract_call_by_hash(
-            *DEFAULT_ACCOUNT_ADDR,
-            token_hash,
-            "mint",
-            runtime_args! { "recipient" => dc_package_key, "amount" => U256::from(amount) },
-        )
-        .build();
-        builder.exec(request).expect_success().commit();
-    };
-    let release = |index: u64| {
-        ExecuteRequestBuilder::contract_call_by_hash(
-            *DEFAULT_ACCOUNT_ADDR,
-            dc_hash,
-            "release_milestone",
-            runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => index },
-        )
-        .build()
-    };
-
-    // Fund exactly milestone 0's amount, then release it: must succeed.
-    mint(&mut builder, 1_000);
     builder.exec(release(0)).expect_success().commit();
-
-    // Re-releasing the same milestone must fail (already released).
+    // Re-releasing must fail (already released).
     builder.exec(release(0)).expect_failure();
-
-    // The controller's balance was actually debited: milestone 1 (500) now
-    // fails for lack of funds even though it is attested...
-    builder.exec(release(1)).expect_failure();
-
-    // ...and succeeds once the controller is funded again.
-    mint(&mut builder, 500);
     builder.exec(release(1)).expect_success().commit();
+}
+
+#[test]
+fn should_refuse_to_over_commit_across_commitments() {
+    // DC-2: 1_000 funded; a first 600 commitment fits, a second 600 does not.
+    let (mut builder, dc_hash, registry_hash) = install();
+    let recipient = Key::from(AccountHash::new([22u8; 32]));
+    verify_recipient(&mut builder, registry_hash, recipient);
+    let token_key = setup_token(&mut builder, 1_000);
+
+    builder.exec(create_request(dc_hash, recipient, token_key, vec![600])).expect_success().commit();
+    builder.exec(create_request(dc_hash, recipient, token_key, vec![600])).expect_failure();
+    // After the first is released, its obligation is gone but so is its
+    // balance (600 paid out, 400 left, nothing outstanding): 400 fits.
+    builder.exec(call(dc_hash, "attest_milestone", runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => 0u64 })).expect_success().commit();
+    builder.exec(call(dc_hash, "release_milestone", runtime_args! { ARG_COMMITMENT_ID => 0u64, ARG_MILESTONE_INDEX => 0u64 })).expect_success().commit();
+    builder.exec(create_request(dc_hash, recipient, token_key, vec![400])).expect_success().commit();
+}
+
+#[test]
+fn should_sweep_only_uncommitted_funds() {
+    // DC-3: 1_000 funded, 600 committed -> only 400 is sweepable.
+    let (mut builder, dc_hash, registry_hash) = install();
+    let recipient = Key::from(AccountHash::new([23u8; 32]));
+    verify_recipient(&mut builder, registry_hash, recipient);
+    let token_key = setup_token(&mut builder, 1_000);
+    let to = Key::from(AccountHash::new([24u8; 32]));
+    let sweep = |amount: u64| {
+        call(dc_hash, "sweep", runtime_args! { ARG_TOKEN => token_key, ARG_RECIPIENT => to, "amount" => U256::from(amount) })
+    };
+
+    builder.exec(create_request(dc_hash, recipient, token_key, vec![600])).expect_success().commit();
+    builder.exec(sweep(401)).expect_failure();
+    builder.exec(sweep(0)).expect_failure();
+    builder.exec(sweep(400)).expect_success().commit();
+    // Nothing uncommitted is left.
+    builder.exec(sweep(1)).expect_failure();
+
+    // Cancelling frees the 600 for recovery.
+    builder.exec(call(dc_hash, "cancel_commitment", runtime_args! { ARG_COMMITMENT_ID => 0u64 })).expect_success().commit();
+    builder.exec(sweep(600)).expect_success().commit();
+}
+
+#[test]
+fn should_reject_sweep_from_non_admin() {
+    let (mut builder, dc_hash, _registry_hash) = install();
+    let token_key = setup_token(&mut builder, 100);
+    let stranger = AccountHash::new([25u8; 32]);
+    let request = ExecuteRequestBuilder::contract_call_by_hash(
+        stranger,
+        dc_hash,
+        "sweep",
+        runtime_args! { ARG_TOKEN => token_key, ARG_RECIPIENT => Key::from(stranger), "amount" => U256::from(1u64) },
+    )
+    .build();
+    builder.exec(request).expect_failure();
 }
