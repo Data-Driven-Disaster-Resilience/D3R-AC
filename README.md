@@ -104,8 +104,8 @@ Don't treat a testnet deployment as mainnet-readiness.
 
 | Layer | Implementation | Tests | Testnet |
 |---|---|---|---|
-| TRON contracts (token, identity, disbursement, multisig admin, Hub, risk registry, funding-request registry, token factory) | Solidity 0.8.20, `evmVersion: paris` | 135 passing (Hardhat) | Shasta, deployed 2026-09-03 (1-of-1 multisig admin) |
-| Casper contracts (same seven modules) | Rust/WASM | 72 passing (local Casper network) | Casper testnet, deployed 2026-09-07 (Hub admin handoff proposed, not yet accepted) |
+| TRON contracts (token, identity, disbursement, multisig admin, Hub, risk registry, funding-request registry, token factory) | Solidity 0.8.20, `evmVersion: paris` | 135 passing (Hardhat) | Shasta, redeployed 2026-10-13 with the DC-1/2/3 fixes (1-of-1 multisig admin) |
+| Casper contracts (same seven modules) | Rust/WASM | 72 passing (local Casper network) | Casper testnet, redeployed 2026-10-13 with the DC-1/2/3 fixes (Hub admin handoff proposed, not yet accepted) |
 | Data pipeline | NASA FIRMS, USGS, EONET, GDACS; Africa-prioritized | 42 passing (incl. Hypothesis property tests) | On-chain submission path not yet run against a live network |
 | Agents | Python + Node manifest-driven fleet; Claude-backed `brainbox`; can read the pipeline's feed (`D3RAC_PIPELINE_FEED`, fail-closed) | Unit + feed tests | `contractTriggerAgent` is read-only (dry-run, never broadcasts); TRON readiness check unverified against a live node |
 | Frontend | React + Vite + TS, offline-capable (service worker) | 16 passing | Casper adapter in place; TRON adapter targets Shasta via `VITE_TRON_NETWORK` |
@@ -118,7 +118,8 @@ status and the caller-resolution fix writeup), [`data-pipeline/README.md`](data-
 
 Audit status: two internal self-review passes on the TRON contracts
 ([2026-07-25](docs/audit-pass-2026-07-25.md), [2026-09-09](docs/audit-pass-2026-09-09.md))
-and one on Casper ([2026-09-05](docs/casper-audit-pass-2026-09-05.md)) — explicitly
+one on Casper ([2026-09-05](docs/casper-audit-pass-2026-09-05.md)), and an in-house custody review
+([2026-10-12](docs/audit-pass-2026-10-12.md), fixes merged on both chains) — explicitly
 not a substitute for a professional audit.
 
 The data pipeline SRS carries its own additional, even more restrictive
@@ -168,7 +169,11 @@ What exists in its place, as of this writing:
   Shasta (2026-09-03,
   [run #33703052261](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/33703052261)),
   Casper to its own public testnet (2026-09-07,
-  [run #34073617859](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/34073617859)).
+  [run #34073617859](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/34073617859)). Both were redeployed on
+  2026-10-13 (UTC) after the DC-1/DC-2/DC-3 fixes
+  ([TRON run #38334993010](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/38334993010),
+  [Casper run #38336456207](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/38336456207));
+  the earlier deployments are superseded and their addresses orphaned.
   See [`docs/deployment-guide.md`](docs/deployment-guide.md)'s status
   note for exact current topology (both deployed with a deliberately
   minimal 1-of-1 multisig — a real, intentional starting configuration,

@@ -5,21 +5,12 @@ name: Deploy Casper contracts (testnet)
 # option at all. Read that file's own top comment first if this is
 # your first time looking at either.
 #
-# UNLIKE deploy-tron-testnet.yml, the script this workflow runs
-# (deploy-testnet.sh) has never been executed anywhere, by anyone, as
-# of this writing. It was written from a sandbox with no Casper
-# network access and no local casper-client to test against -- every
-# casper-client invocation in it is sourced from
-# https://docs.casper.network's own CLI documentation (linked
-# per-command in deploy-testnet.sh's own comments), not verified by
-# running it. Casper's CLI is also mid-transition (`put-deploy` is
-# deprecated in favor of `put-transaction`/`put-txn` as of
-# casper-client 3.0.0) -- this script uses the newer, non-deprecated
-# form, sourced the same way. Treat the first real run of this
-# workflow as the actual test of this script, not as a routine
-# deployment -- read its output carefully, and don't assume a
-# same-shaped success/failure to deploy-tron-testnet.yml's own
-# first run.
+# This workflow has run successfully against Casper testnet (first run
+# 2026-09-07, redeployed 2026-10-13 after the DC-1/DC-2/DC-3 fixes).
+# Each run installs fresh contracts and so ORPHANS the previous
+# deployment's hashes and leaves the Hub admin handoff proposed but not
+# accepted; read the uploaded deploy log for the new hashes and see
+# docs/deployment-guide.md before re-running.
 on:
   workflow_dispatch:
     inputs:
