@@ -39,6 +39,13 @@ pub struct CommitmentCancelled {
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]
+pub struct FundsSwept {
+    pub token: Key,
+    pub to: Key,
+    pub amount: U256,
+}
+
+#[derive(Event, Debug, PartialEq, Eq)]
 pub struct AdminTransferred {
     pub previous_admin: Key,
     pub new_admin: Key,

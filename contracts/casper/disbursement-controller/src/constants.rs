@@ -14,6 +14,12 @@ pub const KEY_COMMITMENT_COUNT: &str = "commitment_count";
 /// to the one entry point here that makes an external cross-contract
 /// call (the CEP-18 transfer).
 pub const KEY_REENTRANCY_GUARD: &str = "reentrancy_guard";
+/// DC-2/DC-3 (Casper port): per-token sum of committed-but-unreleased
+/// milestone amounts, keyed by the token Key's dictionary string.
+pub const KEY_OUTSTANDING_DICT: &str = "outstanding";
+/// This contract's own package Key -- the Key d3rac-token credits when
+/// tokens are sent to this contract. Written once by `init`.
+pub const KEY_SELF_KEY: &str = "self_key";
 
 pub const CONTRACT_HASH_KEY_NAME: &str = "disbursement_controller_contract_hash";
 pub const PACKAGE_HASH_KEY_NAME: &str = "disbursement_controller_package_hash";
@@ -31,6 +37,7 @@ pub const ENTRY_POINT_COMMITMENT_COUNT: &str = "commitment_count";
 pub const ENTRY_POINT_GET_COMMITMENT: &str = "get_commitment";
 pub const ENTRY_POINT_GET_MILESTONE: &str = "get_milestone";
 pub const ENTRY_POINT_IS_ATTESTER: &str = "is_attester";
+pub const ENTRY_POINT_SWEEP: &str = "sweep";
 pub const ENTRY_POINT_INIT: &str = "init";
 
 // CEP-18 entry point this contract calls on the token it's configured
@@ -42,6 +49,8 @@ pub const ENTRY_POINT_INIT: &str = "init";
 pub const CEP18_ENTRY_POINT_TRANSFER: &str = "transfer";
 pub const CEP18_ARG_RECIPIENT: &str = "recipient";
 pub const CEP18_ARG_AMOUNT: &str = "amount";
+pub const CEP18_ENTRY_POINT_BALANCE_OF: &str = "balance_of";
+pub const CEP18_ARG_ACCOUNT: &str = "account";
 
 // This contract's own runtime argument names
 pub const ARG_ACCOUNT: &str = "account";
@@ -55,6 +64,8 @@ pub const ARG_DESCRIPTIONS: &str = "descriptions";
 pub const ARG_AMOUNTS: &str = "amounts";
 pub const ARG_COMMITMENT_ID: &str = "commitment_id";
 pub const ARG_MILESTONE_INDEX: &str = "milestone_index";
+pub const ARG_AMOUNT: &str = "amount";
+pub const ARG_SELF_KEY: &str = "self_key";
 
 // IdentityRegistry entry point this contract calls to gate
 // create_commitment -- matches identity-registry's own

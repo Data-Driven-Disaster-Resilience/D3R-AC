@@ -95,7 +95,7 @@ cd contracts/tron && npm install && npm test
 | `funding-request-registry` | Funding-request lifecycle |
 | `identity-registry` | Recipient verification |
 
-**~5,360 lines total** (contract `src/main.rs` only). **68 tests** across 7 `-tests` packages, all
+**~5,360 lines total** (contract `src/main.rs` only). **72 tests** across 7 `-tests` packages, all
 genuinely executed — built to real `wasm32-unknown-unknown` binaries
 and run against `casper-engine-test-support`'s local execution engine,
 not just compile-checked. Reproduce: see
@@ -155,7 +155,7 @@ expert" remain different bars.
 
 ### 3.4 Real, executed verification (both chains)
 
-- **135 TRON tests, 68 Casper tests, all genuinely run** — not
+- **135 TRON tests, 72 Casper tests, all genuinely run** — not
   written-and-assumed, not compile-checked-only. The Casper side in
   particular required documenting a real, working `rustup`-free
   toolchain path (`contracts/casper/README.md`) since it needed to be
@@ -304,7 +304,7 @@ for pkg in risk-registry identity-registry multisig-admin d3rac-token \
 done
 # stage the resulting .wasm per each *-tests package's own doc comment, then:
 cargo test --workspace
-# Expect: 68 passing
+# Expect: 72 passing
 ```
 
 Line/test counts in §2 can be reproduced directly:

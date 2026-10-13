@@ -159,7 +159,7 @@ What exists in its place, as of this writing:
   tracked explicitly in [`SECURITY.md`](SECURITY.md), not silently
   ignored.
 - **Real, executed test coverage on both chains** — 135 tests for the
-  TRON contracts, 68 for the Casper contracts, all genuinely run
+  TRON contracts, 72 for the Casper contracts, all genuinely run
   against real compiled code (Hardhat's local EVM for TRON;
   `casper-engine-test-support`'s local execution engine, against real
   `wasm32-unknown-unknown` binaries, for Casper) — not just written or
