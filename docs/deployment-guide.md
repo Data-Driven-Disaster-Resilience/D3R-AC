@@ -4,7 +4,15 @@ This guide covers deploying D3R·AC's two deployable pieces: TRON smart
 contracts and the frontend. **Read the [Security](#security-checklist)
 section before deploying anything with real funds.**
 
-> **Status note:** contract source (seven contracts), a passing logic
+> **Latest deployments (2026-10-13 UTC):** both chains were redeployed
+> after the DC-1/DC-2/DC-3 disbursement-controller fixes
+> ([TRON run #38334993010](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/38334993010),
+> [Casper run #38336456207](https://github.com/Data-Driven-Disaster-Resilience/D3R-AC/actions/runs/38336456207)). They supersede the
+> addresses in the historical status note below; the new addresses are in
+> each run's job summary / deploy-log artifact. Commitments must now be
+> funded before they are created.
+
+> **Status note (historical, first deployments):** contract source (seven contracts), a passing logic
 > test suite (116 tests, see
 > [`contracts/tron/README.md`](../contracts/tron/README.md)), and a
 > working TronBox compile config all exist — and as of 2026-09-03, the
