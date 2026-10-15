@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
 
       - name: Run analysis
-        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4 -- bumped from v2.4.0 after that pin's actual first CI run failed at "Pull gcr.io/openssf/scorecard-action:v2.4.0" (real failure, not hypothetical -- see PR #31/run 34088909524). v2.4.0 was already 18+ months old per its own changelog; SHA independently confirmed via a real, recent urllib3 dependency-bump diff (urllib3/urllib3@546f5d2), not asserted from memory.
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.4.4 -- bumped from v2.4.0 after that pin's actual first CI run failed at "Pull gcr.io/openssf/scorecard-action:v2.4.0" (real failure, not hypothetical -- see PR #31/run 34088909524). v2.4.0 was already 18+ months old per its own changelog; SHA independently confirmed via a real, recent urllib3 dependency-bump diff (urllib3/urllib3@546f5d2), not asserted from memory.
         with:
           results_file: results.sarif
           results_format: sarif
