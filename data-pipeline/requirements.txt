@@ -1,6 +1,6 @@
 requests>=2.34.2
 PyYAML>=6.0.3
-tronpy>=0.6.2
+tronpy>=0.7.0
 python-dotenv>=1.2.4
 eth-hash[pycryptodome]>=0.8.0
 
